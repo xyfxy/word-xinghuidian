@@ -1,0 +1,331 @@
+import React, { useState, useEffect } from 'react';
+import { Plus, Search, Edit, Copy, Trash2, FileText, Clock, Wand2 } from 'lucide-react';
+import { DocumentTemplate } from '../types';
+import { templateService } from '../services/api';
+import { createDefaultTemplate } from '../utils/document';
+import useEditorStore from '../stores/editorStore';
+import { useNavigate } from 'react-router-dom';
+
+const TemplatePage: React.FC = () => {
+  const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  
+  const { setCurrentTemplate } = useEditorStore();
+  const navigate = useNavigate();
+
+  // 加载模板列表
+  const loadTemplates = async () => {
+    try {
+      setLoading(true);
+      const templateList = await templateService.getTemplates();
+      setTemplates(templateList);
+    } catch (error) {
+      console.error('加载模板列表失败:', error);
+      alert('加载模板列表失败，请刷新页面重试');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+
+  // 过滤模板
+  const filteredTemplates = templates.filter(template =>
+    template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (template.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // 创建新模板
+  const handleCreateTemplate = () => {
+    const newTemplate = createDefaultTemplate();
+    setCurrentTemplate(newTemplate);
+    navigate('/editor');
+  };
+
+  // 编辑模板
+  const handleEditTemplate = (template: DocumentTemplate) => {
+    setCurrentTemplate(template);
+    navigate('/editor');
+  };
+
+  // 复制模板
+  const handleDuplicateTemplate = async (template: DocumentTemplate) => {
+    try {
+      if (!template.id) {
+        alert('模板ID无效');
+        return;
+      }
+      
+      const newName = prompt('请输入新模板名称:', `${template.name} - 副本`);
+      if (!newName) return;
+
+      await templateService.duplicateTemplate(template.id, newName);
+      
+      loadTemplates();
+      alert('模板复制成功！');
+    } catch (error) {
+      console.error('复制模板失败:', error);
+      alert('复制模板失败，请稍后重试');
+    }
+  };
+
+  // 删除模板
+  const handleDeleteTemplate = async (template: DocumentTemplate) => {
+    if (!template.id) {
+      alert('模板ID无效');
+      return;
+    }
+    
+    if (!confirm(`确定要删除模板"${template.name}"吗？此操作不可撤销。`)) {
+      return;
+    }
+
+    try {
+      await templateService.deleteTemplate(template.id);
+      loadTemplates();
+      alert('模板删除成功！');
+    } catch (error) {
+      console.error('删除模板失败:', error);
+      alert('删除模板失败，请稍后重试');
+    }
+  };
+
+  // 格式化日期
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat('zh-CN', {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(date));
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">加载模板列表...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* 页面标题和操作 */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">模板管理</h1>
+              <p className="mt-2 text-gray-600">
+                管理您的文档模板，创建可重用的格式和结构
+              </p>
+            </div>
+            <button
+              onClick={handleCreateTemplate}
+              className="btn-primary flex items-center"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              新建模板
+            </button>
+          </div>
+
+          {/* 搜索框 */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="搜索模板名称或描述..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="input-field pl-10"
+            />
+          </div>
+        </div>
+
+        {/* 模板统计 */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="card p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-primary-100 rounded-lg">
+                <FileText className="h-6 w-6 text-primary-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">总模板数</p>
+                <p className="text-2xl font-bold text-gray-900">{templates.length}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="card p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <FileText className="h-6 w-6 text-green-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">本周更新</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {templates.filter(t => {
+                    const weekAgo = new Date();
+                    weekAgo.setDate(weekAgo.getDate() - 7);
+                    return new Date(t.updatedAt) > weekAgo;
+                  }).length}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="card p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <FileText className="h-6 w-6 text-blue-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">AI内容块</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {templates.reduce((sum, t) => 
+                    sum + t.content.filter(c => c.type === 'ai-generated').length, 0
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="card p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <FileText className="h-6 w-6 text-orange-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">固定内容块</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {templates.reduce((sum, t) => 
+                    sum + t.content.filter(c => c.type === 'text').length, 0
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 模板列表 */}
+        {filteredTemplates.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FileText className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {searchTerm ? '未找到匹配的模板' : '还没有模板'}
+            </h3>
+            <p className="text-gray-600 mb-6">
+              {searchTerm 
+                ? '尝试调整搜索条件或创建新模板' 
+                : '创建您的第一个文档模板来开始使用'
+              }
+            </p>
+            <button
+              onClick={handleCreateTemplate}
+              className="btn-primary"
+            >
+              创建新模板
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredTemplates.map((template) => (
+              <div
+                key={template.id}
+                className={`card p-6 cursor-pointer hover:shadow-md transition-shadow ${
+                  selectedTemplate === template.id ? 'ring-2 ring-primary-500' : ''
+                }`}
+                onClick={() => setSelectedTemplate(
+                  selectedTemplate === template.id ? null : template.id
+                )}
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      {template.name}
+                    </h3>
+                    <p className="text-sm text-gray-600 line-clamp-2">
+                      {template.description}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
+                  <div className="flex items-center">
+                    <Clock className="h-4 w-4 mr-1" />
+                    {formatDate(template.updatedAt)}
+                  </div>
+                  <span>{template.content.length} 个内容块</span>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {template.content.filter(c => c.type === 'text').length} 固定
+                  </span>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    {template.content.filter(c => c.type === 'ai-generated').length} AI
+                  </span>
+                </div>
+
+                <div className="flex justify-end space-x-2 mt-4">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/use-template?templateId=${template.id}`);
+                    }}
+                    className="p-2 text-gray-400 hover:text-purple-600 transition-colors"
+                    title="使用模板"
+                  >
+                    <Wand2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditTemplate(template);
+                    }}
+                    className="p-2 text-gray-400 hover:text-primary-600 transition-colors"
+                    title="编辑模板"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDuplicateTemplate(template);
+                    }}
+                    className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                    title="复制模板"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteTemplate(template);
+                    }}
+                    className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                    title="删除模板"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default TemplatePage; 
