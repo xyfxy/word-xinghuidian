@@ -62,14 +62,15 @@ export interface FontSettings {
   family: string;
   size: number;
   color: string;
-  bold: boolean;
-  italic: boolean;
-  underline: boolean;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
 }
 
 export interface ParagraphSettings {
   lineHeight: number;
   paragraphSpacing: number;
+  spaceBefore: number;
   indent: IndentSettings;
   alignment: 'left' | 'center' | 'right' | 'justify';
 }
@@ -112,7 +113,7 @@ export interface ImageContent {
   height?: number;
   maxWidth?: number;
   maxHeight?: number;
-  alignment: 'left' | 'center' | 'right';
+  alignment: 'left' | 'center' | 'right' | 'auto';
   caption?: string;
   border?: {
     enabled: boolean;
@@ -131,10 +132,29 @@ export interface PageBreakContent {
   };
 }
 
+// 表格内容
+export interface TableContent {
+  rows: (string | { content: string; colspan?: number; rowspan?: number; style?: any })[][];
+  style: {
+    borderStyle: 'none' | 'solid' | 'dashed' | 'dotted';
+    borderWidth: number;
+    borderColor: string;
+    cellPadding: number;
+    cellSpacing: number;
+    width: 'auto' | 'full' | number;
+    headerRows: number;
+    headerStyle: {
+      backgroundColor: string;
+      fontBold: boolean;
+      textAlign: string;
+    };
+  };
+}
+
 export interface ContentBlock {
   id: string;
-  type: 'text' | 'ai-generated' | 'two-column' | 'image' | 'page-break';
-  content: string | TwoColumnContent | ImageContent | PageBreakContent;
+  type: 'text' | 'ai-generated' | 'two-column' | 'image' | 'page-break' | 'table';
+  content: string | TwoColumnContent | ImageContent | PageBreakContent | TableContent;
   format: BlockFormat;
   aiPrompt?: string;
   position: number;

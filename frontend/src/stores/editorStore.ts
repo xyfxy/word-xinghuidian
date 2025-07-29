@@ -113,14 +113,36 @@ const useEditorStore = create<EditorStore>()(
         
         // 检查是否所有块都已展开
         const allExpanded = currentTemplate.content.every(block => expandedBlocks[block.id] === true);
+        const targetState = !allExpanded;
         
-        // 如果全部展开，则全部收缩；否则全部展开
-        const newExpandedState: Record<string, boolean> = {};
-        currentTemplate.content.forEach(block => {
-          newExpandedState[block.id] = !allExpanded;
-        });
+        // 使用 requestAnimationFrame 批量更新
+        const blocks = currentTemplate.content;
+        const batchSize = 10; // 每批处理10个块
+        let currentIndex = 0;
         
-        set({ expandedBlocks: newExpandedState });
+        const processBatch = () => {
+          const batch = blocks.slice(currentIndex, currentIndex + batchSize);
+          if (batch.length === 0) return;
+          
+          const updates: Record<string, boolean> = {};
+          batch.forEach(block => {
+            updates[block.id] = targetState;
+          });
+          
+          set((state) => ({
+            expandedBlocks: {
+              ...state.expandedBlocks,
+              ...updates
+            }
+          }));
+          
+          currentIndex += batchSize;
+          if (currentIndex < blocks.length) {
+            requestAnimationFrame(processBatch);
+          }
+        };
+        
+        requestAnimationFrame(processBatch);
       },
 
       // 内容块操作

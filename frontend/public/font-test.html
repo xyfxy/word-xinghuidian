@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>字体测试页面</title>
+    <style>
+        body {
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .font-test {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .font-name {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+            font-family: Arial, sans-serif;
+        }
+        .test-text {
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .debug-info {
+            font-size: 12px;
+            color: #999;
+            margin-top: 10px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>中文字体测试页面</h1>
+    <p>这个页面用于测试各种中文字体是否能在您的系统上正确显示。</p>
+    
+    <div class="font-test">
+        <div class="font-name">宋体 (SimSun)</div>
+        <div class="test-text" style="font-family: '宋体', 'SimSun', serif;">
+            调研在人工智能技术发展战略、政策层面、市场调研、应用推广、技术研发等各个环节中处于重要地位。
+        </div>
+        <div class="debug-info">font-family: '宋体', 'SimSun', serif;</div>
+    </div>
+    
+    <div class="font-test">
+        <div class="font-name">仿宋 (FangSong) - 标准写法</div>
+        <div class="test-text" style="font-family: '仿宋', 'FangSong', serif;">
+            调研在人工智能技术发展战略、政策层面、市场调研、应用推广、技术研发等各个环节中处于重要地位。
+        </div>
+        <div class="debug-info">font-family: '仿宋', 'FangSong', serif;</div>
+    </div>
+    
+    <div class="font-test">
+        <div class="font-name">仿宋_GB2312</div>
+        <div class="test-text" style="font-family: '仿宋_GB2312', 'FangSong_GB2312', serif;">
+            调研在人工智能技术发展战略、政策层面、市场调研、应用推广、技术研发等各个环节中处于重要地位。
+        </div>
+        <div class="debug-info">font-family: '仿宋_GB2312', 'FangSong_GB2312', serif;</div>
+    </div>
+    
+    <div class="font-test">
+        <div class="font-name">FangSong (英文名)</div>
+        <div class="test-text" style="font-family: 'FangSong', serif;">
+            调研在人工智能技术发展战略、政策层面、市场调研、应用推广、技术研发等各个环节中处于重要地位。
+        </div>
+        <div class="debug-info">font-family: 'FangSong', serif;</div>
+    </div>
+    
+    <div class="font-test">
+        <div class="font-name">华文仿宋 (STFangsong)</div>
+        <div class="test-text" style="font-family: '华文仿宋', 'STFangsong', serif;">
+            调研在人工智能技术发展战略、政策层面、市场调研、应用推广、技术研发等各个环节中处于重要地位。
+        </div>
+        <div class="debug-info">font-family: '华文仿宋', 'STFangsong', serif;</div>
+    </div>
+    
+    <div class="font-test">
+        <div class="font-name">完整的仿宋 fallback 链</div>
+        <div class="test-text" style="font-family: '仿宋', 'FangSong', '仿宋_GB2312', 'FangSong_GB2312', 'STFangsong', '华文仿宋', serif;">
+            调研在人工智能技术发展战略、政策层面、市场调研、应用推广、技术研发等各个环节中处于重要地位。
+        </div>
+        <div class="debug-info">font-family: '仿宋', 'FangSong', '仿宋_GB2312', 'FangSong_GB2312', 'STFangsong', '华文仿宋', serif;</div>
+    </div>
+    
+    <div class="font-test">
+        <div class="font-name">黑体 (SimHei)</div>
+        <div class="test-text" style="font-family: '黑体', 'SimHei', sans-serif;">
+            调研在人工智能技术发展战略、政策层面、市场调研、应用推广、技术研发等各个环节中处于重要地位。
+        </div>
+        <div class="debug-info">font-family: '黑体', 'SimHei', sans-serif;</div>
+    </div>
+    
+    <div class="font-test">
+        <div class="font-name">楷体 (KaiTi)</div>
+        <div class="test-text" style="font-family: '楷体', 'KaiTi', serif;">
+            调研在人工智能技术发展战略、政策层面、市场调研、应用推广、技术研发等各个环节中处于重要地位。
+        </div>
+        <div class="debug-info">font-family: '楷体', 'KaiTi', serif;</div>
+    </div>
+    
+    <div class="font-test">
+        <div class="font-name">微软雅黑 (Microsoft YaHei)</div>
+        <div class="test-text" style="font-family: '微软雅黑', 'Microsoft YaHei', sans-serif;">
+            调研在人工智能技术发展战略、政策层面、市场调研、应用推广、技术研发等各个环节中处于重要地位。
+        </div>
+        <div class="debug-info">font-family: '微软雅黑', 'Microsoft YaHei', sans-serif;</div>
+    </div>
+    
+    <script>
+        // 检测字体是否加载
+        document.addEventListener('DOMContentLoaded', function() {
+            const testElements = document.querySelectorAll('.test-text');
+            testElements.forEach(el => {
+                const computedStyle = window.getComputedStyle(el);
+                const fontFamily = computedStyle.fontFamily;
+                const debugEl = el.nextElementSibling;
+                debugEl.innerHTML += '<br>实际使用的字体: ' + fontFamily;
+            });
+        });
+    </script>
+</body>
+</html>

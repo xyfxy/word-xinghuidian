@@ -13,6 +13,7 @@ dotenv.config();
 import aiRoutes from './routes/ai';
 import templateRoutes from './routes/templates';
 import documentRoutes from './routes/documents';
+import wordImportRoutes from './routes/wordImport';
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -58,6 +59,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/ai', aiRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/word-import', wordImportRoutes);
 
 // 健康检查
 app.get('/api/health', (req, res) => {
@@ -88,11 +90,43 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 // 启动服务器
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Word星辉点后端服务启动成功`);
   console.log(`📡 服务地址: http://localhost:${PORT}`);
   console.log(`🌍 环境: ${process.env.NODE_ENV || 'development'}`);
   console.log(`⚡ 千问API状态: ${process.env.QIANWEN_API_KEY ? '已配置' : '未配置'}`);
+});
+
+// 处理端口占用错误
+server.on('error', (error: any) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`❌ 端口 ${PORT} 已被占用`);
+    console.error(`💡 请尝试以下方法：`);
+    console.error(`   1. 运行 "netstat -ano | findstr :${PORT}" 查找占用端口的进程`);
+    console.error(`   2. 运行 "taskkill //F //PID <进程ID>" 结束进程`);
+    console.error(`   3. 或修改 .env 文件中的 PORT 配置`);
+    process.exit(1);
+  } else {
+    console.error('服务器错误:', error);
+    process.exit(1);
+  }
+});
+
+// 优雅关闭
+process.on('SIGTERM', () => {
+  console.log('收到 SIGTERM 信号，正在关闭服务器...');
+  server.close(() => {
+    console.log('服务器已关闭');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('\n收到 SIGINT 信号，正在关闭服务器...');
+  server.close(() => {
+    console.log('服务器已关闭');
+    process.exit(0);
+  });
 });
 
 export default app; 

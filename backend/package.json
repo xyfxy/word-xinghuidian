@@ -4,21 +4,28 @@
   "description": "Word星辉点后端服务",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev": "ts-node-dev --respawn --transpile-only --exit-child --clear --debounce 1000 --ignore-watch node_modules src/index.ts",
+    "dev:clean": "node kill-port.js 3003 && npm run dev",
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "jest",
-    "lint": "eslint src --ext .ts"
+    "lint": "eslint src --ext .ts",
+    "kill-port": "node kill-port.js"
   },
   "dependencies": {
+    "@types/jszip": "^3.4.1",
+    "@types/xml2js": "^0.4.14",
     "axios": "^1.10.0",
     "cors": "^2.8.5",
+    "docx": "^8.5.0",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.5",
     "helmet": "^7.1.0",
+    "jszip": "^3.10.1",
     "morgan": "^1.10.0",
-    "multer": "^1.4.5-lts.1"
+    "multer": "^1.4.5-lts.1",
+    "xml2js": "^0.6.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

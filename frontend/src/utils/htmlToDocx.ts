@@ -272,7 +272,7 @@ export const convertHTMLToDocxParagraphs = (
              spacing: {
                line: Math.round(finalParagraphSettings.lineHeight * 240), // 转换为TWIPS
                after: finalParagraphSettings.paragraphSpacing * 20,
-               before: finalParagraphSettings.paragraphSpacing * 20,
+               before: finalParagraphSettings.spaceBefore * 20,
              },
              indent: {
                firstLine: convertUnitToPt(indent.firstLine, indent.firstLineUnit, fontSize) * 20,
@@ -306,6 +306,7 @@ export const convertHTMLToDocxParagraphs = (
              spacing: {
                line: Math.round(finalParagraphSettings.lineHeight * 240), // 转换为TWIPS
                after: finalParagraphSettings.paragraphSpacing * 20,
+               before: finalParagraphSettings.spaceBefore * 20,
              },
              indent: {
                firstLine: convertUnitToPt(indent.firstLine, indent.firstLineUnit, fontSize) * 20,
@@ -348,6 +349,7 @@ export const convertHTMLToDocxParagraphs = (
                spacing: {
                  line: Math.round(finalParagraphSettings.lineHeight * 240), // 转换为TWIPS
                  after: finalParagraphSettings.paragraphSpacing * 10,
+                 before: finalParagraphSettings.spaceBefore * 10,
                },
                indent: {
                  firstLine: convertUnitToPt(indent.firstLine, indent.firstLineUnit, fontSize) * 20,
@@ -387,6 +389,7 @@ export const convertHTMLToDocxParagraphs = (
              spacing: {
                line: Math.round(finalParagraphSettings.lineHeight * 240), // 转换为TWIPS
                after: finalParagraphSettings.paragraphSpacing * 20,
+               before: finalParagraphSettings.spaceBefore * 20,
              },
              border: border && border.style !== 'none' ? {
                bottom: {
@@ -422,6 +425,7 @@ export const convertHTMLToDocxParagraphs = (
              spacing: {
                line: Math.round(finalParagraphSettings.lineHeight * 240), // 转换为TWIPS
                after: finalParagraphSettings.paragraphSpacing * 20,
+               before: finalParagraphSettings.spaceBefore * 20,
              },
              indent: {
                firstLine: convertUnitToPt(indent.firstLine, indent.firstLineUnit, fontSize) * 20,
@@ -459,6 +463,7 @@ export const convertHTMLToDocxParagraphs = (
          spacing: {
            line: Math.round(finalParagraphSettings.lineHeight * 240), // 转换为TWIPS
            after: finalParagraphSettings.paragraphSpacing * 20,
+           before: finalParagraphSettings.spaceBefore * 20,
          },
          indent: {
            firstLine: convertUnitToPt(indent.firstLine, indent.firstLineUnit, fontSize) * 20,
@@ -491,6 +496,7 @@ export const convertHTMLToDocxParagraphs = (
        spacing: {
          line: Math.round(finalParagraphSettings.lineHeight * 240), // 转换为TWIPS
          after: finalParagraphSettings.paragraphSpacing * 20,
+         before: finalParagraphSettings.spaceBefore * 20,
        },
        indent: {
          firstLine: convertUnitToPt(finalParagraphSettings.indent.firstLine, finalParagraphSettings.indent.firstLineUnit, finalFontSettings.size) * 20,

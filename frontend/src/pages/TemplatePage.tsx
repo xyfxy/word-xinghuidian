@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Copy, Trash2, FileText, Clock, Wand2 } from 'lucide-react';
+import { Plus, Search, Edit, Copy, Trash2, FileText, Clock, Wand2, Upload } from 'lucide-react';
 import { DocumentTemplate } from '../types';
 import { templateService } from '../services/api';
 import { createDefaultTemplate } from '../utils/document';
@@ -128,13 +128,22 @@ const TemplatePage: React.FC = () => {
                 管理您的文档模板，创建可重用的格式和结构
               </p>
             </div>
-            <button
-              onClick={handleCreateTemplate}
-              className="btn-primary flex items-center"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              新建模板
-            </button>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => navigate('/import-word')}
+                className="btn-secondary flex items-center"
+              >
+                <Upload className="h-5 w-5 mr-2" />
+                导入Word
+              </button>
+              <button
+                onClick={handleCreateTemplate}
+                className="btn-primary flex items-center"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                新建模板
+              </button>
+            </div>
           </div>
 
           {/* 搜索框 */}

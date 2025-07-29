@@ -358,7 +358,8 @@ class DocumentService {
       },
       paragraph: {
         lineHeight: 1.5,
-        paragraphSpacing: 10,
+        paragraphSpacing: 0,
+        spaceBefore: 0,
         indent: {
           firstLine: 0,
           firstLineUnit: 'pt',

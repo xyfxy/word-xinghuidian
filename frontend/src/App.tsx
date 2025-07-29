@@ -5,6 +5,7 @@ import EditorPage from './pages/EditorPage'
 import TemplatePage from './pages/TemplatePage'
 import HomePage from './pages/HomePage'
 import UseTemplatePage from './pages/UseTemplatePage'
+import ImportWordPage from './pages/ImportWordPage'
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
           <Route path="/editor" element={<EditorPage />} />
           <Route path="/templates" element={<TemplatePage />} />
           <Route path="/use-template" element={<UseTemplatePage />} />
+          <Route path="/import-word" element={<ImportWordPage />} />
         </Routes>
       </Layout>
     </Router>

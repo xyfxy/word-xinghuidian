@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { DocumentTemplate, ContentBlock, ImageContent, PageBreakContent } from '../../types';
+import { DocumentTemplate, ContentBlock, ImageContent, PageBreakContent, TableContent } from '../../types';
+import '../../styles/preview.css';
 
 interface PreviewPanelProps {
     template: DocumentTemplate;
@@ -9,13 +10,54 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [error] = useState<string | null>(null);
 
-    useEffect(() => {
-        console.log('PreviewPanel 已挂载，模板:', template);
+    // 字体fallback映射函数 - 移到组件顶层
+    const getFontFamilyWithFallback = (fontFamily: string): string => {
+        const fontFallbacks: { [key: string]: string } = {
+            '宋体': `"${fontFamily}", "宋体", "SimSun", "STSong", serif`,
+            '仿宋': `"仿宋", "FangSong", "仿宋_GB2312", "FangSong_GB2312", "STFangsong", "华文仿宋", serif`,
+            '仿宋_GB2312': `"仿宋_GB2312", "FangSong_GB2312", "仿宋", "FangSong", "STFangsong", "华文仿宋", serif`,
+            'FangSong': `"FangSong", "仿宋", "仿宋_GB2312", "FangSong_GB2312", "STFangsong", "华文仿宋", serif`,
+            '黑体': `"${fontFamily}", "黑体", "SimHei", "STHeiti", sans-serif`,
+            '楷体': `"${fontFamily}", "楷体", "KaiTi", "STKaiti", serif`,
+            '微软雅黑': `"${fontFamily}", "微软雅黑", "Microsoft YaHei", sans-serif`,
+            '华文细黑': `"${fontFamily}", "华文细黑", "STXihei", sans-serif`,
+            '华文楷体': `"${fontFamily}", "华文楷体", "STKaiti", serif`,
+            '华文宋体': `"${fontFamily}", "华文宋体", "STSong", serif`,
+            '华文仿宋': `"${fontFamily}", "华文仿宋", "STFangsong", serif`,
+            '华文中宋': `"${fontFamily}", "华文中宋", "STZhongsong", serif`,
+            '华文琥珀': `"${fontFamily}", "华文琥珀", "STHupo", serif`,
+            '华文新魏': `"${fontFamily}", "华文新魏", "STXinwei", serif`,
+            '华文隶书': `"${fontFamily}", "华文隶书", "STLiti", serif`,
+            '华文行楷': `"${fontFamily}", "华文行楷", "STXingkai", serif`,
+            '方正姚体': `"${fontFamily}", "方正姚体", "FZYaoti", serif`,
+            '方正舒体': `"${fontFamily}", "方正舒体", "FZShuTi", serif`,
+            '隶书': `"${fontFamily}", "隶书", "LiSu", serif`,
+            '幼圆': `"${fontFamily}", "幼圆", "YouYuan", serif`
+        };
         
+        // 查找匹配的字体
+        for (const [key, fallback] of Object.entries(fontFallbacks)) {
+            if (fontFamily.includes(key)) {
+                return fallback;
+            }
+        }
+        
+        // 检查是否是英文字体
+        const englishFonts = ['Arial', 'Times New Roman', 'Calibri', 'Verdana', 'Georgia', 'Helvetica'];
+        const isEnglishFont = englishFonts.some(font => fontFamily.includes(font));
+        
+        if (isEnglishFont) {
+            return `"${fontFamily}", sans-serif`;
+        } else {
+            // 未知的中文字体，提供通用的中文字体fallback
+            return `"${fontFamily}", "宋体", "SimSun", serif`;
+        }
+    };
+
+    useEffect(() => {
         // 模拟预览生成过程
         const timer = setTimeout(() => {
             setIsLoading(false);
-            console.log('预览生成完成');
         }, 1000);
 
         return () => clearTimeout(timer);
@@ -73,25 +115,16 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
         if (block.format.useGlobalFormat !== false) {
             // 使用全局样式
             const globalFontFamily = template.format.font.family;
-            if (globalFontFamily.includes('仿宋')) {
-                fontStyle.fontFamily = `"${globalFontFamily}", "仿宋", "FangSong", "STFangsong", serif`;
-            } else {
-                fontStyle.fontFamily = `"${globalFontFamily}", sans-serif`;
-            }
+            fontStyle.fontFamily = getFontFamilyWithFallback(globalFontFamily);
             fontStyle.fontSize = `${template.format.font.size}pt`;
             fontStyle.color = template.format.font.color;
             if (template.format.font.bold) fontStyle.fontWeight = 'bold';
             if (template.format.font.italic) fontStyle.fontStyle = 'italic';
             if (template.format.font.underline) fontStyle.textDecoration = 'underline';
-        } else if (block.format.font) {
+        } else if (block.format?.font) {
             // 使用块级样式
             if (block.format.font.family) {
-                const fontFamily = block.format.font.family;
-                if (fontFamily.includes('仿宋')) {
-                    fontStyle.fontFamily = `"${fontFamily}", "仿宋", "FangSong", "STFangsong", serif`;
-                } else {
-                    fontStyle.fontFamily = `"${fontFamily}", sans-serif`;
-                }
+                fontStyle.fontFamily = getFontFamilyWithFallback(block.format.font.family);
             }
             if (block.format.font.size) fontStyle.fontSize = `${block.format.font.size}pt`;
             if (block.format.font.color) fontStyle.color = block.format.font.color;
@@ -194,22 +227,22 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
             // 根据是否使用全局格式来决定默认样式
             const shouldUseGlobal = block.format?.useGlobalFormat !== false;
             const defaultFontStyle = shouldUseGlobal ? {
-                fontFamily: template.format.font.family.includes('仿宋') 
-                    ? `"${template.format.font.family}", "仿宋", "FangSong", "STFangsong", serif`
-                    : `"${template.format.font.family}", sans-serif`,
+                fontFamily: getFontFamilyWithFallback(template.format.font.family),
                 fontSize: `${template.format.font.size}pt`,
                 color: template.format.font.color,
                 fontWeight: template.format.font.bold ? 'bold' : 'normal',
                 fontStyle: template.format.font.italic ? 'italic' : 'normal',
                 textDecoration: template.format.font.underline ? 'underline' : 'none',
             } : {
-                fontFamily: fontStyle.fontFamily || 'inherit',
-                fontSize: fontStyle.fontSize || 'inherit',
-                color: fontStyle.color || 'inherit',
-                fontWeight: fontStyle.fontWeight || 'inherit',
-                fontStyle: fontStyle.fontStyle || 'inherit',
-                textDecoration: fontStyle.textDecoration || 'inherit',
+                // 当使用块级样式时，确保字体样式被正确应用
+                fontFamily: fontStyle.fontFamily || getFontFamilyWithFallback('宋体'),
+                fontSize: fontStyle.fontSize || '12pt',
+                color: fontStyle.color || '#000000',
+                fontWeight: fontStyle.fontWeight || 'normal',
+                fontStyle: fontStyle.fontStyle || 'normal',
+                textDecoration: fontStyle.textDecoration || 'none',
             };
+            
             
             // 设置默认样式，HTML内联样式和语义标签会自动覆盖
             const contentStyle: React.CSSProperties = {
@@ -222,6 +255,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
             return (
                 <div key={block.id} style={wrapperStyle}>
                     <div 
+                        className="preview-content-block"
                         dangerouslySetInnerHTML={{ __html: content }}
                         style={contentStyle}
                     />
@@ -244,21 +278,20 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
             // 根据是否使用全局格式来决定默认样式
             const shouldUseGlobal = block.format?.useGlobalFormat !== false;
             const defaultFontStyle = shouldUseGlobal ? {
-                fontFamily: template.format.font.family.includes('仿宋') 
-                    ? `"${template.format.font.family}", "仿宋", "FangSong", "STFangsong", serif`
-                    : `"${template.format.font.family}", sans-serif`,
+                fontFamily: getFontFamilyWithFallback(template.format.font.family),
                 fontSize: `${template.format.font.size}pt`,
                 color: template.format.font.color,
                 fontWeight: template.format.font.bold ? 'bold' : 'normal',
                 fontStyle: template.format.font.italic ? 'italic' : 'normal',
                 textDecoration: template.format.font.underline ? 'underline' : 'none',
             } : {
-                fontFamily: fontStyle.fontFamily || 'inherit',
-                fontSize: fontStyle.fontSize || 'inherit',
-                color: fontStyle.color || 'inherit',
-                fontWeight: fontStyle.fontWeight || 'inherit',
-                fontStyle: fontStyle.fontStyle || 'inherit',
-                textDecoration: fontStyle.textDecoration || 'inherit',
+                // 当使用块级样式时，确保字体样式被正确应用
+                fontFamily: fontStyle.fontFamily || getFontFamilyWithFallback('宋体'),
+                fontSize: fontStyle.fontSize || '12pt',
+                color: fontStyle.color || '#000000',
+                fontWeight: fontStyle.fontWeight || 'normal',
+                fontStyle: fontStyle.fontStyle || 'normal',
+                textDecoration: fontStyle.textDecoration || 'none',
             };
             
             // 设置默认样式，HTML内联样式和语义标签会自动覆盖
@@ -272,6 +305,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
             return (
                 <div key={block.id} style={wrapperStyle}>
                     <div 
+                        className="preview-content-block"
                         dangerouslySetInnerHTML={{ __html: content }}
                         style={contentStyle}
                     />
@@ -432,6 +466,76 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
             );
         }
 
+        if (block.type === 'table' && typeof block.content === 'object' && block.content && 'rows' in block.content) {
+            const tableContent = block.content as TableContent;
+            const style = tableContent.style || {};
+            
+            const tableStyle: React.CSSProperties = {
+                width: style.width === 'full' ? '100%' : style.width === 'auto' ? 'auto' : `${style.width}px`,
+                borderCollapse: 'collapse',
+                ...blockStyle,
+            };
+
+            const getCellStyle = (rowIndex: number, cellIndex: number): React.CSSProperties => {
+                const cell = tableContent.rows[rowIndex][cellIndex];
+                const cellStyle = cell.style || {};
+                const isHeaderRow = style.headerRows && rowIndex < style.headerRows;
+                
+                const shouldUseGlobal = block.format?.useGlobalFormat !== false;
+                const fontSettings = shouldUseGlobal
+                    ? template.format.font
+                    : { ...template.format.font, ...block.format.font };
+
+                return {
+                    border: style.borderStyle !== 'none' 
+                        ? `${style.borderWidth || 1}px ${style.borderStyle || 'solid'} ${style.borderColor || '#000000'}`
+                        : 'none',
+                    padding: `${style.cellPadding || 8}px`,
+                    backgroundColor: cellStyle.backgroundColor || 
+                        (isHeaderRow ? style.headerStyle?.backgroundColor : undefined),
+                    textAlign: cellStyle.textAlign || 
+                        (isHeaderRow ? style.headerStyle?.textAlign : undefined) || 
+                        'left' as any,
+                    verticalAlign: cellStyle.verticalAlign || 'top',
+                    fontFamily: getFontFamilyWithFallback(fontSettings.family),
+                    fontSize: `${fontSettings.size}pt`,
+                    color: fontSettings.color,
+                    fontWeight: (isHeaderRow && style.headerStyle?.fontBold) || fontSettings.bold ? 'bold' : 'normal',
+                    fontStyle: fontSettings.italic ? 'italic' : 'normal',
+                    textDecoration: fontSettings.underline ? 'underline' : 'none',
+                };
+            };
+
+            return (
+                <div key={block.id} style={blockStyle}>
+                    <table style={tableStyle}>
+                        <tbody>
+                            {tableContent.rows.map((row, rowIndex) => (
+                                <tr key={rowIndex}>
+                                    {row.map((cell, cellIndex) => {
+                                        // 跳过隐藏的单元格（已被合并）
+                                        if (cell.hidden) {
+                                            return null;
+                                        }
+                                        return (
+                                            <td
+                                                key={cellIndex}
+                                                colSpan={cell.colspan}
+                                                rowSpan={cell.rowspan}
+                                                style={getCellStyle(rowIndex, cellIndex)}
+                                            >
+                                                {cell.content}
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        }
+
         return null;
     };
 
@@ -468,16 +572,18 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
 
     // 计算页面样式
     const globalFontFamily = template.format.font.family;
-    const fontFamilyWithFallback = globalFontFamily.includes('仿宋') 
-        ? `"${globalFontFamily}", "仿宋", "FangSong", "STFangsong", serif`
-        : `"${globalFontFamily}", sans-serif`;
+    const fontFamilyWithFallback = getFontFamilyWithFallback(globalFontFamily);
+
+    const ptToPx = (pt: number) => pt * (4 / 3); // 1pt = 4/3px
+    const pageMargins = template.format.page.margins;
+    const scale = 0.8; // 统一的缩放比例
 
     const pageStyle: React.CSSProperties = {
-        width: '100%', // 使用100%宽度，适应容器
-        minHeight: `${template.format.page.height * 0.8}px`, // 稍微缩小高度
+        width: '100%',
+        minHeight: `${ptToPx(template.format.page.height) * scale}px`,
         backgroundColor: 'white',
         boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-        padding: `${template.format.page.margins.top * 0.6}px ${template.format.page.margins.right * 0.8}px ${template.format.page.margins.bottom * 0.6}px ${template.format.page.margins.left * 0.8}px`, // 减少边距
+        padding: `${ptToPx(pageMargins.top) * scale}px ${ptToPx(pageMargins.right) * scale}px ${ptToPx(pageMargins.bottom) * scale}px ${ptToPx(pageMargins.left) * scale}px`,
         fontFamily: fontFamilyWithFallback,
         fontSize: `${template.format.font.size}pt`,
         color: template.format.font.color,
@@ -487,7 +593,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
         lineHeight: template.format.paragraph.lineHeight,
         textAlign: template.format.paragraph.alignment,
         position: 'relative',
-        margin: 0, // 移除margin
+        margin: 0,
     };
 
     return (

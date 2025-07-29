@@ -1,0 +1,60 @@
+/* 预览面板字体样式 */
+
+/* 确保中文字体正确加载 */
+.word-preview {
+  /* 基础字体设置 - 不设置默认字体，让内容块自己的字体设置生效 */
+  /* font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; */
+}
+
+/* 为没有明确设置字体的元素提供中文字体 fallback */
+.word-preview * {
+  font-family: inherit;
+}
+
+/* 确保内联样式的字体能正确显示 */
+.word-preview [style*="font-family"] {
+  /* 不覆盖内联样式，但确保有合适的 fallback */
+}
+
+/* 特定中文字体的 Web 字体声明（如果需要） */
+@supports (font-family: "宋体") {
+  .word-preview {
+    /* 宋体在大多数系统上都有 */
+  }
+}
+
+/* 修复可能的字体渲染问题 */
+.word-preview {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* 确保预览内容的基础样式 */
+.preview-content-block {
+  /* 继承父元素的字体设置 */
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* 处理嵌套的段落和span */
+.preview-content-block p,
+.preview-content-block span {
+  /* 保留内联样式，但提供 fallback */
+  font-family: inherit;
+}
+
+/* 针对没有设置字体的内容提供默认值 */
+.preview-content-block:not([style*="font-family"]) {
+  font-family: "宋体", "SimSun", "STSong", serif;
+}
+
+/* 调试：显示实际使用的字体 */
+.preview-content-block[style*="仿宋"],
+.preview-content-block [style*="仿宋"],
+.preview-content-block[style*="FangSong"],
+.preview-content-block [style*="FangSong"] {
+  /* 确保仿宋字体能正确显示 */
+  font-family: "仿宋", "FangSong", "仿宋_GB2312", "FangSong_GB2312", "STFangsong", "华文仿宋", serif !important;
+}

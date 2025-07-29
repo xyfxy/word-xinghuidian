@@ -22,7 +22,7 @@ export default function UseTemplatePage() {
   const [isExporting, setIsExporting] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>({})
-  const [previewWidth, setPreviewWidth] = useState(400)
+  const [previewWidth, setPreviewWidth] = useState(730)
   const [isResizing, setIsResizing] = useState(false)
   const { getSettingsForBlock } = useAISettings()
 

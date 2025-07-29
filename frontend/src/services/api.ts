@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { AIGenerateRequest, AIGenerateResponse, DocumentTemplate } from '../types';
+import { ParsedDocument, RecognitionRule, ContentBlockGroup } from '../types/wordImport';
 
 interface MaxKbRequest {
   baseUrl: string;
@@ -188,6 +189,77 @@ export const documentService = {
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : '预览文档失败');
     }
+  },
+};
+
+// Word导入相关API
+export const wordImportService = {
+  // 解析Word文档
+  async parseWordDocument(file: File, options?: { ignoreWordStyles?: boolean }): Promise<ParsedDocument> {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // 添加选项到FormData
+    if (options?.ignoreWordStyles !== undefined) {
+      formData.append('ignoreWordStyles', String(options.ignoreWordStyles));
+    }
+    
+    const response = await api.post<{ success: boolean; data?: ParsedDocument; error?: string }>(
+      '/word-import/parse-word',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+    throw new Error(response.data.error || '解析文档失败');
+  },
+
+  // 获取识别规则
+  async getRecognitionRules(): Promise<RecognitionRule[]> {
+    const response = await api.get<{ success: boolean; data?: RecognitionRule[]; error?: string }>(
+      '/word-import/recognition-rules'
+    );
+    
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+    throw new Error(response.data.error || '获取规则失败');
+  },
+
+  // 应用识别规则
+  async applyRules(parsedDocument: ParsedDocument, rules: RecognitionRule[]): Promise<ContentBlockGroup[]> {
+    const response = await api.post<{ success: boolean; data?: ContentBlockGroup[]; error?: string }>(
+      '/word-import/apply-rules',
+      { parsedDocument, rules }
+    );
+    
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+    throw new Error(response.data.error || '应用规则失败');
+  },
+
+  // 生成模板
+  async generateTemplate(
+    contentGroups: ContentBlockGroup[],
+    templateName: string,
+    templateDescription?: string
+  ): Promise<DocumentTemplate> {
+    const response = await api.post<{ success: boolean; data?: DocumentTemplate; error?: string }>(
+      '/word-import/generate-template',
+      { contentGroups, templateName, templateDescription }
+    );
+    
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+    throw new Error(response.data.error || '生成模板失败');
   },
 };
 

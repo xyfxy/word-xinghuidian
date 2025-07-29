@@ -303,3 +303,31 @@
   transition: none;
 }
 
+/* 优化内容块展开/收起性能 */
+.content-block-collapsed {
+  overflow: hidden;
+  max-height: 120px;
+  transition: max-height 0.2s ease-out;
+}
+
+.content-block-expanded {
+  max-height: none;
+  transition: max-height 0.2s ease-in;
+}
+
+/* 使用 transform 和 opacity 优化动画性能 */
+.content-block-animation {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* 表格样式 */
+.table-editor-container table {
+  border-collapse: collapse;
+}
+
+.table-editor-container td[data-hidden="true"] {
+  display: none !important;
+}
+

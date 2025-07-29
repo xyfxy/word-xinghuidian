@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Save, Eye, Download, Settings, Sparkles, X, ChevronUp, ChevronDown, Edit, Type, Image, FileText } from 'lucide-react';
+import { Plus, Save, Eye, Download, Settings, Sparkles, X, ChevronUp, ChevronDown, Edit, Type, Image, FileText, Table } from 'lucide-react';
 import useEditorStore from '../stores/editorStore';
 import { createDefaultTemplate, createDefaultContentBlock, exportToWord, validateAiSettingsIndependence } from '../utils/document';
 import { formatMaxKbContent } from '../utils/markdown';
@@ -9,7 +9,7 @@ import FormatPanel from '../components/Editor/FormatPanel';
 import PreviewPanel from '../components/Editor/PreviewPanel';
 
 const AddBlockButtons: React.FC<{ 
-  onAdd: (type: 'text' | 'ai-generated' | 'two-column' | 'image' | 'page-break', insertPosition?: number) => void; 
+  onAdd: (type: 'text' | 'ai-generated' | 'two-column' | 'image' | 'page-break' | 'table', insertPosition?: number) => void; 
   className?: string;
   insertPosition?: number;
   showText?: boolean;
@@ -44,6 +44,13 @@ const AddBlockButtons: React.FC<{
       {showText ? '添加换页' : '换页'}
     </button>
     <button
+      onClick={() => onAdd('table', insertPosition)}
+      className="btn-secondary flex items-center"
+    >
+      <Table className="h-4 w-4 mr-2" />
+      {showText ? '添加表格' : '表格'}
+    </button>
+    <button
       onClick={() => onAdd('ai-generated', insertPosition)}
       className="btn-primary flex items-center"
     >
@@ -54,13 +61,13 @@ const AddBlockButtons: React.FC<{
 );
 
 const InsertBlockButton: React.FC<{
-  onAdd: (type: 'text' | 'ai-generated' | 'two-column' | 'image' | 'page-break', insertPosition?: number) => void;
+  onAdd: (type: 'text' | 'ai-generated' | 'two-column' | 'image' | 'page-break' | 'table', insertPosition?: number) => void;
   insertPosition: number;
 }> = ({ onAdd, insertPosition }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const handleAddBlock = (type: 'text' | 'ai-generated' | 'two-column' | 'image' | 'page-break') => {
+  const handleAddBlock = (type: 'text' | 'ai-generated' | 'two-column' | 'image' | 'page-break' | 'table') => {
     onAdd(type, insertPosition);
     setIsMenuOpen(false);
   };
@@ -121,6 +128,13 @@ const InsertBlockButton: React.FC<{
             >
               <FileText className="h-4 w-4" />
               换页
+            </button>
+            <button
+              onClick={() => handleAddBlock('table')}
+              className="insert-menu-item"
+            >
+              <Table className="h-4 w-4" />
+              表格
             </button>
             <button
               onClick={() => handleAddBlock('ai-generated')}
@@ -200,7 +214,7 @@ const EditorPage: React.FC = () => {
   }, [isResizing, handleMouseMove, handleMouseUp]);
 
   // 添加内容块
-  const handleAddContentBlock = (type: 'text' | 'ai-generated' | 'two-column' | 'image' | 'page-break', insertPosition?: number) => {
+  const handleAddContentBlock = (type: 'text' | 'ai-generated' | 'two-column' | 'image' | 'page-break' | 'table', insertPosition?: number) => {
     if (!currentTemplate) return;
 
     const position = insertPosition !== undefined ? insertPosition : currentTemplate.content.length;

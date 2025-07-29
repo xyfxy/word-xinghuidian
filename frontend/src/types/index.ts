@@ -36,6 +36,7 @@ export interface FontSettings {
 export interface ParagraphSettings {
   lineHeight: number;
   paragraphSpacing: number;
+  spaceBefore: number; // 段前距
   indent: IndentSettings;
   alignment: 'left' | 'center' | 'right' | 'justify';
   border?: {
@@ -116,11 +117,43 @@ export interface PageBreakContent {
   };
 }
 
+// 表格单元格内容
+export interface TableCell {
+  content: string;
+  colspan?: number;
+  rowspan?: number;
+  hidden?: boolean; // 用于标记被合并的单元格
+  style?: {
+    backgroundColor?: string;
+    verticalAlign?: 'top' | 'middle' | 'bottom';
+    textAlign?: 'left' | 'center' | 'right';
+  };
+}
+
+// 表格内容
+export interface TableContent {
+  rows: TableCell[][];
+  style?: {
+    borderStyle?: 'none' | 'solid' | 'dashed' | 'dotted';
+    borderWidth?: number;
+    borderColor?: string;
+    cellPadding?: number;
+    cellSpacing?: number;
+    width?: 'auto' | 'full' | number; // auto=自适应, full=100%, number=固定宽度
+    headerRows?: number; // 标题行数
+    headerStyle?: {
+      backgroundColor?: string;
+      fontBold?: boolean;
+      textAlign?: 'left' | 'center' | 'right';
+    };
+  };
+}
+
 // 内容块
 export interface ContentBlock {
   id: string;
-  type: 'text' | 'ai-generated' | 'two-column' | 'image' | 'page-break';
-  content: string | TwoColumnContent | ImageContent | PageBreakContent;
+  type: 'text' | 'ai-generated' | 'two-column' | 'image' | 'page-break' | 'table';
+  content: string | TwoColumnContent | ImageContent | PageBreakContent | TableContent;
   format: BlockFormat;
   position: number;
   title: string;

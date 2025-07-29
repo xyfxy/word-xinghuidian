@@ -1,0 +1,136 @@
+/* Quill编辑器字体样式 */
+
+/* 让编辑器容器继承父元素的字体样式 */
+.content-editor-wrapper .ql-container {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+.content-editor-wrapper .ql-editor {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+.content-editor-wrapper .ql-editor p,
+.content-editor-wrapper .ql-editor h1,
+.content-editor-wrapper .ql-editor h2,
+.content-editor-wrapper .ql-editor h3,
+.content-editor-wrapper .ql-editor h4,
+.content-editor-wrapper .ql-editor h5,
+.content-editor-wrapper .ql-editor h6 {
+  font-family: inherit;
+}
+
+/* 宋体 */
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="SimSun"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="SimSun"]::before {
+  content: "宋体";
+  font-family: "宋体", "SimSun", serif;
+}
+
+.ql-font-SimSun {
+  font-family: "宋体", "SimSun", serif;
+}
+
+/* 黑体 */
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="SimHei"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="SimHei"]::before {
+  content: "黑体";
+  font-family: "黑体", "SimHei", sans-serif;
+}
+
+.ql-font-SimHei {
+  font-family: "黑体", "SimHei", sans-serif;
+}
+
+/* 微软雅黑 */
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="Microsoft-YaHei"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="Microsoft-YaHei"]::before {
+  content: "微软雅黑";
+  font-family: "微软雅黑", "Microsoft YaHei", sans-serif;
+}
+
+.ql-font-Microsoft-YaHei {
+  font-family: "微软雅黑", "Microsoft YaHei", sans-serif;
+}
+
+/* 楷体 */
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="KaiTi"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="KaiTi"]::before {
+  content: "楷体";
+  font-family: "楷体", "KaiTi", serif;
+}
+
+.ql-font-KaiTi {
+  font-family: "楷体", "KaiTi", serif;
+}
+
+/* 仿宋 */
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="FangSong"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="FangSong"]::before {
+  content: "仿宋";
+  font-family: "仿宋", "FangSong", serif;
+}
+
+.ql-font-FangSong {
+  font-family: "仿宋", "FangSong", serif;
+}
+
+/* Arial */
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="Arial"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="Arial"]::before {
+  content: "Arial";
+  font-family: Arial, sans-serif;
+}
+
+.ql-font-Arial {
+  font-family: Arial, sans-serif;
+}
+
+/* Times New Roman */
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="Times-New-Roman"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="Times-New-Roman"]::before {
+  content: "Times New Roman";
+  font-family: "Times New Roman", serif;
+}
+
+.ql-font-Times-New-Roman {
+  font-family: "Times New Roman", serif;
+}
+
+/* 默认字体 */
+.ql-snow .ql-picker.ql-font .ql-picker-label::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item::before {
+  content: "默认字体";
+}
+
+/* 确保编辑器内容也应用相应的字体 */
+.ql-editor .ql-font-SimSun {
+  font-family: "宋体", "SimSun", serif;
+}
+
+.ql-editor .ql-font-SimHei {
+  font-family: "黑体", "SimHei", sans-serif;
+}
+
+.ql-editor .ql-font-Microsoft-YaHei {
+  font-family: "微软雅黑", "Microsoft YaHei", sans-serif;
+}
+
+.ql-editor .ql-font-KaiTi {
+  font-family: "楷体", "KaiTi", serif;
+}
+
+.ql-editor .ql-font-FangSong {
+  font-family: "仿宋", "FangSong", serif;
+}
+
+.ql-editor .ql-font-Arial {
+  font-family: Arial, sans-serif;
+}
+
+.ql-editor .ql-font-Times-New-Roman {
+  font-family: "Times New Roman", serif;
+}

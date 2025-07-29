@@ -8,8 +8,20 @@ interface BlockFormatPanelProps {
 }
 
 const FONT_FAMILIES = [
-  '宋体', '仿宋_GB2312', '楷体', '黑体', '微软雅黑', 
-  'Arial', 'Times New Roman', 'Courier New', 'Verdana'
+  // 基础中文字体
+  '宋体', '新宋体', '仿宋', '仿宋_GB2312', '楷体', '楷体_GB2312', '黑体',
+  // 微软字体
+  '微软雅黑', '微软雅黑 Light',
+  // 华文字体
+  '华文宋体', '华文仿宋', '华文楷体', '华文细黑', '华文黑体', '华文中宋',
+  // 方正字体
+  '方正姚体', '方正舒体',
+  // 其他中文字体
+  '隶书', '幼圆', '等线', '等线 Light',
+  // 英文字体
+  'Arial', 'Times New Roman', 'Calibri', 'Cambria', 'Georgia', 
+  'Verdana', 'Trebuchet MS', 'Tahoma', 'Helvetica', 'Courier New', 
+  'Consolas', 'Garamond'
 ];
 
 const FONT_SIZES: { [key: string]: number } = {
@@ -26,6 +38,14 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
   
   const globalFormat = currentTemplate.format;
   const blockFormat = block.format;
+  
+  // 调试：打印字体信息
+  console.log(`内容块 "${block.title}" 的格式:`, {
+    blockFormat,
+    blockFontFamily: blockFormat.font?.family,
+    globalFontFamily: globalFormat.font.family,
+    actualValue: blockFormat.font?.family || globalFormat.font.family
+  });
 
   const handleFontChange = <K extends keyof NonNullable<typeof blockFormat.font>>(key: K, value: NonNullable<typeof blockFormat.font>[K]) => {
     onUpdate({ format: { ...blockFormat, font: { ...(blockFormat.font || {}), [key]: value } } });
@@ -180,6 +200,10 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
            <div>
               <label htmlFor={`spacing-${block.id}`} className="label-text">段后距 (pt)</label>
               <input type="number" id={`spacing-${block.id}`} placeholder={String(globalFormat.paragraph.paragraphSpacing)} value={blockFormat.paragraph?.paragraphSpacing || ''} onChange={(e) => handleParagraphChange('paragraphSpacing', Number(e.target.value))} className="input-field" />
+           </div>
+           <div>
+              <label htmlFor={`space-before-${block.id}`} className="label-text">段前距 (pt)</label>
+              <input type="number" id={`space-before-${block.id}`} placeholder={String(globalFormat.paragraph.spaceBefore)} value={blockFormat.paragraph?.spaceBefore || ''} onChange={(e) => handleParagraphChange('spaceBefore', Number(e.target.value))} className="input-field" />
            </div>
            <div className="col-span-2">
               <label htmlFor={`alignment-${block.id}`} className="label-text">对齐方式</label>

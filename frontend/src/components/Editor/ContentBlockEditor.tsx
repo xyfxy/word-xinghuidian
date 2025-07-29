@@ -1,10 +1,13 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
-import ReactQuill from 'react-quill';
+import React, { useMemo, useState, useEffect, useRef, lazy, Suspense } from 'react';
 import 'react-quill/dist/quill.snow.css';
-import { ContentBlock, TwoColumnContent, ImageContent, PageBreakContent } from '../../types';
-import { Sparkles, Type, Loader, Settings, ChevronDown, ChevronRight, Image as ImageIcon, FileText, Upload, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
+
+// 懒加载 ReactQuill 以提升性能
+const ReactQuill = lazy(() => import('react-quill'));
+import { ContentBlock, TwoColumnContent, ImageContent, PageBreakContent, TableContent } from '../../types';
+import { Sparkles, Type, Loader, Settings, ChevronDown, ChevronRight, Image as ImageIcon, FileText, Upload, AlignLeft, AlignCenter, AlignRight, Table } from 'lucide-react';
 import { Switch } from '@headlessui/react';
 import BlockFormatPanel from './BlockFormatPanel';
+import TableEditor from './TableEditor';
 import useEditorStore, { AiSettings } from '../../stores/editorStore';
 
 interface ContentBlockEditorProps {
@@ -606,7 +609,7 @@ const ContentBlockEditor: React.FC<ContentBlockEditorProps> = ({
         });
     };
 
-    const quillModules = {
+    const quillModules = useMemo(() => ({
         toolbar: [
             [{ 'header': [1, 2, 3, false] }],
             ['bold', 'italic', 'underline', 'strike'],
@@ -614,7 +617,7 @@ const ContentBlockEditor: React.FC<ContentBlockEditorProps> = ({
             ['link'],
             ['clean']
         ],
-    };
+    }), []);
 
     // 获取内容块图标
     const getBlockIcon = () => {
@@ -627,6 +630,8 @@ const ContentBlockEditor: React.FC<ContentBlockEditorProps> = ({
                 return <ImageIcon className="h-5 w-5 mr-2 text-green-500 flex-shrink-0" />;
             case 'page-break':
                 return <FileText className="h-5 w-5 mr-2 text-orange-500 flex-shrink-0" />;
+            case 'table':
+                return <Table className="h-5 w-5 mr-2 text-indigo-500 flex-shrink-0" />;
             default:
                 return <Type className="h-5 w-5 mr-2 text-green-500 flex-shrink-0" />;
         }
@@ -766,15 +771,28 @@ const ContentBlockEditor: React.FC<ContentBlockEditorProps> = ({
                         </div>
                     )}
 
+                    {/* 表格块 */}
+                    {block.type === 'table' && (
+                        <div className="my-4">
+                            <TableEditor 
+                                content={block.content as TableContent}
+                                onChange={(content) => onUpdate({ content })}
+                                disabled={false}
+                            />
+                        </div>
+                    )}
+
                     {/* 文本块 */}
                     {(block.type === 'text' || block.type === 'ai-generated') && (
-                        <ReactQuill
-                            theme="snow"
-                            value={block.content as string}
-                            onChange={(content) => onUpdate({ content })}
-                            modules={quillModules}
-                            style={blockStyle}
-                        />
+                        <Suspense fallback={<div className="h-32 flex items-center justify-center text-gray-400">加载编辑器...</div>}>
+                            <ReactQuill
+                                theme="snow"
+                                value={block.content as string}
+                                onChange={(content) => onUpdate({ content })}
+                                modules={quillModules}
+                                style={blockStyle}
+                            />
+                        </Suspense>
                     )}
                 </div>
             )}
@@ -807,6 +825,13 @@ const ContentBlockEditor: React.FC<ContentBlockEditorProps> = ({
                             <FileText className="h-4 w-4 mr-2" />
                             <span>
                                 换页 {(block.content as PageBreakContent).settings.addBlankPage && '+ 空白页'}
+                            </span>
+                        </div>
+                    ) : block.type === 'table' ? (
+                        <div className="flex items-center">
+                            <Table className="h-4 w-4 mr-2" />
+                            <span>
+                                表格 {(block.content as TableContent)?.rows?.length || 0}×{(block.content as TableContent)?.rows?.[0]?.length || 0}
                             </span>
                         </div>
                     ) : (

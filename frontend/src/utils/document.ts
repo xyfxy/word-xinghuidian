@@ -1,4 +1,4 @@
-import { DocumentTemplate, ContentBlock, DocumentFormat, ImageContent, PageBreakContent } from '../types';
+import { DocumentTemplate, ContentBlock, DocumentFormat, ImageContent, PageBreakContent, TableContent, TableCell } from '../types';
 import {
   Document,
   Packer,
@@ -38,7 +38,7 @@ export const createDefaultTemplate = (): DocumentTemplate => {
     description: '这是一个新的文档模板',
     format: {
       font: {
-        family: 'Microsoft YaHei',
+        family: '宋体',
         size: 12,
         color: '#000000',
         bold: false,
@@ -47,7 +47,8 @@ export const createDefaultTemplate = (): DocumentTemplate => {
       },
       paragraph: {
         lineHeight: 1.5,
-        paragraphSpacing: 6,
+        paragraphSpacing: 0,
+        spaceBefore: 0,
         indent: {
           firstLine: 0,
           firstLineUnit: 'pt',
@@ -62,10 +63,10 @@ export const createDefaultTemplate = (): DocumentTemplate => {
         width: 595,
         height: 842,
         margins: {
-          top: 72,
-          bottom: 72,
-          left: 72,
-          right: 72,
+          top: 72,      // 2.54cm
+          bottom: 72,   // 2.54cm
+          left: 90.14,  // 3.18cm
+          right: 90.14, // 3.18cm
         },
         orientation: 'portrait',
       },
@@ -77,7 +78,7 @@ export const createDefaultTemplate = (): DocumentTemplate => {
 };
 
 // 创建默认内容块
-export const createDefaultContentBlock = (type: 'text' | 'ai-generated' | 'two-column' | 'image' | 'page-break', position: number): ContentBlock => {
+export const createDefaultContentBlock = (type: 'text' | 'ai-generated' | 'two-column' | 'image' | 'page-break' | 'table', position: number): ContentBlock => {
   if (type === 'two-column') {
     return {
       id: generateId(),
@@ -138,6 +139,51 @@ export const createDefaultContentBlock = (type: 'text' | 'ai-generated' | 'two-c
     };
   }
 
+  if (type === 'table') {
+    return {
+      id: generateId(),
+      type: 'table',
+      title: '表格',
+      content: {
+        rows: [
+          [
+            { content: '标题1' },
+            { content: '标题2' },
+            { content: '标题3' }
+          ],
+          [
+            { content: '内容1' },
+            { content: '内容2' },
+            { content: '内容3' }
+          ],
+          [
+            { content: '内容4' },
+            { content: '内容5' },
+            { content: '内容6' }
+          ]
+        ],
+        style: {
+          borderStyle: 'solid',
+          borderWidth: 1,
+          borderColor: '#000000',
+          cellPadding: 8,
+          cellSpacing: 0,
+          width: 'full',
+          headerRows: 1,
+          headerStyle: {
+            backgroundColor: '#f0f0f0',
+            fontBold: true,
+            textAlign: 'center'
+          }
+        }
+      } as TableContent,
+      format: {
+        useGlobalFormat: true,
+      },
+      position,
+    };
+  }
+
   const block: ContentBlock = {
     id: generateId(),
     type,
@@ -176,12 +222,43 @@ const getBorderStyle = (style: 'none' | 'single' | 'double' | 'thickThin' | unde
 
 // Word字体名称映射 - 保持原字体名称以确保完全匹配
 const FONT_NAME_MAP: { [key: string]: string } = {
+  // 基础中文字体
   '宋体': 'SimSun',
-  '仿宋_GB2312': '仿宋_GB2312', // 保持原名称
-  '仿宋': 'FangSong',
+  '新宋体': 'NSimSun',
+  '仿宋': 'FangSong',  // 仿宋保持为FangSong
+  '仿宋_GB2312': '仿宋_GB2312', // 仿宋_GB2312保持原名称
   '楷体': 'KaiTi',
+  '楷体_GB2312': 'KaiTi_GB2312',
   '黑体': 'SimHei',
+  
+  // 微软字体
   '微软雅黑': 'Microsoft YaHei',
+  '微软雅黑 Light': 'Microsoft YaHei Light',
+  '微软雅黑 UI': 'Microsoft YaHei UI',
+  
+  // 华文字体
+  '华文宋体': 'STSong',
+  '华文仿宋': 'STFangsong',
+  '华文楷体': 'STKaiti',
+  '华文细黑': 'STXihei',
+  '华文黑体': 'STHeiti',
+  '华文中宋': 'STZhongsong',
+  '华文彩云': 'STCaiyun',
+  '华文琥珀': 'STHupo',
+  '华文新魏': 'STXinwei',
+  '华文隶书': 'STLiti',
+  '华文行楷': 'STXingkai',
+  
+  // 方正字体
+  '方正姚体': 'FZYaoti',
+  '方正舒体': 'FZShuTi',
+  '方正粗黑宋简体': 'FZCuHeiSongS-B-GB',
+  
+  // 其他中文字体
+  '隶书': 'LiSu',
+  '幼圆': 'YouYuan',
+  '等线': 'DengXian',
+  '等线 Light': 'DengXian Light',
 };
 
 // 剥离HTML标签，返回纯文本
@@ -332,6 +409,120 @@ export const exportToWord = async (template: DocumentTemplate): Promise<void> =>
         return elements;
       }
 
+      // 处理表格块
+      if (block.type === 'table' && typeof block.content === 'object' && 'rows' in block.content) {
+        const tableContent = block.content as TableContent;
+        const style = tableContent.style || {};
+        
+        // 获取表格宽度
+        let tableWidth = { size: 100, type: WidthType.PERCENTAGE };
+        if (style.width === 'auto') {
+          tableWidth = { size: 5000, type: WidthType.DXA }; // 自动宽度
+        } else if (typeof style.width === 'number') {
+          tableWidth = { size: style.width * 20, type: WidthType.DXA }; // 固定宽度
+        }
+
+        // 创建表格行
+        const rows = tableContent.rows.map((row, rowIndex) => {
+          const isHeaderRow = style.headerRows && rowIndex < style.headerRows;
+          
+          return new TableRow({
+            children: row.map(cell => {
+              // 跳过隐藏的单元格（已被合并）
+              if (cell.hidden) {
+                return null;
+              }
+              
+              const cellStyle = cell.style || {};
+              const shouldUseGlobal = block.format?.useGlobalFormat !== false;
+              const fontSettings = shouldUseGlobal
+                ? template.format.font
+                : { ...template.format.font, ...block.format.font };
+
+              // 合并单元格样式
+              const textAlign = cellStyle.textAlign || 
+                (isHeaderRow ? style.headerStyle?.textAlign : undefined) || 
+                'left';
+              
+              const backgroundColor = cellStyle.backgroundColor || 
+                (isHeaderRow ? style.headerStyle?.backgroundColor : undefined);
+
+              const isBold = fontSettings.bold || 
+                (isHeaderRow ? style.headerStyle?.fontBold : false);
+
+              // 创建单元格内容
+              const paragraph = new Paragraph({
+                children: [
+                  new TextRun({
+                    text: cell.content,
+                    font: { name: FONT_NAME_MAP[fontSettings.family] || fontSettings.family, hint: 'eastAsia' },
+                    size: fontSettings.size * 2,
+                    color: fontSettings.color.replace('#', ''),
+                    bold: isBold,
+                    italics: fontSettings.italic,
+                    underline: fontSettings.underline ? {} : undefined,
+                  }),
+                ],
+                alignment: textAlign === 'center' ? AlignmentType.CENTER : 
+                          textAlign === 'right' ? AlignmentType.RIGHT : 
+                          AlignmentType.LEFT,
+              });
+
+              // 创建表格单元格
+              const tableCell = new TableCell({
+                children: [paragraph],
+                columnSpan: cell.colspan,
+                rowSpan: cell.rowspan,
+                verticalAlign: cellStyle.verticalAlign?.toUpperCase() as any || 'TOP',
+                margins: style.cellPadding ? {
+                  top: style.cellPadding * 20,
+                  bottom: style.cellPadding * 20,
+                  left: style.cellPadding * 20,
+                  right: style.cellPadding * 20,
+                } : undefined,
+                shading: backgroundColor ? {
+                  fill: backgroundColor.replace('#', ''),
+                } : undefined,
+              });
+
+              return tableCell;
+            }).filter(cell => cell !== null),
+          });
+        });
+
+        // 边框样式
+        const borderStyle = style.borderStyle === 'none' ? BorderStyle.NONE :
+                          style.borderStyle === 'dashed' ? BorderStyle.DASHED :
+                          style.borderStyle === 'dotted' ? BorderStyle.DOTTED :
+                          BorderStyle.SINGLE;
+        
+        const borderSize = (style.borderWidth || 1) * 8;
+        const borderColor = (style.borderColor || '#000000').replace('#', '');
+
+        // 创建表格
+        const table = new Table({
+          width: tableWidth,
+          rows,
+          borders: style.borderStyle !== 'none' ? {
+            top: { style: borderStyle, size: borderSize, color: borderColor },
+            bottom: { style: borderStyle, size: borderSize, color: borderColor },
+            left: { style: borderStyle, size: borderSize, color: borderColor },
+            right: { style: borderStyle, size: borderSize, color: borderColor },
+            insideHorizontal: { style: borderStyle, size: borderSize, color: borderColor },
+            insideVertical: { style: borderStyle, size: borderSize, color: borderColor },
+          } : {
+            top: { style: BorderStyle.NONE },
+            bottom: { style: BorderStyle.NONE },
+            left: { style: BorderStyle.NONE },
+            right: { style: BorderStyle.NONE },
+            insideHorizontal: { style: BorderStyle.NONE },
+            insideVertical: { style: BorderStyle.NONE },
+          },
+        });
+
+        return [table];
+      }
+
       // 处理双栏文本
       if (block.type === 'two-column' && typeof block.content === 'object' && 'left' in block.content) {
         const content = block.content as { left: string, right: string };
@@ -379,6 +570,7 @@ export const exportToWord = async (template: DocumentTemplate): Promise<void> =>
               spacing: {
                   line: Math.round(paragraphSettings.lineHeight * 240),
                   after: paragraphSettings.paragraphSpacing * 20,
+                  before: paragraphSettings.spaceBefore * 20,
               },
               indent: {
                   firstLine: convertUnitToPt(indent.firstLine, indent.firstLineUnit, fontSize) * 20,
