@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { AIGenerateRequest, AIGenerateResponse, DocumentTemplate } from '../types';
+import { AIGenerateResponse, DocumentTemplate } from '../types';
 import { ParsedDocument, RecognitionRule, ContentBlockGroup } from '../types/wordImport';
 
 interface MaxKbRequest {
@@ -61,7 +61,7 @@ export const aiService = {
         modelId: params.modelId,
         messages: params.messages,
         temperature: params.temperature || 0.7,
-        max_tokens: params.maxTokens || 500,
+        max_tokens: params.maxTokens || 3000,
       });
       
       if (response.data.success && response.data.data) {

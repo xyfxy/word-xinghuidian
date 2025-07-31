@@ -60,12 +60,7 @@ const TableEditor: React.FC<TableEditorProps> = ({ content, onChange, disabled =
     onChange({ ...content, rows: newRows });
   };
 
-  // 更新单元格样式
-  const updateCellStyle = (rowIndex: number, colIndex: number, style: TableCell['style']) => {
-    const newRows = [...content.rows];
-    newRows[rowIndex][colIndex] = { ...newRows[rowIndex][colIndex], style };
-    onChange({ ...content, rows: newRows });
-  };
+  // 已删除未使用的 updateCellStyle 函数
 
   // 更新表格样式
   const updateTableStyle = (style: TableContent['style']) => {

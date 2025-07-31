@@ -141,7 +141,7 @@ export const AIModelSettings: React.FC<AIModelSettingsProps> = ({ settings, onUp
           value={settings.baseUrl}
           onChange={(e) => onUpdate({ baseUrl: e.target.value })}
           placeholder="请输入 API 地址"
-          disabled={!selectedProvider.requiresBaseUrl && settings.service !== 'custom'}
+          disabled={!selectedProvider.requiresBaseUrl && settings.service !== 'maxkb'}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
         />
       </div>
@@ -230,7 +230,7 @@ export const AIModelSettings: React.FC<AIModelSettingsProps> = ({ settings, onUp
           <input
             type="number"
             value={settings.maxLength}
-            onChange={(e) => onUpdate({ maxLength: parseInt(e.target.value) || 500 })}
+            onChange={(e) => onUpdate({ maxLength: parseInt(e.target.value) || 3000 })}
             min="10"
             max="2000"
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"

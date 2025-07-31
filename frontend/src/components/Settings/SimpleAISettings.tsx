@@ -16,7 +16,7 @@ export const SimpleAISettings: React.FC<SimpleAISettingsProps> = ({
   onModelChange,
   temperature = 0.7,
   onTemperatureChange,
-  maxLength = 500,
+  maxLength = 3000,
   onMaxLengthChange,
   showAdvanced = false
 }) => {
@@ -49,9 +49,9 @@ export const SimpleAISettings: React.FC<SimpleAISettingsProps> = ({
               <input
                 type="number"
                 value={maxLength}
-                onChange={(e) => onMaxLengthChange(parseInt(e.target.value) || 500)}
+                onChange={(e) => onMaxLengthChange(parseInt(e.target.value) || 3000)}
                 min="10"
-                max="2000"
+                max="10000"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>

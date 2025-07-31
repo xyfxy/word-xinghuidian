@@ -312,7 +312,7 @@ const FormatPanel: React.FC = () => {
             onModelChange={(modelId) => handleAiSettingsChange('defaultModelId', modelId)}
             temperature={aiSettings.temperature || 0.7}
             onTemperatureChange={(temp) => handleAiSettingsChange('temperature', temp)}
-            maxLength={aiSettings.maxTokens || 500}
+            maxLength={aiSettings.maxTokens || 3000}
             onMaxLengthChange={(length) => handleAiSettingsChange('maxTokens', length)}
             showAdvanced={aiSettings.defaultModelId !== 'maxkb'} // MaxKB时不显示高级参数
           />

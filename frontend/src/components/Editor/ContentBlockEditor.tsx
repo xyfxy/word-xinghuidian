@@ -1,14 +1,14 @@
-import React, { useMemo, useState, useEffect, useRef, lazy, Suspense } from 'react';
+import React, { useMemo, useRef, lazy, Suspense } from 'react';
 import 'react-quill/dist/quill.snow.css';
 
 // 懒加载 ReactQuill 以提升性能
 const ReactQuill = lazy(() => import('react-quill'));
 import { ContentBlock, TwoColumnContent, ImageContent, PageBreakContent, TableContent } from '../../types';
-import { Sparkles, Type, Loader, Settings, ChevronDown, ChevronRight, Image as ImageIcon, FileText, Upload, AlignLeft, AlignCenter, AlignRight, Table } from 'lucide-react';
+import { Sparkles, Type, Loader, ChevronDown, ChevronRight, Image as ImageIcon, FileText, Upload, AlignLeft, AlignCenter, AlignRight, Table } from 'lucide-react';
 import { Switch } from '@headlessui/react';
 import BlockFormatPanel from './BlockFormatPanel';
 import TableEditor from './TableEditor';
-import useEditorStore, { AiSettings } from '../../stores/editorStore';
+import useEditorStore from '../../stores/editorStore';
 import { AIBlockSettings } from './AIBlockSettings';
 
 interface ContentBlockEditorProps {
@@ -20,215 +20,9 @@ interface ContentBlockEditorProps {
     isGenerating: boolean;
 }
 
-// 深拷贝AI设置的辅助函数
-const deepCloneAiSettings = (settings: AiSettings): AiSettings => {
-  return {
-    provider: settings.provider,
-    defaultModelId: settings.defaultModelId,
-    temperature: settings.temperature,
-    maxTokens: settings.maxTokens,
-    maxkbBaseUrl: settings.maxkbBaseUrl,
-    maxkbApiKey: settings.maxkbApiKey,
-    systemPrompt: settings.systemPrompt,
-  };
-};
+// 已删除未使用的 deepCloneAiSettings 函数
 
-// AI设置面板组件
-const AiSettingsPanel: React.FC<{
-  block: ContentBlock;
-  onUpdate: (updates: Partial<ContentBlock>) => void;
-}> = ({ block, onUpdate }) => {
-  const { aiSettings } = useEditorStore();
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [formAiSettings, setFormAiSettings] = useState<AiSettings>(
-    block.aiSettings ? deepCloneAiSettings(block.aiSettings) : deepCloneAiSettings(aiSettings)
-  );
-  const [isAiSettingsChanged, setIsAiSettingsChanged] = useState(false);
-
-  // 同步AI块设置到本地表单状态
-  useEffect(() => {
-    const blockSettings = block.aiSettings 
-      ? deepCloneAiSettings(block.aiSettings)
-      : deepCloneAiSettings(aiSettings);
-    setFormAiSettings(blockSettings);
-    setIsAiSettingsChanged(false);
-  }, [block.aiSettings, aiSettings]);
-
-  // 处理AI设置变化
-  const handleAiSettingsChange = <T extends keyof AiSettings>(key: T, value: AiSettings[T]) => {
-    setFormAiSettings(prev => ({ ...prev, [key]: value }));
-    setIsAiSettingsChanged(true);
-  };
-
-  // 应用AI设置变化
-  const applyAiSettingsChange = () => {
-    onUpdate({ 
-      aiSettings: deepCloneAiSettings(formAiSettings) 
-    });
-    setIsAiSettingsChanged(false);
-  };
-
-  // 重置AI设置为全局设置
-  const resetAiSettings = () => {
-    setFormAiSettings(deepCloneAiSettings(aiSettings));
-    onUpdate({ 
-      aiSettings: deepCloneAiSettings(aiSettings) 
-    });
-    setIsAiSettingsChanged(false);
-  };
-
-  // 移除AI设置，使用全局设置
-  const useGlobalSettings = () => {
-    onUpdate({ aiSettings: undefined });
-    setFormAiSettings(deepCloneAiSettings(aiSettings));
-    setIsAiSettingsChanged(false);
-  };
-
-  return (
-    <div className="mt-3 border border-gray-200 rounded-lg">
-      <div 
-        className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <div className="flex items-center gap-2">
-          <Settings className="h-4 w-4 text-gray-600" />
-          <span className="text-sm font-medium text-gray-700">AI设置</span>
-          {block.aiSettings && (
-            <span className="text-xs px-2 py-1 bg-blue-100 text-blue-600 rounded">
-              {block.aiSettings.provider === 'maxkb' ? 'MaxKB' : '通义千问'}
-            </span>
-          )}
-          {!block.aiSettings && (
-            <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">
-              使用全局设置
-            </span>
-          )}
-        </div>
-        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-      </div>
-      
-      {isExpanded && (
-        <div className="p-3 border-t border-gray-200 bg-gray-50">
-          {/* 设置状态说明 */}
-          <div className="mb-4">
-            {block.aiSettings ? (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm text-blue-700">
-                  此AI块使用独立设置，不会影响其他AI块或全局设置。
-                </p>
-              </div>
-            ) : (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <p className="text-sm text-yellow-700">
-                  此AI块使用全局默认设置。设置独立配置后将不再跟随全局设置变化。
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* 操作按钮 */}
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex gap-2">
-              {!block.aiSettings && (
-                <button
-                  onClick={applyAiSettingsChange}
-                  className="text-xs px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-                >
-                  设置独立配置
-                </button>
-              )}
-              {block.aiSettings && (
-                <button
-                  onClick={useGlobalSettings}
-                  className="text-xs px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600"
-                >
-                  使用全局设置
-                </button>
-              )}
-            </div>
-            
-            {isAiSettingsChanged && (
-              <div className="flex gap-2">
-                <button
-                  onClick={resetAiSettings}
-                  className="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded hover:bg-gray-300"
-                >
-                  重置
-                </button>
-                <button
-                  onClick={applyAiSettingsChange}
-                  className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-                >
-                  应用
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* AI设置表单 */}
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">服务商</label>
-              <select
-                value={formAiSettings.provider}
-                onChange={(e) => handleAiSettingsChange('provider', e.target.value as 'maxkb')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              >
-                <option value="maxkb">MaxKB</option>
-              </select>
-            </div>
-
-            {formAiSettings.provider === 'maxkb' && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">MaxKB Base URL</label>
-                  <input
-                    type="url"
-                    placeholder="https://maxkb.fit2cloud.com/api/application/xxx"
-                    value={formAiSettings.maxkbBaseUrl}
-                    onChange={(e) => handleAiSettingsChange('maxkbBaseUrl', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">MaxKB API Key</label>
-                  <input
-                    type="password"
-                    placeholder="输入您的MaxKB API Key"
-                    value={formAiSettings.maxkbApiKey}
-                    onChange={(e) => handleAiSettingsChange('maxkbApiKey', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                  />
-                </div>
-              </>
-            )}
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">系统提示词</label>
-              <textarea
-                rows={3}
-                placeholder="定义AI的角色和行为"
-                value={formAiSettings.systemPrompt}
-                onChange={(e) => handleAiSettingsChange('systemPrompt', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              />
-            </div>
-          </div>
-
-          {/* 配置验证提示 */}
-          {formAiSettings.provider === 'maxkb' && 
-           (!formAiSettings.maxkbBaseUrl || !formAiSettings.maxkbApiKey) && (
-            <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-sm text-red-700">
-                MaxKB配置不完整，请填写完整的Base URL和API Key。
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
+// 已删除未使用的 AiSettingsPanel 组件
 
 // 图片编辑组件
 const ImageEditor: React.FC<{
@@ -416,77 +210,6 @@ const ImageEditor: React.FC<{
           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
           placeholder="图片的描述信息"
         />
-      </div>
-
-      {/* 边框设置 */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-gray-700">启用边框</label>
-          <Switch
-            checked={imageContent.border?.enabled || false}
-            onChange={(checked) => handleImageChange('border', { 
-              enabled: checked,
-              color: imageContent.border?.color || '#000000',
-              width: imageContent.border?.width || 1,
-              style: imageContent.border?.style || 'solid'
-            })}
-            className={`${imageContent.border?.enabled ? 'bg-blue-600' : 'bg-gray-200'} relative inline-flex h-6 w-11 items-center rounded-full`}
-          >
-            <span className={`${imageContent.border?.enabled ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition`} />
-          </Switch>
-        </div>
-
-        {imageContent.border?.enabled && (
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">颜色</label>
-              <input
-                type="color"
-                value={imageContent.border?.color || '#000000'}
-                onChange={(e) => handleImageChange('border', { 
-                  enabled: imageContent.border?.enabled || false,
-                  color: e.target.value,
-                  width: imageContent.border?.width || 1,
-                  style: imageContent.border?.style || 'solid'
-                })}
-                className="w-full h-10 rounded border"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">宽度</label>
-              <input
-                type="number"
-                value={imageContent.border?.width || 1}
-                onChange={(e) => handleImageChange('border', { 
-                  enabled: imageContent.border?.enabled || false,
-                  color: imageContent.border?.color || '#000000',
-                  width: Number(e.target.value),
-                  style: imageContent.border?.style || 'solid'
-                })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                min="1"
-                max="10"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">样式</label>
-              <select
-                value={imageContent.border?.style || 'solid'}
-                onChange={(e) => handleImageChange('border', { 
-                  enabled: imageContent.border?.enabled || false,
-                  color: imageContent.border?.color || '#000000',
-                  width: imageContent.border?.width || 1,
-                  style: e.target.value as 'solid' | 'dashed' | 'dotted'
-                })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-              >
-                <option value="solid">实线</option>
-                <option value="dashed">虚线</option>
-                <option value="dotted">点线</option>
-              </select>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

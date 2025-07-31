@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { FileText, Download, Sparkles, ChevronRight, Copy, Eye, ChevronDown, ChevronUp, Upload, X, ArrowLeft } from 'lucide-react'
 import { templateService, aiService } from '../services/api'
 import { DocumentTemplate, ContentBlock, ImageContent } from '../types'
-import { useAISettings } from '../stores/aiSettings'
+// 已删除未使用的 useAISettings 导入
 import { toast } from '../utils/toast'
 import { exportToWord } from '../utils/document'
 import { formatMaxKbContent } from '../utils/markdown'
@@ -24,7 +24,7 @@ export default function UseTemplatePage() {
   const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>({})
   const [previewWidth, setPreviewWidth] = useState(730)
   const [isResizing, setIsResizing] = useState(false)
-  const { getSettingsForBlock } = useAISettings()
+  // 已删除未使用的 getSettingsForBlock
 
   useEffect(() => {
     loadTemplates()
@@ -127,10 +127,10 @@ export default function UseTemplatePage() {
         ]
         
         if (context) {
-          messages.push({ role: 'user' as const, content: `参考上下文：${context}` })
+          messages.push({ role: 'system' as const, content: `参考上下文：${context}` })
         }
         
-        messages.push({ role: 'user' as const, content: processedPrompt })
+        messages.push({ role: 'system' as const, content: processedPrompt })
         
         if (block.modelId === 'maxkb') {
           // 特殊处理MaxKB（保持兼容）
@@ -143,7 +143,7 @@ export default function UseTemplatePage() {
             baseUrl: blockSettings.maxkbBaseUrl,
             apiKey: blockSettings.maxkbApiKey,
             messages: messages,
-            maxTokens: block.maxTokens || 500,
+            maxTokens: block.maxTokens || 3000,
           })
         } else {
           // 使用模型管理中的模型
@@ -151,13 +151,12 @@ export default function UseTemplatePage() {
             modelId: block.modelId,
             messages: messages,
             temperature: block.temperature || 0.7,
-            maxTokens: block.maxTokens || 500,
+            maxTokens: block.maxTokens || 3000,
           })
         }
       } else {
         // 向后兼容：使用旧的AI设置方式
         const blockSettings = block.aiSettings
-        const globalSettings = getSettingsForBlock(block.id)
         
         if (blockSettings?.provider === 'maxkb') {
           // 使用MaxKB
@@ -170,9 +169,9 @@ export default function UseTemplatePage() {
             apiKey: blockSettings.maxkbApiKey,
             messages: [
               { role: 'system' as const, content: blockSettings.systemPrompt || '你是一个专业的文档编写助手。' },
-              { role: 'user' as const, content: processedPrompt },
+              { role: 'system' as const, content: processedPrompt },
             ],
-            maxTokens: block.maxTokens || 500,
+            maxTokens: block.maxTokens || 3000,
           })
         } else {
           // 没有配置，提示用户

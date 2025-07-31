@@ -26,7 +26,7 @@ const ImportWordPage: React.FC = () => {
   const [templateDescription, setTemplateDescription] = useState('');
   const [previewWidth, setPreviewWidth] = useState(730);
   const [isResizing, setIsResizing] = useState(false);
-  const [ignoreWordStyles, setIgnoreWordStyles] = useState(false);
+  const [ignoreWordStyles] = useState(false); // 已删除未使用的 setter
 
   // 加载默认规则
   useEffect(() => {
@@ -321,9 +321,6 @@ const ImportWordPage: React.FC = () => {
                   rules={activeRules}
                   onRulesChange={setActiveRules}
                   onApplyRules={() => handleApplyRules()}
-                  isProcessing={isProcessing}
-                  ignoreWordStyles={ignoreWordStyles}
-                  onIgnoreWordStylesChange={setIgnoreWordStyles}
                 />
               </div>
             </div>

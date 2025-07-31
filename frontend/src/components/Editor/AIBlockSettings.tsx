@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, ChevronDown, ChevronUp, RotateCcw, Save, X } from 'lucide-react';
+import { Save, X, Settings, ChevronUp, ChevronDown, RotateCcw } from 'lucide-react';
 import { SimpleAISettings } from '../Settings/SimpleAISettings';
 import { ContentBlock, AISettings } from '../../types';
 
@@ -20,7 +20,7 @@ export const AIBlockSettings: React.FC<AIBlockSettingsProps> = ({
   const [modelId, setModelId] = useState<string | null>(block.modelId || defaultModelId);
   const [systemPrompt, setSystemPrompt] = useState(block.systemPrompt || defaultSystemPrompt);
   const [temperature, setTemperature] = useState(block.temperature || 0.7);
-  const [maxTokens, setMaxTokens] = useState(block.maxTokens || 500);
+  const [maxTokens, setMaxTokens] = useState(block.maxTokens || 3000);
   
   // MaxKB 配置状态
   const [maxkbBaseUrl, setMaxkbBaseUrl] = useState(block.aiSettings?.maxkbBaseUrl || '');
@@ -34,7 +34,7 @@ export const AIBlockSettings: React.FC<AIBlockSettingsProps> = ({
       modelId !== (block.modelId || defaultModelId) ||
       systemPrompt !== (block.systemPrompt || defaultSystemPrompt) ||
       temperature !== (block.temperature || 0.7) ||
-      maxTokens !== (block.maxTokens || 500) ||
+      maxTokens !== (block.maxTokens || 3000) ||
       maxkbBaseUrl !== (block.aiSettings?.maxkbBaseUrl || '') ||
       maxkbApiKey !== (block.aiSettings?.maxkbApiKey || '');
     setHasChanges(changed);
@@ -62,7 +62,7 @@ export const AIBlockSettings: React.FC<AIBlockSettingsProps> = ({
     setModelId(defaultModelId);
     setSystemPrompt(defaultSystemPrompt);
     setTemperature(0.7);
-    setMaxTokens(500);
+    setMaxTokens(3000);
     setMaxkbBaseUrl('');
     setMaxkbApiKey('');
     onUpdate({
@@ -79,7 +79,7 @@ export const AIBlockSettings: React.FC<AIBlockSettingsProps> = ({
     setModelId(block.modelId || defaultModelId);
     setSystemPrompt(block.systemPrompt || defaultSystemPrompt);
     setTemperature(block.temperature || 0.7);
-    setMaxTokens(block.maxTokens || 500);
+    setMaxTokens(block.maxTokens || 3000);
     setMaxkbBaseUrl(block.aiSettings?.maxkbBaseUrl || '');
     setMaxkbApiKey(block.aiSettings?.maxkbApiKey || '');
     setHasChanges(false);

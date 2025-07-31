@@ -72,7 +72,7 @@ const useEditorStore = create<EditorStore>()(
         provider: 'maxkb',
         defaultModelId: null,
         temperature: 0.7,
-        maxTokens: 500,
+        maxTokens: 3000,
         maxkbBaseUrl: '',
         maxkbApiKey: '',
         systemPrompt: '你是一个专业的文档编写助手。',

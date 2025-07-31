@@ -14,7 +14,7 @@ export interface RecognitionRule {
 export interface RuleConfig {
   headingPattern?: string;
   headingLevel?: number[];
-  grouping: 'single' | 'with-content' | 'until-next' | 'heading-then-content';
+  grouping: 'single' | 'with-content' | 'until-next' | 'heading-then-content' | 'merge-same-style';
   contentPatterns?: string[];
   maxParagraphs?: number;
   minLength?: number;

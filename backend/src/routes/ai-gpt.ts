@@ -120,7 +120,7 @@ router.post('/generate', async (req, res) => {
 // 兼容旧接口 - 将旧的generate请求转换为GPT格式
 router.post('/generate-legacy', async (req, res) => {
   try {
-    const { prompt, maxLength = 500, temperature = 0.7, context } = req.body;
+    const { prompt, maxLength = 3000, temperature = 0.7, context } = req.body;
 
     // 验证请求参数
     if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {

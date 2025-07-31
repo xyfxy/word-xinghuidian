@@ -51,7 +51,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
         readOnly={readOnly}
         style={{ minHeight: `${minHeight}px` }}
       />
-      <style jsx global>{`
+      <style>{`
         .simple-rich-text-editor .ql-container {
           font-family: inherit;
         }

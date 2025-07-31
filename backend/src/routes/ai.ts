@@ -1,5 +1,5 @@
 import express from 'express';
-import { AIGenerateRequest, QianwenResponse, AIGenerateResponse } from '../types';
+import { AIGenerateRequest } from '../types';
 import { generateMaxKbContent } from '../services/maxkbService';
 import qianwenService from '../services/qianwenService';
 
@@ -8,7 +8,7 @@ const router = express.Router();
 // 生成内容
 router.post('/generate', async (req, res) => {
   try {
-    const { prompt, maxLength = 500, temperature = 0.7, context } = req.body as AIGenerateRequest;
+    const { prompt, maxLength = 3000, temperature = 0.7, context } = req.body as AIGenerateRequest;
 
     // 验证请求参数
     if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
@@ -18,10 +18,10 @@ router.post('/generate', async (req, res) => {
       });
     }
 
-    if (maxLength < 10 || maxLength > 2000) {
+    if (maxLength < 10 || maxLength > 10000) {
       return res.status(400).json({
         success: false,
-        message: '内容长度应在10-2000字符之间',
+        message: '内容长度应在10-10000字符之间',
       });
     }
 

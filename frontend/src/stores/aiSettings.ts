@@ -7,6 +7,8 @@ export interface AISettings {
   baseUrl: string
   maxLength: number
   temperature: number
+  model?: string
+  customHeaders?: Record<string, string>
 }
 
 interface AISettingsStore {
@@ -22,7 +24,7 @@ const defaultSettings: AISettings = {
   service: 'maxkb',
   apiKey: '',
   baseUrl: '',
-  maxLength: 500,
+  maxLength: 3000,
   temperature: 0.7
 }
 

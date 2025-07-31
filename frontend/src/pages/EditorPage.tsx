@@ -271,10 +271,10 @@ const EditorPage: React.FC = () => {
         ];
         
         if (context) {
-          messages.push({ role: 'user' as const, content: `参考上下文：${context}` });
+          messages.push({ role: 'system' as const, content: `参考上下文：${context}` });
         }
         
-        messages.push({ role: 'user' as const, content: block.aiPrompt });
+        messages.push({ role: 'system' as const, content: block.aiPrompt });
         
         if (block.modelId === 'maxkb') {
           // 特殊处理MaxKB（保持兼容）
@@ -288,7 +288,7 @@ const EditorPage: React.FC = () => {
             baseUrl: blockAiSettings.maxkbBaseUrl,
             apiKey: blockAiSettings.maxkbApiKey,
             messages: messages,
-            maxTokens: block.maxTokens || 500,
+            maxTokens: block.maxTokens || 3000,
           });
         } else {
           // 使用模型管理中的模型
@@ -296,14 +296,16 @@ const EditorPage: React.FC = () => {
             modelId: block.modelId,
             messages: messages,
             temperature: block.temperature || 0.7,
-            maxTokens: block.maxTokens || 500,
+            maxTokens: block.maxTokens || 3000,
           });
         }
       } else {
-        // 向后兼容：只支持MaxKB
+        // 向后兼容：使用全局默认设置
+        const effectiveModelId = aiSettings.defaultModelId || 'maxkb';
         const blockAiSettings = block.aiSettings || aiSettings;
         
-        if (blockAiSettings.provider === 'maxkb') {
+        if (effectiveModelId === 'maxkb') {
+          // 使用MaxKB
           if (!blockAiSettings.maxkbBaseUrl || !blockAiSettings.maxkbApiKey) {
             alert('请先在AI设置中配置MaxKB的Base URL和API Key');
             setIsGenerating(false);
@@ -314,14 +316,34 @@ const EditorPage: React.FC = () => {
             apiKey: blockAiSettings.maxkbApiKey,
             messages: [
               { role: 'system' as const, content: blockAiSettings.systemPrompt || '你是一个专业的文档编写助手。' },
-              { role: 'user' as const, content: block.aiPrompt },
+              { role: 'system' as const, content: block.aiPrompt },
             ],
-            maxTokens: block.maxTokens || 500,
+            maxTokens: block.maxTokens || 3000,
           });
         } else {
-          alert('请在AI设置中选择一个模型或配置MaxKB');
-          setIsGenerating(false);
-          return;
+          // 使用全局默认模型
+          const systemPrompt = blockAiSettings.systemPrompt || '你是一个专业的文档编写助手。';
+          const context = currentTemplate.content
+            .filter(b => b.position < block.position && b.content)
+            .map(b => typeof b.content === 'string' ? b.content : '')
+            .join('\n');
+          
+          const messages = [
+            { role: 'system' as const, content: systemPrompt },
+          ];
+          
+          if (context) {
+            messages.push({ role: 'system' as const, content: `参考上下文：${context}` });
+          }
+          
+          messages.push({ role: 'system' as const, content: block.aiPrompt });
+          
+          result = await aiService.generateWithModel({
+            modelId: effectiveModelId,
+            messages: messages,
+            temperature: block.temperature || aiSettings.temperature || 0.7,
+            maxTokens: block.maxTokens || aiSettings.maxTokens || 3000,
+          });
         }
       }
 
@@ -510,7 +532,7 @@ const EditorPage: React.FC = () => {
               {currentTemplate.content
                 .slice() // 创建一个副本以避免直接修改store中的状态
                 .sort((a, b) => a.position - b.position)
-                .map((block, index) => (
+                .map((block) => (
                   <div key={block.id}>
                     {/* 悬浮式插入按钮（包括第一个） */}
                     <InsertBlockButton 

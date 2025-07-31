@@ -99,12 +99,6 @@ export interface ImageContent {
   maxHeight?: number;
   alignment: 'left' | 'center' | 'right' | 'auto'; // 新增'auto'自适应
   caption?: string;
-  border?: {
-    enabled: boolean;
-    color: string;
-    width: number;
-    style: 'solid' | 'dashed' | 'dotted';
-  };
 }
 
 // 换页内容

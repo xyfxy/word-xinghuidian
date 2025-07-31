@@ -1,4 +1,4 @@
-import { DocumentTemplate, ContentBlock, DocumentFormat, ImageContent, PageBreakContent, TableContent, TableCell } from '../types';
+import { DocumentTemplate, ContentBlock, DocumentFormat, ImageContent, PageBreakContent, TableContent } from '../types';
 import {
   Document,
   Packer,
@@ -105,13 +105,7 @@ export const createDefaultContentBlock = (type: 'text' | 'ai-generated' | 'two-c
         height: 150,
         maxWidth: 600,
         maxHeight: 400,
-        caption: '',
-        border: {
-          enabled: false,
-          color: '#000000',
-          width: 1,
-          style: 'solid'
-        }
+        caption: ''
       } as ImageContent,
       format: {
         useGlobalFormat: true,
@@ -415,7 +409,7 @@ export const exportToWord = async (template: DocumentTemplate): Promise<void> =>
         const style = tableContent.style || {};
         
         // 获取表格宽度
-        let tableWidth = { size: 100, type: WidthType.PERCENTAGE };
+        let tableWidth: any = { size: 100, type: WidthType.PERCENTAGE };
         if (style.width === 'auto') {
           tableWidth = { size: 5000, type: WidthType.DXA }; // 自动宽度
         } else if (typeof style.width === 'number') {

@@ -1,8 +1,7 @@
 // 规则配置面板组件 - 优化版
-import React, { useState } from 'react';
+import React from 'react';
 import { 
-  Settings, 
-  RefreshCw
+  Settings
 } from 'lucide-react';
 import { RecognitionRule } from '../../types/wordImport';
 import { Switch } from '@headlessui/react';
@@ -11,18 +10,12 @@ interface RuleConfigPanelProps {
   rules: RecognitionRule[];
   onRulesChange: (rules: RecognitionRule[]) => void;
   onApplyRules: () => void;
-  isProcessing?: boolean;
-  ignoreWordStyles?: boolean;
-  onIgnoreWordStylesChange?: (value: boolean) => void;
 }
 
 const RuleConfigPanel: React.FC<RuleConfigPanelProps> = ({ 
   rules, 
   onRulesChange, 
-  onApplyRules,
-  isProcessing = false,
-  ignoreWordStyles = false,
-  onIgnoreWordStylesChange
+  onApplyRules
 }) => {
 
   // 切换规则启用状态
@@ -40,8 +33,6 @@ const RuleConfigPanel: React.FC<RuleConfigPanelProps> = ({
 
   // 获取合并规则
   const mergeRule = rules.find(r => r.config.grouping === 'merge-same-style');
-
-  const enabledRulesCount = rules.filter(r => r.enabled).length;
 
   return (
     <div className="h-full flex flex-col">

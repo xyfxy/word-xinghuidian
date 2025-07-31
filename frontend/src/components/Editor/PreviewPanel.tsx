@@ -81,27 +81,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
         }
     };
 
-    // 清理HTML格式标签，只保留文本内容和基本结构
-    const stripHtmlFormatting = (html: string): string => {
-        if (!html) return '';
-        
-        // 更彻底地清理HTML格式标签
-        // 保留结构性标签（如p, br, h1-h6, ul, ol, li），清理所有格式标签
-        return html
-            // 清理格式标签的闭合标签
-            .replace(/<\/(strong|b|em|i|u|span|font|mark|del|ins|sub|sup|small|big)>/gi, '')
-            // 清理格式标签的开放标签
-            .replace(/<(strong|b|em|i|u|span|font|mark|del|ins|sub|sup|small|big)(\s[^>]*)?>/gi, '')
-            // 清理所有内联样式属性
-            .replace(/\s*style\s*=\s*["'][^"']*["']/gi, '')
-            // 清理其他常见的格式属性
-            .replace(/\s*(color|font-weight|font-style|text-decoration|font-size|font-family)\s*=\s*["'][^"']*["']/gi, '')
-            // 清理空的标签属性
-            .replace(/<([^>]+)\s+>/gi, '<$1>')
-            // 清理多余的空格
-            .replace(/\s+/g, ' ')
-            .trim();
-    };
+    // 已删除未使用的 stripHtmlFormatting 函数
 
     // 渲染内容块
     const renderContentBlock = (block: ContentBlock) => {
@@ -407,10 +387,6 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
                 }
             }
 
-            // 添加边框样式
-            if (imageContent.border?.enabled) {
-                imageStyle.border = `${imageContent.border.width}px ${imageContent.border.style} ${imageContent.border.color}`;
-            }
 
             return (
                 <div key={block.id} style={containerStyle}>
