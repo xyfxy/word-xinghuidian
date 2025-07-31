@@ -60,11 +60,10 @@ export interface IndentSettings {
 }
 
 export interface AISettings {
-  provider: 'qianwen' | 'maxkb';
-  maxkbBaseUrl: string;
-  maxkbApiKey: string;
-  maxkbModel: string;
-  systemPrompt: string;
+  provider: 'maxkb';
+  maxkbBaseUrl?: string;
+  maxkbApiKey?: string;
+  systemPrompt?: string;
 }
 
 // 页面设置
@@ -158,7 +157,12 @@ export interface ContentBlock {
   position: number;
   title: string;
   aiPrompt?: string;
-  aiSettings?: AISettings;
+  aiSettings?: AISettings; // 旧的AI设置，保持兼容
+  // 新的模型管理相关字段
+  modelId?: string | null; // 选择的模型ID
+  systemPrompt?: string; // 系统提示词
+  temperature?: number; // 温度参数
+  maxTokens?: number; // 最大token数
 }
 
 // 块级格式

@@ -26,6 +26,9 @@ class QianwenService {
     }
 
     try {
+      console.log('千问API请求URL:', this.baseUrl);
+      console.log('千问API请求数据:', JSON.stringify(request, null, 2));
+      
       const response = await axios.post(this.baseUrl, request, {
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
@@ -36,8 +39,21 @@ class QianwenService {
 
       return response.data;
     } catch (error: any) {
-      console.error('千问API调用失败:', error.response?.data || error.message);
-      throw new Error(`AI服务调用失败: ${error.response?.data?.message || error.message}`);
+      console.error('千问API调用失败:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+      });
+      
+      let errorMessage = 'AI服务调用失败';
+      if (error.response?.status === 502) {
+        errorMessage = '千问API网关错误，可能是API地址或格式不正确';
+      } else if (error.response?.status === 401) {
+        errorMessage = '千问API Key无效或已过期';
+      }
+      
+      throw new Error(`${errorMessage}: ${error.response?.data?.message || error.message}`);
     }
   }
 

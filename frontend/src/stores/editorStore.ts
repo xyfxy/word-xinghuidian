@@ -4,13 +4,15 @@ import { DocumentTemplate, ContentBlock, DocumentFormat } from '../types';
 
 export interface AiSettings {
   provider: AiProvider;
-  maxkbBaseUrl: string;
-  maxkbApiKey: string;
-  maxkbModel: string;
-  systemPrompt: string;
+  defaultModelId?: string | null;
+  temperature?: number;
+  maxTokens?: number;
+  maxkbBaseUrl?: string;
+  maxkbApiKey?: string;
+  systemPrompt?: string;
 }
 
-export type AiProvider = 'qianwen' | 'maxkb';
+export type AiProvider = 'maxkb';
 
 interface EditorStore {
   // 状态
@@ -47,9 +49,11 @@ interface EditorStore {
 const deepCloneAiSettings = (settings: AiSettings): AiSettings => {
   return {
     provider: settings.provider,
+    defaultModelId: settings.defaultModelId,
+    temperature: settings.temperature,
+    maxTokens: settings.maxTokens,
     maxkbBaseUrl: settings.maxkbBaseUrl,
     maxkbApiKey: settings.maxkbApiKey,
-    maxkbModel: settings.maxkbModel,
     systemPrompt: settings.systemPrompt,
   };
 };
@@ -65,10 +69,12 @@ const useEditorStore = create<EditorStore>()(
       expandedBlocks: {},
       previewWidth: 500, // 默认预览面板宽度
       aiSettings: {
-        provider: 'qianwen',
+        provider: 'maxkb',
+        defaultModelId: null,
+        temperature: 0.7,
+        maxTokens: 500,
         maxkbBaseUrl: '',
         maxkbApiKey: '',
-        maxkbModel: 'gpt-3.5-turbo',
         systemPrompt: '你是一个专业的文档编写助手。',
       },
 

@@ -9,6 +9,7 @@ import { Switch } from '@headlessui/react';
 import BlockFormatPanel from './BlockFormatPanel';
 import TableEditor from './TableEditor';
 import useEditorStore, { AiSettings } from '../../stores/editorStore';
+import { AIBlockSettings } from './AIBlockSettings';
 
 interface ContentBlockEditorProps {
     block: ContentBlock;
@@ -23,9 +24,11 @@ interface ContentBlockEditorProps {
 const deepCloneAiSettings = (settings: AiSettings): AiSettings => {
   return {
     provider: settings.provider,
+    defaultModelId: settings.defaultModelId,
+    temperature: settings.temperature,
+    maxTokens: settings.maxTokens,
     maxkbBaseUrl: settings.maxkbBaseUrl,
     maxkbApiKey: settings.maxkbApiKey,
-    maxkbModel: settings.maxkbModel,
     systemPrompt: settings.systemPrompt,
   };
 };
@@ -168,10 +171,9 @@ const AiSettingsPanel: React.FC<{
               <label className="block text-sm font-medium text-gray-700 mb-1">服务商</label>
               <select
                 value={formAiSettings.provider}
-                onChange={(e) => handleAiSettingsChange('provider', e.target.value as 'qianwen' | 'maxkb')}
+                onChange={(e) => handleAiSettingsChange('provider', e.target.value as 'maxkb')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               >
-                <option value="qianwen">通义千问</option>
                 <option value="maxkb">MaxKB</option>
               </select>
             </div>
@@ -195,16 +197,6 @@ const AiSettingsPanel: React.FC<{
                     placeholder="输入您的MaxKB API Key"
                     value={formAiSettings.maxkbApiKey}
                     onChange={(e) => handleAiSettingsChange('maxkbApiKey', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">MaxKB 模型</label>
-                  <input
-                    type="text"
-                    placeholder="例如: gpt-3.5-turbo"
-                    value={formAiSettings.maxkbModel}
-                    onChange={(e) => handleAiSettingsChange('maxkbModel', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   />
                 </div>
@@ -729,7 +721,12 @@ const ContentBlockEditor: React.FC<ContentBlockEditorProps> = ({
                             </button>
 
                             {/* AI设置面板 */}
-                            <AiSettingsPanel block={block} onUpdate={onUpdate} />
+                            <AIBlockSettings 
+                              block={block} 
+                              onUpdate={onUpdate}
+                              defaultModelId={null}
+                              defaultSystemPrompt="你是一个专业的文档编写助手。"
+                            />
                         </div>
                     )}
 

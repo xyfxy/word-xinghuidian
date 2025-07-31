@@ -111,37 +111,74 @@ export default function UseTemplatePage() {
         })
       }
 
-      // 优先使用块级AI设置，如果没有则使用全局设置
-      const blockSettings = block.aiSettings
-      const globalSettings = getSettingsForBlock(block.id)
-      
       let response
       
-      if (blockSettings?.provider === 'maxkb') {
-        // 使用MaxKB
-        if (!blockSettings.maxkbBaseUrl || !blockSettings.maxkbApiKey) {
-          toast.error('请先在模板编辑器中配置MaxKB的Base URL和API Key')
+      // 检查是否使用新的模型管理方式
+      if (block.modelId) {
+        // 使用新的模型管理API
+        const systemPrompt = block.systemPrompt || '你是一个专业的文档编写助手。'
+        const context = contentBlocks
+          .filter(b => b.position < block.position && typeof b.content === 'string')
+          .map(b => b.content as string)
+          .join('\n')
+        
+        const messages = [
+          { role: 'system' as const, content: systemPrompt },
+        ]
+        
+        if (context) {
+          messages.push({ role: 'user' as const, content: `参考上下文：${context}` })
+        }
+        
+        messages.push({ role: 'user' as const, content: processedPrompt })
+        
+        if (block.modelId === 'maxkb') {
+          // 特殊处理MaxKB（保持兼容）
+          const blockSettings = block.aiSettings
+          if (!blockSettings?.maxkbBaseUrl || !blockSettings?.maxkbApiKey) {
+            toast.error('请先在模板编辑器中配置MaxKB的Base URL和API Key')
+            return
+          }
+          response = await aiService.generateMaxKbContent({
+            baseUrl: blockSettings.maxkbBaseUrl,
+            apiKey: blockSettings.maxkbApiKey,
+            messages: messages,
+            maxTokens: block.maxTokens || 500,
+          })
+        } else {
+          // 使用模型管理中的模型
+          response = await aiService.generateWithModel({
+            modelId: block.modelId,
+            messages: messages,
+            temperature: block.temperature || 0.7,
+            maxTokens: block.maxTokens || 500,
+          })
+        }
+      } else {
+        // 向后兼容：使用旧的AI设置方式
+        const blockSettings = block.aiSettings
+        const globalSettings = getSettingsForBlock(block.id)
+        
+        if (blockSettings?.provider === 'maxkb') {
+          // 使用MaxKB
+          if (!blockSettings.maxkbBaseUrl || !blockSettings.maxkbApiKey) {
+            toast.error('请先在模板编辑器中配置MaxKB的Base URL和API Key')
+            return
+          }
+          response = await aiService.generateMaxKbContent({
+            baseUrl: blockSettings.maxkbBaseUrl,
+            apiKey: blockSettings.maxkbApiKey,
+            messages: [
+              { role: 'system' as const, content: blockSettings.systemPrompt || '你是一个专业的文档编写助手。' },
+              { role: 'user' as const, content: processedPrompt },
+            ],
+            maxTokens: block.maxTokens || 500,
+          })
+        } else {
+          // 没有配置，提示用户
+          toast.error('请在模板编辑器中为此AI块选择一个模型或配置MaxKB')
           return
         }
-        response = await aiService.generateMaxKbContent({
-          baseUrl: blockSettings.maxkbBaseUrl,
-          apiKey: blockSettings.maxkbApiKey,
-          model: blockSettings.maxkbModel,
-          messages: [
-            { role: 'system', content: blockSettings.systemPrompt },
-            { role: 'user', content: processedPrompt },
-          ],
-        })
-      } else {
-        // 使用千问或全局设置
-        response = await aiService.generateContent({
-          prompt: processedPrompt,
-          maxLength: globalSettings.maxLength,
-          temperature: globalSettings.temperature,
-          service: globalSettings.service,
-          apiKey: globalSettings.apiKey,
-          baseUrl: globalSettings.baseUrl
-        })
       }
 
       if (response.success && response.content) {
@@ -372,9 +409,11 @@ export default function UseTemplatePage() {
                 <label className="text-sm font-medium text-gray-700">
                   提示词 <span className="text-gray-500">(点击内容块旁的复制按钮获取引用)</span>
                 </label>
-                {block.aiSettings && (
+                {(block.modelId || block.aiSettings) && (
                   <span className="text-xs px-2 py-1 bg-blue-100 text-blue-600 rounded">
-                    {block.aiSettings.provider === 'maxkb' ? 'MaxKB' : '千问'}
+                    {block.modelId === 'maxkb' ? 'MaxKB' : 
+                     block.modelId ? '自定义模型' :
+                     block.aiSettings?.provider === 'maxkb' ? 'MaxKB' : '千问'}
                   </span>
                 )}
               </div>

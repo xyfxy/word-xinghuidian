@@ -9,7 +9,8 @@ export async function generateMaxKbContent(
   baseUrl: string,
   apiKey: string,
   messages: MaxKbMessage[],
-  model: string = 'gpt-3.5-turbo' // Default model, can be overridden
+  model: string = 'gpt-3.5-turbo', // Default model, can be overridden
+  maxTokens?: number
 ): Promise<string> {
   if (!baseUrl || !apiKey) {
     throw new Error('MaxKB base URL and API Key are required.');
@@ -24,11 +25,22 @@ export async function generateMaxKbContent(
     url = `${url}/chat/completions`;
   }
 
-  const requestBody = {
+  // 确保max_tokens在有效范围内（1-8192）
+  let validMaxTokens: number | undefined;
+  if (maxTokens !== undefined) {
+    validMaxTokens = Math.max(1, Math.min(8192, maxTokens));
+  }
+
+  const requestBody: any = {
     model,
     messages,
     stream: false, // As per MaxKB docs, use false for non-streaming
   };
+
+  // 只在提供了maxTokens时才添加该参数
+  if (validMaxTokens !== undefined) {
+    requestBody.max_tokens = validMaxTokens;
+  }
 
   const requestHeaders = {
     'Content-Type': 'application/json',

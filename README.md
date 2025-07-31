@@ -5,12 +5,12 @@
 ![React](https://img.shields.io/badge/react-18.3.1-blue.svg)
 ![TypeScript](https://img.shields.io/badge/typescript-5.3.3-blue.svg)
 
-Word星辉点是一款结合手动编辑与AI智能生成的Word文档编辑器。它提供了直观的富文本编辑界面，支持模板管理，并集成了千问AI进行内容智能生成。
+Word星辉点是一款结合手动编辑与AI智能生成的Word文档编辑器。它提供了直观的富文本编辑界面，支持模板管理，并通过模型管理系统支持多种AI模型和MaxKB知识库进行内容智能生成。
 
 ## ✨ 主要功能
 
 - 📝 **富文本编辑** - 基于Quill.js的强大编辑器，支持多种文本格式
-- 🤖 **AI内容生成** - 集成千问AI，智能生成高质量内容
+- 🤖 **AI内容生成** - 支持OpenAI兼容模型和MaxKB知识库，智能生成高质量内容
 - 📋 **模板系统** - 创建、管理和使用文档模板
 - 📄 **Word文档处理** - 支持导入和导出标准Word文档
 - 🎨 **实时预览** - 编辑时实时查看文档效果
@@ -22,7 +22,7 @@ Word星辉点是一款结合手动编辑与AI智能生成的Word文档编辑器�
 
 - Node.js >= 18.0.0
 - npm >= 9.0.0
-- 千问API密钥（用于AI功能）
+- AI模型API密钥或MaxKB配置（用于AI功能）
 
 ### 安装步骤
 
@@ -37,15 +37,15 @@ Word星辉点是一款结合手动编辑与AI智能生成的Word文档编辑器�
    npm run install:all
    ```
 
-3. **配置环境变量**
-   ```bash
-   cp .env.example .env
-   ```
+3. **配置AI服务**
    
-   编辑 `.env` 文件，添加你的千问API密钥：
-   ```
-   QIANWEN_API_KEY=your_api_key_here
-   ```
+   方式一：使用模型管理系统
+   - 启动应用后访问"模型管理"页面
+   - 添加OpenAI兼容的AI模型
+   - 提供API密钥和基础URL
+   
+   方式二：使用MaxKB知识库
+   - 在编辑器中配置MaxKB的API密钥和基础URL
 
 4. **启动开发服务器**
    ```bash
@@ -123,22 +123,34 @@ npm run test:backend   # 运行后端测试
 
 后端环境变量 (`.env`):
 ```env
-# 千问API配置
-QIANWEN_API_KEY=your_api_key_here
-QIANWEN_BASE_URL=https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation
-
 # 服务器配置
 PORT=3001
 NODE_ENV=development
+
+# 可选：如果你想设置其他默认配置
+# CORS_ORIGIN=http://localhost:3000
 ```
 
 ### AI模型配置
 
-在前端应用中，可以通过设置页面调整AI参数：
+支持两种AI服务配置：
+
+**1. 模型管理系统**
+- 访问"模型管理"页面
+- 支持OpenAI、通义千问等兼容模型
+- 可配置多个模型并切换使用
+- 支持模型测试连接
+
+**2. MaxKB知识库**
+- 在编辑器AI设置中配置MaxKB
+- 支持知识库问答
+- 可在每个AI内容块中独立设置
+
+AI参数调整：
 - 模型选择
-- 温度参数
+- 温度参数（创造性）
 - 最大令牌数
-- TopP参数
+- 系统提示词
 
 ## 📱 使用指南
 
@@ -169,7 +181,8 @@ NODE_ENV=development
 - 支持复杂的文档格式和样式
 
 ### AI内容生成
-- 集成千问AI，智能生成高质量内容
+- 支持多种AI模型：OpenAI、通义千问等
+- 集成MaxKB知识库问答
 - AI只负责内容生成，格式完全按预设模板执行
 - 支持上下文感知的内容创作
 - 可调节创作参数（长度、创意度等）
@@ -184,12 +197,25 @@ NODE_ENV=development
 
 ### AI生成接口
 ```typescript
-POST /api/ai/generate
+// 使用模型管理中的模型
+POST /api/ai-gpt/generate
 {
-  "prompt": "生成内容的提示词",
-  "maxLength": 500,
+  "modelId": "model-uuid",
+  "messages": [
+    {"role": "system", "content": "系统提示词"},
+    {"role": "user", "content": "用户输入"}
+  ],
   "temperature": 0.7,
-  "context": "上下文信息"
+  "max_tokens": 500
+}
+
+// 使用MaxKB知识库
+POST /api/ai-gpt/generate-maxkb
+{
+  "baseUrl": "https://maxkb.example.com/api/application/xxx",
+  "apiKey": "your-maxkb-key",
+  "messages": [...],
+  "model": "gpt-3.5-turbo"
 }
 ```
 
@@ -199,6 +225,15 @@ GET /api/templates        // 获取模板列表
 POST /api/templates       // 创建新模板
 PUT /api/templates/:id    // 更新模板
 DELETE /api/templates/:id // 删除模板
+```
+
+### 模型管理接口
+```typescript
+GET /api/models           // 获取模型列表
+POST /api/models          // 添加新模型
+PUT /api/models/:id       // 更新模型
+DELETE /api/models/:id    // 删除模型
+POST /api/models/:id/test // 测试模型连接
 ```
 
 ### 文档处理接口
@@ -225,7 +260,7 @@ POST /api/documents/preview  // 生成预览
 ## 🙏 致谢
 
 - [Quill.js](https://quilljs.com/) - 强大的富文本编辑器
-- [千问AI](https://tongyi.aliyun.com/) - AI内容生成支持
+- [MaxKB](https://github.com/1Panel-dev/MaxKB) - 知识库问答系统
 - [React](https://reactjs.org/) - UI框架
 - [Tailwind CSS](https://tailwindcss.com/) - CSS框架
 

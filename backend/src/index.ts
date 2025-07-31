@@ -10,7 +10,8 @@ import path from 'path';
 dotenv.config();
 
 // 导入路由
-import aiRoutes from './routes/ai';
+import aiGptRoutes from './routes/ai-gpt';
+import modelRoutes from './routes/models';
 import templateRoutes from './routes/templates';
 import documentRoutes from './routes/documents';
 import wordImportRoutes from './routes/wordImport';
@@ -43,7 +44,7 @@ const aiLimiter = rateLimit({
   max: 10, // 每分钟最多10个AI请求
   message: 'AI请求过于频繁，请稍后再试',
 });
-app.use('/api/ai/', aiLimiter);
+app.use('/api/ai-gpt/', aiLimiter);
 
 // 日志中间件
 app.use(morgan('combined'));
@@ -56,7 +57,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // API路由
-app.use('/api/ai', aiRoutes);
+app.use('/api/ai-gpt', aiGptRoutes);
+app.use('/api/models', modelRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/word-import', wordImportRoutes);
@@ -94,7 +96,7 @@ const server = app.listen(PORT, () => {
   console.log(`🚀 Word星辉点后端服务启动成功`);
   console.log(`📡 服务地址: http://localhost:${PORT}`);
   console.log(`🌍 环境: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`⚡ 千问API状态: ${process.env.QIANWEN_API_KEY ? '已配置' : '未配置'}`);
+  console.log(`⚡ 使用模型管理和MaxKB进行AI内容生成`);
 });
 
 // 处理端口占用错误

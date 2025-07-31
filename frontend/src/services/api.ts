@@ -7,6 +7,7 @@ interface MaxKbRequest {
   apiKey: string;
   messages: { role: string; content: string }[];
   model?: string;
+  maxTokens?: number;
 }
 
 // 创建axios实例
@@ -44,11 +45,37 @@ api.interceptors.response.use(
 
 // AI内容生成API
 export const aiService = {
-  // 生成内容
-  async generateContent(request: AIGenerateRequest): Promise<AIGenerateResponse> {
+
+  // 使用模型管理的新生成接口
+  async generateWithModel(params: {
+    modelId: string;
+    messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+    temperature?: number;
+    maxTokens?: number;
+  }): Promise<AIGenerateResponse> {
     try {
-      const response = await api.post<AIGenerateResponse>('/ai/generate', request);
-      return response.data;
+      const response = await api.post<{
+        success: boolean;
+        data: { content: string; model?: string; usage?: any };
+      }>('/ai-gpt/generate', {
+        modelId: params.modelId,
+        messages: params.messages,
+        temperature: params.temperature || 0.7,
+        max_tokens: params.maxTokens || 500,
+      });
+      
+      if (response.data.success && response.data.data) {
+        return {
+          success: true,
+          content: response.data.data.content,
+        };
+      }
+      
+      return {
+        success: false,
+        content: '',
+        error: '生成失败',
+      };
     } catch (error) {
       return {
         content: '',
@@ -60,7 +87,7 @@ export const aiService = {
 
   async generateMaxKbContent(request: MaxKbRequest): Promise<AIGenerateResponse> {
     try {
-      const response = await api.post<{ success: true; content: string }>('/ai/generate-maxkb', request);
+      const response = await api.post<{ success: true; content: string }>('/ai-gpt/generate-maxkb', request);
       // The backend route returns { success: true, content: '...' } directly in the data
       return {
         success: true,
@@ -75,15 +102,6 @@ export const aiService = {
     }
   },
 
-  // 批量生成内容
-  async batchGenerate(requests: AIGenerateRequest[]): Promise<AIGenerateResponse[]> {
-    try {
-      const response = await api.post<{ data: AIGenerateResponse[] }>('/ai/batch-generate', { requests });
-      return response.data.data || [];
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : '批量生成失败');
-    }
-  },
 };
 
 // 模板管理API

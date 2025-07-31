@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import useEditorStore from '../../stores/editorStore';
 import { FontSettings, ParagraphSettings, IndentSettings } from '../../types';
+import { SimpleAISettings } from '../Settings/SimpleAISettings';
 
 // --- Helper Component for Margin Inputs ---
 const MarginInput: React.FC<{
@@ -304,32 +305,63 @@ const FormatPanel: React.FC = () => {
               这是全局AI默认设置，仅用作新建AI内容块的初始配置。每个AI块可以在内部设置独立的AI配置。
             </p>
           </div>
-          <div>
-            <label className="label-text">默认服务商</label>
-            <select value={aiSettings.provider} onChange={(e) => handleAiSettingsChange('provider', e.target.value as 'qianwen' | 'maxkb')} className="input-field">
-              <option value="qianwen">通义千问</option>
-              <option value="maxkb">MaxKB</option>
-            </select>
-          </div>
-          {aiSettings.provider === 'maxkb' && (
-            <>
-              <div>
-                <label className="label-text">默认 MaxKB Base URL</label>
-                <input type="url" placeholder="https://maxkb.fit2cloud.com/api/application/xxx" value={aiSettings.maxkbBaseUrl} onChange={(e) => handleAiSettingsChange('maxkbBaseUrl', e.target.value)} className="input-field"/>
+          
+          {/* 使用 SimpleAISettings 组件 */}
+          <SimpleAISettings
+            selectedModelId={aiSettings.defaultModelId || null}
+            onModelChange={(modelId) => handleAiSettingsChange('defaultModelId', modelId)}
+            temperature={aiSettings.temperature || 0.7}
+            onTemperatureChange={(temp) => handleAiSettingsChange('temperature', temp)}
+            maxLength={aiSettings.maxTokens || 500}
+            onMaxLengthChange={(length) => handleAiSettingsChange('maxTokens', length)}
+            showAdvanced={aiSettings.defaultModelId !== 'maxkb'} // MaxKB时不显示高级参数
+          />
+          
+          {/* MaxKB 配置 - 只在选择MaxKB时显示 */}
+          {aiSettings.defaultModelId === 'maxkb' && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mt-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-3">MaxKB 知识库配置</h4>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    MaxKB Base URL
+                  </label>
+                  <input
+                    type="url"
+                    value={aiSettings.maxkbBaseUrl || ''}
+                    onChange={(e) => handleAiSettingsChange('maxkbBaseUrl', e.target.value)}
+                    placeholder="https://maxkb.fit2cloud.com/api/application/xxx"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    MaxKB API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={aiSettings.maxkbApiKey || ''}
+                    onChange={(e) => handleAiSettingsChange('maxkbApiKey', e.target.value)}
+                    placeholder="输入您的MaxKB API Key"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="label-text">默认 MaxKB API Key</label>
-                <input type="password" placeholder="输入您的默认MaxKB API Key" value={aiSettings.maxkbApiKey} onChange={(e) => handleAiSettingsChange('maxkbApiKey', e.target.value)} className="input-field"/>
-              </div>
-              <div>
-                <label className="label-text">默认 MaxKB 模型</label>
-                <input type="text" placeholder="例如: gpt-3.5-turbo" value={aiSettings.maxkbModel} onChange={(e) => handleAiSettingsChange('maxkbModel', e.target.value)} className="input-field"/>
-              </div>
-            </>
+              <p className="text-xs text-gray-500 mt-2">
+                配置MaxKB知识库的连接信息，用于AI问答生成。
+              </p>
+            </div>
           )}
-          <div>
-            <label className="label-text">默认系统提示词</label>
-            <textarea rows={3} placeholder="定义AI的默认角色和行为" value={aiSettings.systemPrompt} onChange={(e) => handleAiSettingsChange('systemPrompt', e.target.value)} className="input-field"/>
+          
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">默认系统提示词</label>
+            <textarea 
+              rows={3} 
+              placeholder="定义AI的默认角色和行为" 
+              value={aiSettings.systemPrompt || ''} 
+              onChange={(e) => handleAiSettingsChange('systemPrompt', e.target.value)} 
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            />
           </div>
         </CollapsibleSection>
       </div>

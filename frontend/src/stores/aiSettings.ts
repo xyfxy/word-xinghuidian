@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 export interface AISettings {
-  service: 'qianwen' | 'maxkb'
+  service: 'maxkb'
   apiKey: string
   baseUrl: string
   maxLength: number
@@ -19,9 +19,9 @@ interface AISettingsStore {
 }
 
 const defaultSettings: AISettings = {
-  service: 'qianwen',
+  service: 'maxkb',
   apiKey: '',
-  baseUrl: 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
+  baseUrl: '',
   maxLength: 500,
   temperature: 0.7
 }

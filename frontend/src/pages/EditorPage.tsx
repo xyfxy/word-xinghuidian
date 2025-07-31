@@ -226,7 +226,6 @@ const EditorPage: React.FC = () => {
         provider: aiSettings.provider,
         maxkbBaseUrl: aiSettings.maxkbBaseUrl,
         maxkbApiKey: aiSettings.maxkbApiKey,
-        maxkbModel: aiSettings.maxkbModel,
         systemPrompt: aiSettings.systemPrompt,
       };
     }
@@ -254,50 +253,81 @@ const EditorPage: React.FC = () => {
       return;
     }
     
-    // 使用块独立的AI设置，如果不存在，则使用全局设置
-    const blockAiSettings = block.aiSettings || aiSettings;
-
     setIsGenerating(true);
     try {
       let result;
-      if (blockAiSettings.provider === 'maxkb') {
-        if (!blockAiSettings.maxkbBaseUrl || !blockAiSettings.maxkbApiKey) {
-          alert('请先在AI设置中配置MaxKB的Base URL和API Key');
+      
+      // 检查是否使用新的模型管理方式
+      if (block.modelId) {
+        // 使用新的模型管理API
+        const systemPrompt = block.systemPrompt || '你是一个专业的文档编写助手。';
+        const context = currentTemplate.content
+          .filter(b => b.position < block.position && b.content)
+          .map(b => typeof b.content === 'string' ? b.content : '')
+          .join('\n');
+        
+        const messages = [
+          { role: 'system' as const, content: systemPrompt },
+        ];
+        
+        if (context) {
+          messages.push({ role: 'user' as const, content: `参考上下文：${context}` });
+        }
+        
+        messages.push({ role: 'user' as const, content: block.aiPrompt });
+        
+        if (block.modelId === 'maxkb') {
+          // 特殊处理MaxKB（保持兼容）
+          const blockAiSettings = block.aiSettings || aiSettings;
+          if (!blockAiSettings.maxkbBaseUrl || !blockAiSettings.maxkbApiKey) {
+            alert('请先在AI设置中配置MaxKB的Base URL和API Key');
+            setIsGenerating(false);
+            return;
+          }
+          result = await aiService.generateMaxKbContent({
+            baseUrl: blockAiSettings.maxkbBaseUrl,
+            apiKey: blockAiSettings.maxkbApiKey,
+            messages: messages,
+            maxTokens: block.maxTokens || 500,
+          });
+        } else {
+          // 使用模型管理中的模型
+          result = await aiService.generateWithModel({
+            modelId: block.modelId,
+            messages: messages,
+            temperature: block.temperature || 0.7,
+            maxTokens: block.maxTokens || 500,
+          });
+        }
+      } else {
+        // 向后兼容：只支持MaxKB
+        const blockAiSettings = block.aiSettings || aiSettings;
+        
+        if (blockAiSettings.provider === 'maxkb') {
+          if (!blockAiSettings.maxkbBaseUrl || !blockAiSettings.maxkbApiKey) {
+            alert('请先在AI设置中配置MaxKB的Base URL和API Key');
+            setIsGenerating(false);
+            return;
+          }
+          result = await aiService.generateMaxKbContent({
+            baseUrl: blockAiSettings.maxkbBaseUrl,
+            apiKey: blockAiSettings.maxkbApiKey,
+            messages: [
+              { role: 'system' as const, content: blockAiSettings.systemPrompt || '你是一个专业的文档编写助手。' },
+              { role: 'user' as const, content: block.aiPrompt },
+            ],
+            maxTokens: block.maxTokens || 500,
+          });
+        } else {
+          alert('请在AI设置中选择一个模型或配置MaxKB');
           setIsGenerating(false);
           return;
         }
-        result = await aiService.generateMaxKbContent({
-          baseUrl: blockAiSettings.maxkbBaseUrl,
-          apiKey: blockAiSettings.maxkbApiKey,
-          model: blockAiSettings.maxkbModel,
-          messages: [
-            { role: 'system', content: blockAiSettings.systemPrompt },
-            { role: 'user', content: block.aiPrompt },
-          ],
-        });
-      } else {
-        result = await aiService.generateContent({
-          prompt: block.aiPrompt,
-          maxLength: 500,
-          temperature: 0.7,
-          context: currentTemplate.content
-            .filter(b => b.position < block.position && b.content)
-            .map(b => typeof b.content === 'string' ? b.content : '')
-            .join('\n'),
-        });
       }
 
       if (result.success && result.content) {
-        let formattedContent: string;
-        
-        if (blockAiSettings.provider === 'maxkb') {
-          // 对MaxKB返回的内容进行Markdown解析
-          formattedContent = await formatMaxKbContent(result.content);
-        } else {
-          // 对其他提供商的内容也进行Markdown解析，以支持**加粗**、*斜体*等格式
-          formattedContent = await formatMaxKbContent(result.content);
-        }
-          
+        // 对所有内容进行Markdown解析，以支持**加粗**、*斜体*等格式
+        const formattedContent = await formatMaxKbContent(result.content);
         updateContentBlock(blockId, { content: formattedContent });
         alert('AI内容生成成功！');
       } else {

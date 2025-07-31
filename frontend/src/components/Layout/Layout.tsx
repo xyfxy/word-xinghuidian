@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FileText, Settings, Home, Sparkles, Wand2 } from 'lucide-react';
+import { FileText, Settings, Home, Sparkles, Wand2, Database } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -70,6 +70,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 >
                   <Wand2 className="h-4 w-4 mr-2" />
                   使用模板
+                </Link>
+                <Link
+                  to="/models"
+                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                    isActive('/models')
+                      ? 'border-primary-500 text-gray-900'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <Database className="h-4 w-4 mr-2" />
+                  AI模型
                 </Link>
               </div>
             </div>

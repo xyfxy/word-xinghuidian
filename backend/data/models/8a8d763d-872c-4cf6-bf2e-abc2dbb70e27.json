@@ -1,0 +1,14 @@
+{
+  "id": "8a8d763d-872c-4cf6-bf2e-abc2dbb70e27",
+  "name": "Moonshot-Kimi-K2-Instruct",
+  "provider": "custom",
+  "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  "apiKey": "6bd47d43e47e9b85636157f2ab1bbff98d74a7e31337927702af0f2b7c2aa895c681ba22e1c2be06163cc1dc009aee11",
+  "model": "Moonshot-Kimi-K2-Instruct",
+  "createdAt": "2025-07-31T04:04:04.883Z",
+  "updatedAt": "2025-07-31T04:23:22.504Z",
+  "isActive": true,
+  "lastTested": "2025-07-31T04:23:22.506Z",
+  "testStatus": "success",
+  "responseTime": 1021
+}
