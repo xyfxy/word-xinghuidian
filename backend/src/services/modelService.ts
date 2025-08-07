@@ -8,7 +8,12 @@ import {
   AIModelCreateRequest, 
   AIModelUpdateRequest, 
   AIModelListItem,
-  AIModelTestResult 
+  AIModelTestResult,
+  MultimodalGenerateRequest,
+  ImageAnalysisRequest,
+  ImageAnalysisResponse,
+  MultimodalMessage,
+  ModelCapabilities
 } from '../types/model';
 
 export class ModelService {
@@ -81,10 +86,18 @@ export class ModelService {
           // 解密API Key以生成预览
           const decryptedApiKey = this.decrypt(model.apiKey);
           
+          const { apiKey, ...modelWithoutKey } = model;
+          
+          // 如果模型没有多模态字段，自动检测并添加
+          if (modelWithoutKey.multimodalSupport === undefined) {
+            const capabilities = await this.detectModelCapabilities(model.id);
+            modelWithoutKey.multimodalSupport = capabilities?.imageAnalysis || false;
+            modelWithoutKey.capabilities = capabilities || undefined;
+          }
+          
           models.push({
-            ...model,
-            apiKeyPreview: this.getApiKeyPreview(decryptedApiKey),
-            apiKey: undefined as any // 不返回加密的API Key
+            ...modelWithoutKey,
+            apiKeyPreview: this.getApiKeyPreview(decryptedApiKey)
           });
         }
       }
@@ -127,7 +140,9 @@ export class ModelService {
       model: request.model,
       createdAt: now,
       updatedAt: now,
-      isActive: true
+      isActive: true,
+      multimodalSupport: request.multimodalSupport || false,
+      capabilities: request.capabilities
     };
     
     // 保存到文件
@@ -155,6 +170,8 @@ export class ModelService {
     if (request.apiKey !== undefined) {
       model.apiKey = request.apiKey; // 此时是明文
     }
+    if (request.multimodalSupport !== undefined) model.multimodalSupport = request.multimodalSupport;
+    if (request.capabilities !== undefined) model.capabilities = request.capabilities;
     
     model.updatedAt = new Date();
     
@@ -328,6 +345,248 @@ export class ModelService {
         error: error.response?.data?.error?.message || error.message || '未知错误'
       };
     }
+  }
+
+  // 多模态内容生成
+  async generateMultimodalContent(request: MultimodalGenerateRequest): Promise<any> {
+    const model = await this.getModel(request.modelId);
+    if (!model) {
+      throw new Error('模型不存在');
+    }
+
+    if (!model.multimodalSupport) {
+      throw new Error('该模型不支持多模态功能');
+    }
+
+    try {
+      let url = model.baseUrl;
+      if (!url.endsWith('/')) {
+        url += '/';
+      }
+      
+      // OpenAI兼容的chat/completions接口
+      if (model.provider === 'openai' || model.provider === 'custom') {
+        url += 'chat/completions';
+      }
+
+      const requestData = {
+        model: model.model,
+        messages: request.messages,
+        temperature: request.temperature || 0.7,
+        max_tokens: request.maxTokens || 3000,
+        stream: request.stream || false
+      };
+
+      console.log('🚀 发送多模态请求到:', url);
+      console.log('🔑 模型:', model.model);
+
+      const response = await axios.post(
+        url,
+        requestData,
+        {
+          headers: {
+            'Authorization': `Bearer ${model.apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000 // 30秒超时，多模态处理需要更长时间
+        }
+      );
+
+      console.log('📥 AI响应状态:', response.data.choices[0].finish_reason);
+
+      const message = response.data.choices[0].message;
+      let content = message.content;
+
+      // 处理Gemini 2.5 Pro的reasoning字段
+      if (!content && message.reasoning) {
+        console.log('🧠 检测到reasoning字段，使用reasoning作为内容');
+        content = message.reasoning;
+      }
+
+      // 如果还是没有内容，尝试从reasoning_details获取
+      if (!content && message.reasoning_details && message.reasoning_details.length > 0) {
+        console.log('🔍 从reasoning_details提取内容');
+        content = message.reasoning_details[0].text;
+      }
+
+      console.log('✅ 最终提取的内容:', content?.substring(0, 100) + '...');
+
+      return {
+        success: true,
+        content: content || '模型未返回内容',
+        usage: response.data.usage
+      };
+    } catch (error: any) {
+      console.error('多模态内容生成失败:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error?.message || error.message || '未知错误'
+      };
+    }
+  }
+
+  // 图片分析
+  async analyzeImages(request: ImageAnalysisRequest): Promise<ImageAnalysisResponse> {
+    const model = await this.getModel(request.modelId);
+    if (!model) {
+      return {
+        success: false,
+        results: [],
+        error: '模型不存在'
+      };
+    }
+
+    if (!model.capabilities?.imageAnalysis) {
+      return {
+        success: false,
+        results: [],
+        error: '该模型不支持图片分析功能'
+      };
+    }
+
+    try {
+      const results = [];
+      
+      for (let i = 0; i < request.images.length; i++) {
+        const imageBase64 = request.images[i];
+        
+        // 构建多模态消息
+        const imageUrl = imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+        const prompt = request.prompt || this.getDefaultAnalysisPrompt(request.analysisType || 'description');
+        
+        console.log(`🖼️ 分析第 ${i + 1} 张图片`);
+        
+        const messages: MultimodalMessage[] = [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: prompt
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: imageUrl,
+                  detail: 'high'
+                }
+              }
+            ]
+          }
+        ];
+
+
+        const generateRequest: MultimodalGenerateRequest = {
+          modelId: request.modelId,
+          messages,
+          temperature: 0.3,
+          maxTokens: 20000  // 大幅增加token限制
+        };
+
+        const response = await this.generateMultimodalContent(generateRequest);
+        
+        if (response.success) {
+          results.push({
+            imageIndex: i,
+            description: response.content,
+            confidence: 0.9 // 暂时固定值，实际应该从模型返回
+          });
+        } else {
+          results.push({
+            imageIndex: i,
+            description: `分析失败: ${response.error}`,
+            confidence: 0
+          });
+        }
+      }
+
+      return {
+        success: true,
+        results
+      };
+    } catch (error: any) {
+      console.error('图片分析失败:', error);
+      return {
+        success: false,
+        results: [],
+        error: error.message || '未知错误'
+      };
+    }
+  }
+
+  // 获取默认分析提示词
+  private getDefaultAnalysisPrompt(analysisType: string): string {
+    switch (analysisType) {
+      case 'description':
+        return '描述这张图片，包括主要内容、物体、场景和颜色。用中文回答，限制在200字以内。';
+      case 'ocr':
+        return '识别图片中的文字内容。';
+      case 'classification':
+        return '对这张图片进行分类。';
+      case 'custom':
+        return '请描述这张图片的内容。用中文回答，简洁明了。';
+      default:
+        return '请描述这张图片。';
+    }
+  }
+
+  // 获取多模态模型列表
+  async getMultimodalModels(): Promise<AIModelListItem[]> {
+    const allModels = await this.getAllModels();
+    console.log('所有模型:', allModels.map(m => ({ 
+      id: m.id, 
+      name: m.name, 
+      model: m.model, 
+      multimodalSupport: m.multimodalSupport,
+      capabilities: m.capabilities 
+    })));
+    
+    const multimodalModels = allModels.filter(model => model.multimodalSupport);
+    console.log('多模态模型:', multimodalModels.map(m => ({ 
+      id: m.id, 
+      name: m.name, 
+      model: m.model 
+    })));
+    
+    return multimodalModels;
+  }
+
+  // 检测模型能力
+  async detectModelCapabilities(modelId: string): Promise<ModelCapabilities | null> {
+    const model = await this.getModel(modelId);
+    if (!model) {
+      return null;
+    }
+
+    // 根据模型名称推断能力（简化版本）
+    const modelName = model.model.toLowerCase();
+    const capabilities: ModelCapabilities = {
+      textGeneration: true, // 默认都支持文本生成
+      imageAnalysis: false,
+      visionUnderstanding: false,
+      documentAnalysis: false,
+      maxImageSize: 5 * 1024 * 1024, // 5MB
+      supportedImageFormats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+      maxImagesPerRequest: 4
+    };
+
+    // 根据常见的多模态模型名称判断
+    if (modelName.includes('vision') || 
+        modelName.includes('gpt-4v') || 
+        modelName.includes('gpt-4-vision') ||
+        modelName.includes('gpt-4o') ||
+        modelName.includes('claude-3') ||
+        modelName.includes('gemini') ||
+        modelName.includes('qwen-vl') ||
+        modelName.includes('moonshot-v1-vision') ||  // 只有vision版本支持
+        modelName.includes('glm-4v') ||
+        modelName.includes('yi-vision')) {
+      capabilities.imageAnalysis = true;
+      capabilities.visionUnderstanding = true;
+      capabilities.documentAnalysis = true;
+    }
+
+    return capabilities;
   }
 }
 

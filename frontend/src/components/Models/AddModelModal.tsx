@@ -17,7 +17,17 @@ export const AddModelModal: React.FC<AddModelModalProps> = ({ isOpen, onClose, o
     provider: 'openai',
     baseUrl: 'https://api.openai.com/v1',
     apiKey: '',
-    model: 'gpt-3.5-turbo'
+    model: 'gpt-3.5-turbo',
+    multimodalSupport: false,
+    capabilities: {
+      textGeneration: true,
+      imageAnalysis: false,
+      visionUnderstanding: false,
+      documentAnalysis: false,
+      maxImageSize: 5 * 1024 * 1024,
+      supportedImageFormats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+      maxImagesPerRequest: 4
+    }
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -85,7 +95,17 @@ export const AddModelModal: React.FC<AddModelModalProps> = ({ isOpen, onClose, o
         provider: 'openai',
         baseUrl: 'https://api.openai.com/v1',
         apiKey: '',
-        model: 'gpt-3.5-turbo'
+        model: 'gpt-3.5-turbo',
+        multimodalSupport: false,
+        capabilities: {
+          textGeneration: true,
+          imageAnalysis: false,
+          visionUnderstanding: false,
+          documentAnalysis: false,
+          maxImageSize: 5 * 1024 * 1024,
+          supportedImageFormats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+          maxImagesPerRequest: 4
+        }
       });
       setTestResult(null);
     } catch (error) {
@@ -207,6 +227,120 @@ export const AddModelModal: React.FC<AddModelModalProps> = ({ isOpen, onClose, o
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
+              )}
+            </div>
+
+            {/* 多模态支持 */}
+            <div className="border rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900">多模态支持</h3>
+                  <p className="text-xs text-gray-500">是否支持图片分析等多模态功能</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={formData.multimodalSupport}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    multimodalSupport: e.target.checked,
+                    capabilities: {
+                      ...formData.capabilities!,
+                      imageAnalysis: e.target.checked,
+                      visionUnderstanding: e.target.checked,
+                      documentAnalysis: e.target.checked
+                    }
+                  })}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+              </div>
+
+              {formData.multimodalSupport && (
+                <div className="space-y-3 pt-2 border-t">
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.capabilities?.imageAnalysis || false}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          capabilities: {
+                            ...formData.capabilities!,
+                            imageAnalysis: e.target.checked
+                          }
+                        })}
+                        className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <span>图片分析</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.capabilities?.visionUnderstanding || false}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          capabilities: {
+                            ...formData.capabilities!,
+                            visionUnderstanding: e.target.checked
+                          }
+                        })}
+                        className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <span>视觉理解</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.capabilities?.documentAnalysis || false}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          capabilities: {
+                            ...formData.capabilities!,
+                            documentAnalysis: e.target.checked
+                          }
+                        })}
+                        className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <span>文档分析</span>
+                    </label>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-700 mb-1">最大图片大小(MB)</label>
+                      <input
+                        type="number"
+                        value={Math.round((formData.capabilities?.maxImageSize || 0) / (1024 * 1024))}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          capabilities: {
+                            ...formData.capabilities!,
+                            maxImageSize: parseInt(e.target.value) * 1024 * 1024
+                          }
+                        })}
+                        min="1"
+                        max="20"
+                        className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-700 mb-1">最大图片数量</label>
+                      <input
+                        type="number"
+                        value={formData.capabilities?.maxImagesPerRequest || 1}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          capabilities: {
+                            ...formData.capabilities!,
+                            maxImagesPerRequest: parseInt(e.target.value)
+                          }
+                        })}
+                        min="1"
+                        max="10"
+                        className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
 

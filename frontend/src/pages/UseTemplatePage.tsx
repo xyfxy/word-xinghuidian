@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { FileText, Download, Sparkles, ChevronRight, Copy, Eye, ChevronDown, ChevronUp, Upload, X, ArrowLeft, Image as ImageIcon } from 'lucide-react'
+import { FileText, Download, Sparkles, ChevronRight, Copy, Eye, ChevronDown, ChevronUp, Upload, X, ArrowLeft, Image as ImageIcon, File, Loader } from 'lucide-react'
 import { templateService, aiService } from '../services/api'
 import { DocumentTemplate, ContentBlock, ImageContent } from '../types'
 // 已删除未使用的 useAISettings 导入
@@ -10,6 +10,7 @@ import { formatMaxKbContent } from '../utils/markdown'
 import SimpleRichTextEditor from '../components/Editor/SimpleRichTextEditor'
 import PreviewPanel from '../components/Editor/PreviewPanel'
 import ImageProcessorModal from '../components/ImageProcessor/ImageProcessorModal'
+import documentService from '../services/documentService'
 
 export default function UseTemplatePage() {
   const navigate = useNavigate()
@@ -386,47 +387,13 @@ export default function UseTemplatePage() {
       
       case 'ai-generated':
         return (
-          <div className="space-y-2">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1">
-                <SimpleRichTextEditor
-                  value={block.content as string}
-                  onChange={(content) => updateBlockContent(block.id, content)}
-                  placeholder="AI生成的内容将显示在这里..."
-                  minHeight={120}
-                />
-              </div>
-              <button
-                onClick={() => handleAIGenerate(block.id)}
-                disabled={isGenerating || !block.aiPrompt}
-                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                <Sparkles className="w-4 h-4" />
-                生成
-              </button>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-gray-700">
-                  提示词 <span className="text-gray-500">(点击内容块旁的复制按钮获取引用)</span>
-                </label>
-                {(block.modelId || block.aiSettings) && (
-                  <span className="text-xs px-2 py-1 bg-blue-100 text-blue-600 rounded">
-                    {block.modelId === 'maxkb' ? 'MaxKB' : 
-                     block.modelId ? '自定义模型' :
-                     block.aiSettings?.provider === 'maxkb' ? 'MaxKB' : '千问'}
-                  </span>
-                )}
-              </div>
-              <textarea
-                value={block.aiPrompt || ''}
-                onChange={(e) => updateBlockPrompt(block.id, e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                rows={2}
-                placeholder="输入AI提示词..."
-              />
-            </div>
-          </div>
+          <AIGeneratorBlockInput 
+            block={block}
+            updateBlockContent={updateBlockContent}
+            updateBlockPrompt={updateBlockPrompt}
+            handleAIGenerate={handleAIGenerate}
+            isGenerating={isGenerating}
+          />
         )
       
       case 'two-column':
@@ -757,4 +724,276 @@ export default function UseTemplatePage() {
       />
     </div>
   )
+
+}
+
+// AI生成块输入组件 - 作为独立组件
+interface AIGeneratorBlockInputProps {
+  block: ContentBlock;
+  updateBlockContent: (blockId: string, content: string | any) => void;
+  updateBlockPrompt: (blockId: string, aiPrompt: string) => void;
+  handleAIGenerate: (blockId: string) => void;
+  isGenerating: boolean;
+}
+
+const AIGeneratorBlockInput: React.FC<AIGeneratorBlockInputProps> = ({ 
+  block, 
+  updateBlockContent, 
+  updateBlockPrompt, 
+  handleAIGenerate, 
+  isGenerating 
+}) => {
+    const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
+    const [extractedContents, setExtractedContents] = useState<Map<string, string>>(new Map())
+    const [isExtracting, setIsExtracting] = useState(false)
+    const [showPreview, setShowPreview] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(event.target.files || [])
+      if (files.length === 0) return
+
+      const validation = documentService.validateFiles(files)
+      
+      if (validation.invalid.length > 0) {
+        const invalidMessages = validation.invalid.map(
+          ({ file, reason }) => `${file.name}: ${reason}`
+        ).join('\n')
+        toast.error(`以下文件无法上传：\n${invalidMessages}`)
+      }
+
+      if (validation.valid.length === 0) return
+
+      const newFiles = [...uploadedFiles, ...validation.valid]
+      setUploadedFiles(newFiles)
+      setIsExtracting(true)
+
+      try {
+        const result = await documentService.extractTextFromDocuments(validation.valid)
+        console.log('文档提取结果:', result) // 调试日志
+        
+        if (result.success && result.data) {
+          const newContents = new Map(extractedContents)
+          
+          result.data.files.forEach(file => {
+            console.log('处理文件:', file.fileName, file.success) // 调试日志
+            if (file.success && file.text) {
+              newContents.set(file.fileName, file.text)
+            }
+          })
+          
+          console.log('新内容Map:', newContents) // 调试日志
+          setExtractedContents(newContents)
+          updatePromptWithDocuments(newContents)
+          
+          if (result.data.failedCount > 0) {
+            toast.error(`${result.data.failedCount} 个文件解析失败`)
+          } else {
+            toast.success(`成功提取 ${result.data.successCount} 个文件`)
+          }
+        }
+      } catch (error) {
+        console.error('提取文档文本错误:', error)
+        toast.error('提取文档文本失败，请重试')
+      } finally {
+        setIsExtracting(false)
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
+        }
+      }
+    }
+
+    const updatePromptWithDocuments = (contents: Map<string, string>) => {
+      const basePrompt = block.aiPrompt?.split('\n===== 文档内容 ====')[0] || ''
+      
+      if (contents.size === 0) {
+        updateBlockPrompt(block.id, basePrompt)
+        return
+      }
+      
+      let documentsText = '\n===== 文档内容 =====\n\n'
+      
+      contents.forEach((text, fileName) => {
+        documentsText += `【${fileName}】\n${text}\n\n`
+      })
+      
+      const newPrompt = basePrompt + documentsText
+      updateBlockPrompt(block.id, newPrompt)
+    }
+
+    const handleRemoveFile = (fileName: string) => {
+      const newFiles = uploadedFiles.filter(f => f.name !== fileName)
+      setUploadedFiles(newFiles)
+      
+      const newContents = new Map(extractedContents)
+      newContents.delete(fileName)
+      setExtractedContents(newContents)
+      
+      updatePromptWithDocuments(newContents)
+    }
+
+    const handleRemoveAllFiles = () => {
+      setUploadedFiles([])
+      setExtractedContents(new Map())
+      
+      const basePrompt = block.aiPrompt?.split('\n===== 文档内容 ====')[0] || ''
+      updateBlockPrompt(block.id, basePrompt)
+    }
+
+    return (
+      <div className="space-y-3">
+        {/* AI生成内容编辑器 */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1">
+            <SimpleRichTextEditor
+              value={block.content as string}
+              onChange={(content) => updateBlockContent(block.id, content)}
+              placeholder="AI生成的内容将显示在这里..."
+              minHeight={120}
+            />
+          </div>
+          <button
+            onClick={() => handleAIGenerate(block.id)}
+            disabled={isGenerating || (!block.aiPrompt?.trim() && uploadedFiles.length === 0)}
+            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <Sparkles className="w-4 h-4" />
+            生成
+          </button>
+        </div>
+
+        {/* 提示词输入 */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-gray-700">
+              提示词 <span className="text-gray-500">(可点击内容块旁的复制按钮获取引用)</span>
+            </label>
+            {(block.modelId || block.aiSettings) && (
+              <span className="text-xs px-2 py-1 bg-blue-100 text-blue-600 rounded">
+                {block.modelId === 'maxkb' ? 'MaxKB' : 
+                 block.modelId ? '自定义模型' :
+                 block.aiSettings?.provider === 'maxkb' ? 'MaxKB' : '千问'}
+              </span>
+            )}
+          </div>
+          <textarea
+            value={block.aiPrompt?.split('\n===== 文档内容 ====')[0] || ''}
+            onChange={(e) => {
+              const basePrompt = e.target.value
+              const documentsSection = block.aiPrompt?.split('\n===== 文档内容 ====')[1] || ''
+              const newPrompt = documentsSection 
+                ? basePrompt + '\n===== 文档内容 ====' + documentsSection
+                : basePrompt
+              updateBlockPrompt(block.id, newPrompt)
+            }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono"
+            rows={3}
+            placeholder="输入AI提示词..."
+            disabled={isExtracting}
+          />
+        </div>
+
+        {/* 文档上传区域 */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium text-gray-700">
+              参考文档 ({uploadedFiles.length}/10)
+            </label>
+            {uploadedFiles.length > 0 && (
+              <button
+                onClick={handleRemoveAllFiles}
+                className="text-xs text-red-600 hover:text-red-800"
+              >
+                清除所有
+              </button>
+            )}
+          </div>
+          
+          {/* 已上传文件列表 */}
+          {uploadedFiles.length > 0 && (
+            <div className="mb-3 space-y-2 max-h-32 overflow-y-auto">
+              {uploadedFiles.map((file) => (
+                <div key={file.name} className="flex items-center justify-between bg-white p-2 rounded border border-gray-200">
+                  <div className="flex items-center space-x-2 flex-1">
+                    <File className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-700 truncate">{file.name}</p>
+                      <p className="text-xs text-gray-500">
+                        {(file.size / 1024).toFixed(1)} KB
+                        {extractedContents.has(file.name) && (
+                          <span className="ml-2 text-green-600">✓ 已解析</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleRemoveFile(file.name)}
+                    className="p-1 hover:bg-gray-100 rounded ml-2"
+                    disabled={isExtracting}
+                  >
+                    <X className="h-4 w-4 text-gray-500" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {/* 上传按钮 */}
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 bg-gray-50 hover:bg-gray-100 transition-colors">
+            <div className="text-center">
+              <Upload className="h-6 w-6 text-gray-400 mx-auto mb-1" />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isExtracting || uploadedFiles.length >= 10}
+                className="text-sm text-gray-600 hover:text-gray-800 disabled:opacity-50"
+              >
+                点击上传文档（支持 .docx, .doc, .txt）
+              </button>
+            </div>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".doc,.docx,.txt"
+            onChange={handleFileUpload}
+            multiple
+            className="hidden"
+          />
+        </div>
+
+        {/* 文档内容预览 */}
+        {extractedContents.size > 0 && (
+          <div>
+            <button
+              onClick={() => setShowPreview(!showPreview)}
+              className="flex items-center text-sm text-blue-600 hover:text-blue-800"
+            >
+              {showPreview ? <ChevronDown className="h-4 w-4 mr-1" /> : <ChevronRight className="h-4 w-4 mr-1" />}
+              预览文档内容 ({extractedContents.size} 个文件)
+            </button>
+            
+            {showPreview && (
+              <div className="mt-2 space-y-2 max-h-40 overflow-y-auto">
+                {Array.from(extractedContents.entries()).map(([fileName, content]) => (
+                  <div key={fileName} className="bg-gray-50 p-3 rounded border border-gray-200">
+                    <h5 className="text-sm font-medium text-gray-700 mb-1">【{fileName}】</h5>
+                    <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono max-h-24 overflow-y-auto">
+                      {content.substring(0, 300)}
+                      {content.length > 300 && '...'}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {isExtracting && (
+          <div className="flex items-center justify-center py-2">
+            <Loader className="animate-spin h-4 w-4 mr-2 text-blue-500" />
+            <span className="text-sm text-gray-600">正在解析文档内容...</span>
+          </div>
+        )}
+      </div>
+    )
 }

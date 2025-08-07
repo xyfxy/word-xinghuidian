@@ -127,6 +127,11 @@ export const ModelList: React.FC<ModelListProps> = ({ models, onEdit, onRefresh 
                 <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded">
                   {model.model}
                 </span>
+                {model.multimodalSupport && (
+                  <span className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded">
+                    多模态
+                  </span>
+                )}
                 {!model.isActive && (
                   <span className="px-2 py-1 text-xs bg-gray-100 text-gray-500 rounded">
                     已禁用
@@ -137,6 +142,14 @@ export const ModelList: React.FC<ModelListProps> = ({ models, onEdit, onRefresh 
               <div className="text-sm text-gray-600 space-y-1">
                 <p>API地址：{model.baseUrl}</p>
                 <p>API Key：{model.apiKeyPreview}</p>
+                {model.multimodalSupport && model.capabilities && (
+                  <div className="text-xs text-gray-500">
+                    <span>支持能力：</span>
+                    {model.capabilities.imageAnalysis && <span className="text-purple-600 mr-2">图片分析</span>}
+                    {model.capabilities.visionUnderstanding && <span className="text-purple-600 mr-2">视觉理解</span>}
+                    {model.capabilities.documentAnalysis && <span className="text-purple-600 mr-2">文档分析</span>}
+                  </div>
+                )}
                 <div className="flex items-center gap-4 text-xs text-gray-500">
                   <span>创建于 {formatDate(model.createdAt)}</span>
                   {model.lastTested && (

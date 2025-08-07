@@ -1,15 +1,16 @@
-import React, { useMemo, useRef, lazy, Suspense } from 'react';
+import React, { useMemo, useRef, lazy, Suspense, useState } from 'react';
 import 'react-quill/dist/quill.snow.css';
 
 // 懒加载 ReactQuill 以提升性能
 const ReactQuill = lazy(() => import('react-quill'));
 import { ContentBlock, TwoColumnContent, ImageContent, PageBreakContent, TableContent } from '../../types';
-import { Sparkles, Type, Loader, ChevronDown, ChevronRight, Image as ImageIcon, FileText, Upload, AlignLeft, AlignCenter, AlignRight, Table } from 'lucide-react';
+import { Sparkles, Type, Loader, ChevronDown, ChevronRight, Image as ImageIcon, FileText, Upload, AlignLeft, AlignCenter, AlignRight, Table, File, X } from 'lucide-react';
 import { Switch } from '@headlessui/react';
 import BlockFormatPanel from './BlockFormatPanel';
 import TableEditor from './TableEditor';
 import useEditorStore from '../../stores/editorStore';
 import { AIBlockSettings } from './AIBlockSettings';
+import documentService from '../../services/documentService';
 
 interface ContentBlockEditorProps {
     block: ContentBlock;
@@ -412,45 +413,12 @@ const ContentBlockEditor: React.FC<ContentBlockEditorProps> = ({
 
                     {/* AI生成块 */}
                     {isAiBlock && (
-                        <div className="my-4 space-y-3">
-                            <div className="flex justify-between items-center">
-                               <h4 className="text-sm font-medium text-gray-800">AI 生成指令</h4>
-                            </div>
-                            
-                            <textarea
-                                value={block.aiPrompt || ''}
-                                onChange={(e) => onUpdate({ aiPrompt: e.target.value })}
-                                placeholder="输入AI生成提示词..."
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                                rows={3}
-                            />
-                            
-                            <button
-                                onClick={onGenerateAI}
-                                disabled={isGenerating}
-                                className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {isGenerating ? (
-                                    <>
-                                        <Loader className="animate-spin h-4 w-4 mr-2" />
-                                        生成中...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Sparkles className="h-4 w-4 mr-2" />
-                                        生成内容
-                                    </>
-                                )}
-                            </button>
-
-                            {/* AI设置面板 */}
-                            <AIBlockSettings 
-                              block={block} 
-                              onUpdate={onUpdate}
-                              defaultModelId={null}
-                              defaultSystemPrompt="你是一个专业的文档编写助手。"
-                            />
-                        </div>
+                        <AIGeneratorBlock
+                            block={block}
+                            onUpdate={onUpdate}
+                            onGenerateAI={onGenerateAI}
+                            isGenerating={isGenerating}
+                        />
                     )}
 
                     {/* 图片块 */}
@@ -566,6 +534,277 @@ const ContentBlockEditor: React.FC<ContentBlockEditorProps> = ({
                     )}
                 </div>
             )}
+        </div>
+    );
+};
+
+// AI生成块组件
+const AIGeneratorBlock: React.FC<{
+    block: ContentBlock;
+    onUpdate: (updates: Partial<ContentBlock>) => void;
+    onGenerateAI: () => void;
+    isGenerating: boolean;
+}> = ({ block, onUpdate, onGenerateAI, isGenerating }) => {
+    const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+    const [extractedContents, setExtractedContents] = useState<Map<string, string>>(new Map());
+    const [isExtracting, setIsExtracting] = useState(false);
+    const [showPreview, setShowPreview] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(event.target.files || []);
+        if (files.length === 0) return;
+
+        // 验证文件
+        const validation = documentService.validateFiles(files);
+        
+        if (validation.invalid.length > 0) {
+            const invalidMessages = validation.invalid.map(
+                ({ file, reason }) => `${file.name}: ${reason}`
+            ).join('\n');
+            alert(`以下文件无法上传：\n${invalidMessages}`);
+        }
+
+        if (validation.valid.length === 0) return;
+
+        // 添加到已上传文件列表
+        const newFiles = [...uploadedFiles, ...validation.valid];
+        setUploadedFiles(newFiles);
+        setIsExtracting(true);
+
+        try {
+            const result = await documentService.extractTextFromDocuments(validation.valid);
+            if (result.success && result.data) {
+                const newContents = new Map(extractedContents);
+                
+                result.data.files.forEach(file => {
+                    if (file.success && file.text) {
+                        newContents.set(file.fileName, file.text);
+                    }
+                });
+                
+                setExtractedContents(newContents);
+                
+                // 更新提示词
+                updatePromptWithDocuments(newContents);
+                
+                if (result.data.failedCount > 0) {
+                    alert(`${result.data.failedCount} 个文件解析失败`);
+                }
+            }
+        } catch (error) {
+            console.error('提取文档文本错误:', error);
+            alert('提取文档文本失败，请重试');
+        } finally {
+            setIsExtracting(false);
+            // 清空文件输入
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    };
+
+    const updatePromptWithDocuments = (contents: Map<string, string>) => {
+        const basePrompt = block.aiPrompt?.split('\n===== 文档内容 ====')[0] || '';
+        
+        if (contents.size === 0) {
+            onUpdate({ aiPrompt: basePrompt });
+            return;
+        }
+        
+        let documentsText = '\n===== 文档内容 =====\n\n';
+        
+        contents.forEach((text, fileName) => {
+            documentsText += `\u3010${fileName}\u3011\n${text}\n\n`;
+        });
+        
+        const newPrompt = basePrompt + documentsText;
+        onUpdate({ aiPrompt: newPrompt });
+    };
+
+    const handleRemoveFile = (fileName: string) => {
+        const newFiles = uploadedFiles.filter(f => f.name !== fileName);
+        setUploadedFiles(newFiles);
+        
+        const newContents = new Map(extractedContents);
+        newContents.delete(fileName);
+        setExtractedContents(newContents);
+        
+        updatePromptWithDocuments(newContents);
+    };
+
+    const handleRemoveAllFiles = () => {
+        setUploadedFiles([]);
+        setExtractedContents(new Map());
+        
+        const basePrompt = block.aiPrompt?.split('\n===== 文档内容 ====')[0] || '';
+        onUpdate({ aiPrompt: basePrompt });
+    };
+
+    return (
+        <div className="my-4 space-y-3">
+            <div className="flex justify-between items-center">
+                <h4 className="text-sm font-medium text-gray-800">AI 生成指令</h4>
+            </div>
+            
+            {/* 输入方式选择 */}
+            <div className="space-y-3">
+                {/* 文本输入区域 */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">提示词</label>
+                    <textarea
+                        value={block.aiPrompt?.split('\n===== 文档内容 ====')[0] || ''}
+                        onChange={(e) => {
+                            const basePrompt = e.target.value;
+                            const documentsSection = block.aiPrompt?.split('\n===== 文档内容 ====')[1] || '';
+                            const newPrompt = documentsSection 
+                                ? basePrompt + '\n===== 文档内容 ====' + documentsSection
+                                : basePrompt;
+                            onUpdate({ aiPrompt: newPrompt });
+                        }}
+                        placeholder="输入AI生成提示词..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
+                        rows={4}
+                        disabled={isExtracting}
+                    />
+                </div>
+
+                {/* 文档上传区域 */}
+                <div>
+                    <div className="flex items-center justify-between mb-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                            参考文档 ({uploadedFiles.length}/10)
+                        </label>
+                        {uploadedFiles.length > 0 && (
+                            <button
+                                onClick={handleRemoveAllFiles}
+                                className="text-xs text-red-600 hover:text-red-800"
+                            >
+                                清除所有
+                            </button>
+                        )}
+                    </div>
+                    
+                    {/* 已上传文件列表 */}
+                    {uploadedFiles.length > 0 && (
+                        <div className="mb-3 space-y-2 max-h-40 overflow-y-auto">
+                            {uploadedFiles.map((file) => (
+                                <div key={file.name} className="flex items-center justify-between bg-white p-2 rounded border border-gray-200">
+                                    <div className="flex items-center space-x-2 flex-1">
+                                        <File className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-medium text-gray-700 truncate">{file.name}</p>
+                                            <p className="text-xs text-gray-500">
+                                                {(file.size / 1024).toFixed(1)} KB
+                                                {extractedContents.has(file.name) && (
+                                                    <span className="ml-2 text-green-600">
+                                                        ✓ 已解析
+                                                    </span>
+                                                )}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => handleRemoveFile(file.name)}
+                                        className="p-1 hover:bg-gray-100 rounded ml-2"
+                                        disabled={isExtracting}
+                                    >
+                                        <X className="h-4 w-4 text-gray-500" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    
+                    {/* 上传按钮 */}
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+                        <div className="text-center">
+                            <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                            <p className="text-sm text-gray-600 mb-2">
+                                拖拽文档到此处或点击选择
+                            </p>
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isExtracting || uploadedFiles.length >= 10}
+                                className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                选择文档
+                            </button>
+                            <p className="text-xs text-gray-500 mt-2">
+                                支持 .docx, .doc, .txt 格式，单个文件最大10MB
+                            </p>
+                        </div>
+                    </div>
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".doc,.docx,.txt"
+                        onChange={handleFileUpload}
+                        multiple
+                        className="hidden"
+                    />
+                </div>
+
+                {/* 文档内容预览 */}
+                {extractedContents.size > 0 && (
+                    <div>
+                        <button
+                            onClick={() => setShowPreview(!showPreview)}
+                            className="flex items-center text-sm text-blue-600 hover:text-blue-800"
+                        >
+                            {showPreview ? <ChevronDown className="h-4 w-4 mr-1" /> : <ChevronRight className="h-4 w-4 mr-1" />}
+                            预览文档内容 ({extractedContents.size} 个文件)
+                        </button>
+                        
+                        {showPreview && (
+                            <div className="mt-2 space-y-2 max-h-60 overflow-y-auto">
+                                {Array.from(extractedContents.entries()).map(([fileName, content]) => (
+                                    <div key={fileName} className="bg-gray-50 p-3 rounded border border-gray-200">
+                                        <h5 className="text-sm font-medium text-gray-700 mb-1">【{fileName}】</h5>
+                                        <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono max-h-32 overflow-y-auto">
+                                            {content.substring(0, 500)}
+                                            {content.length > 500 && '...'}
+                                        </pre>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {isExtracting && (
+                    <div className="flex items-center justify-center py-2">
+                        <Loader className="animate-spin h-4 w-4 mr-2 text-blue-500" />
+                        <span className="text-sm text-gray-600">正在解析文档内容...</span>
+                    </div>
+                )}
+            </div>
+
+            <button
+                onClick={onGenerateAI}
+                disabled={isGenerating || isExtracting || (!block.aiPrompt?.trim() && uploadedFiles.length === 0)}
+                className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                {isGenerating ? (
+                    <>
+                        <Loader className="animate-spin h-4 w-4 mr-2" />
+                        生成中...
+                    </>
+                ) : (
+                    <>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        生成内容
+                    </>
+                )}
+            </button>
+
+            {/* AI设置面板 */}
+            <AIBlockSettings 
+                block={block} 
+                onUpdate={onUpdate}
+                defaultModelId={null}
+                defaultSystemPrompt="你是一个专业的文档编写助手。"
+            />
         </div>
     );
 };

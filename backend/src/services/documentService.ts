@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { DocumentTemplate, ContentBlock, DocumentFormat } from '../types';
+import mammoth from 'mammoth';
 
 class DocumentService {
   // 导入Word文档
@@ -382,6 +383,77 @@ class DocumentService {
         orientation: 'portrait',
       },
     };
+  }
+
+  // 从Word文档提取纯文本
+  async extractTextFromWord(filePath: string): Promise<string> {
+    try {
+      // 使用convertToHtml获取更多结构信息
+      const options: any = { 
+        path: filePath,
+        styleMap: [
+          "p[style-name='Heading 1'] => h1:fresh",
+          "p[style-name='Heading 2'] => h2:fresh",
+          "p[style-name='Heading 3'] => h3:fresh",
+          "p[style-name='标题 1'] => h1:fresh",
+          "p[style-name='标题 2'] => h2:fresh",
+          "p[style-name='标题 3'] => h3:fresh"
+        ]
+      };
+      const result = await mammoth.convertToHtml(options);
+      
+      // 将HTML转换为更清晰的文本格式
+      let text = result.value;
+      
+      // 处理标题
+      text = text.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '\n# $1\n');
+      text = text.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '\n## $1\n');
+      text = text.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '\n### $1\n');
+      
+      // 处理段落
+      text = text.replace(/<p[^>]*>(.*?)<\/p>/gi, '\n$1\n');
+      
+      // 处理列表
+      text = text.replace(/<ul[^>]*>/gi, '\n');
+      text = text.replace(/<\/ul>/gi, '\n');
+      text = text.replace(/<ol[^>]*>/gi, '\n');
+      text = text.replace(/<\/ol>/gi, '\n');
+      text = text.replace(/<li[^>]*>(.*?)<\/li>/gi, '\u2022 $1\n');
+      
+      // 处理粗体和斜体
+      text = text.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
+      text = text.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
+      text = text.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
+      text = text.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*');
+      
+      // 处理换行
+      text = text.replace(/<br[^>]*>/gi, '\n');
+      
+      // 清除其他HTML标签
+      text = text.replace(/<[^>]+>/g, '');
+      
+      // 处理HTML实体
+      text = text.replace(/&nbsp;/g, ' ');
+      text = text.replace(/&lt;/g, '<');
+      text = text.replace(/&gt;/g, '>');
+      text = text.replace(/&amp;/g, '&');
+      text = text.replace(/&quot;/g, '"');
+      text = text.replace(/&#39;/g, "'");
+      
+      // 清理多余的空行
+      text = text.replace(/\n{3,}/g, '\n\n');
+      text = text.trim();
+      
+      // 添加文档解析信息
+      if (result.messages && result.messages.length > 0) {
+        console.log('Word文档解析消息:', result.messages);
+      }
+      
+      return text;
+    } catch (error) {
+      console.error('提取Word文档文本失败:', error);
+      throw new Error('提取Word文档文本失败，请检查文件格式');
+    }
   }
 }
 

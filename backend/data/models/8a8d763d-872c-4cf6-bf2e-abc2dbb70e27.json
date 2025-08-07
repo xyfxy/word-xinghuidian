@@ -6,9 +6,25 @@
   "apiKey": "6bd47d43e47e9b85636157f2ab1bbff98d74a7e31337927702af0f2b7c2aa895c681ba22e1c2be06163cc1dc009aee11",
   "model": "Moonshot-Kimi-K2-Instruct",
   "createdAt": "2025-07-31T04:04:04.883Z",
-  "updatedAt": "2025-07-31T04:23:22.504Z",
+  "updatedAt": "2025-08-07T05:23:38.121Z",
   "isActive": true,
-  "lastTested": "2025-07-31T04:23:22.506Z",
+  "lastTested": "2025-08-07T05:23:38.123Z",
   "testStatus": "success",
-  "responseTime": 1021
+  "responseTime": 987,
+  "multimodalSupport": false,
+  "capabilities": {
+    "textGeneration": true,
+    "imageAnalysis": false,
+    "visionUnderstanding": false,
+    "documentAnalysis": false,
+    "maxImageSize": 5242880,
+    "supportedImageFormats": [
+      "jpg",
+      "jpeg",
+      "png",
+      "gif",
+      "webp"
+    ],
+    "maxImagesPerRequest": 4
+  }
 }

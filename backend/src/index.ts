@@ -15,6 +15,10 @@ import modelRoutes from './routes/models';
 import templateRoutes from './routes/templates';
 import documentRoutes from './routes/documents';
 import wordImportRoutes from './routes/wordImport';
+import imageRoutes from './routes/images';
+
+// 导入错误处理工具
+import { errorLogger } from './utils/asyncHandler';
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -62,6 +66,7 @@ app.use('/api/models', modelRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/word-import', wordImportRoutes);
+app.use('/api/images', imageRoutes);
 
 // 健康检查
 app.get('/api/health', (req, res) => {
@@ -80,9 +85,17 @@ app.use('/api/*', (req, res) => {
   });
 });
 
+// 错误日志中间件
+app.use(errorLogger);
+
 // 全局错误处理
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('错误:', err);
+  // 确保错误被记录到控制台
+  if (!res.headersSent) {
+    console.error('\n🚨 最终错误处理器被调用:');
+    console.error('错误:', err);
+    console.error('堆栈:', err.stack);
+  }
   
   res.status(err.status || 500).json({
     success: false,

@@ -1,0 +1,30 @@
+{
+  "id": "990d1d15-a080-4a48-931a-7e2412a18178",
+  "name": "gemini-2.5-pro",
+  "provider": "custom",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "apiKey": "b9cb976ee4833b35c9d53b9cefe7483ff6602e92201772ce3c954c88189ee9c5fd16a91a1a3acd6025fe51e4811bd9f0b1c76243aa8dcd1ca8324a86feb7f8d4ab306bab9ef56d47247d0758a476c52a",
+  "model": "google/gemini-2.5-pro",
+  "createdAt": "2025-08-07T05:07:53.144Z",
+  "updatedAt": "2025-08-07T05:23:42.430Z",
+  "isActive": true,
+  "multimodalSupport": true,
+  "capabilities": {
+    "textGeneration": true,
+    "imageAnalysis": true,
+    "visionUnderstanding": true,
+    "documentAnalysis": true,
+    "maxImageSize": 5242880,
+    "supportedImageFormats": [
+      "jpg",
+      "jpeg",
+      "png",
+      "gif",
+      "webp"
+    ],
+    "maxImagesPerRequest": 5
+  },
+  "lastTested": "2025-08-07T05:23:42.437Z",
+  "testStatus": "success",
+  "responseTime": 2911
+}
