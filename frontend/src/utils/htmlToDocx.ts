@@ -23,17 +23,25 @@ const FONT_NAME_MAP: { [key: string]: string } = {
 const convertUnitToPt = (value: number, unit: 'pt' | 'cm' | 'px' | 'char' | undefined, fontSize: number = 12): number => {
   if (value === 0) return 0;
   
+  let result: number;
   switch (unit) {
     case 'cm':
-      return value * (72 / 2.54);
+      result = value * (72 / 2.54);
+      break;
     case 'px':
-      return value * (72 / 96);
+      result = value * (72 / 96);
+      break;
     case 'char':
-      return value * fontSize;
+      result = value * fontSize;
+      break;
     case 'pt':
     default:
-      return value;
+      result = value;
+      break;
   }
+  
+  // 确保结果为非负值，避免docx库报错
+  return Math.max(0, result);
 };
 
 // 获取对齐方式
