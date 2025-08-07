@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { X, Upload, Eye, Sparkles, ArrowDown, Image as ImageIcon, FileText } from 'lucide-react';
+import { X, Upload, Sparkles, ArrowDown, Image as ImageIcon, Copy, CopyCheck } from 'lucide-react';
 import { imageService } from '../../services/imageService';
 import { modelService } from '../../services/modelService';
 import { AIModelListItem, ImageAnalysisResult } from '../../types/model';
 import { toast } from '../../utils/toast';
+import { formatMaxKbContent } from '../../utils/markdown';
 
 interface ImageProcessorModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ interface ProcessedImage {
   base64: string;
   preview: string;
   analysis?: ImageAnalysisResult;
+  formattedAnalysis?: string;
   isAnalyzing?: boolean;
 }
 
@@ -31,6 +33,8 @@ export default function ImageProcessorModal({
   const [analysisPrompt, setAnalysisPrompt] = useState('请详细描述这些图片的内容，包括主要物体、场景、文字等信息。');
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [copiedAll, setCopiedAll] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 加载多模态模型
@@ -180,10 +184,21 @@ export default function ImageProcessorModal({
       });
 
       if (response.success) {
-        // 更新图片分析结果
-        const updatedImages = images.map((img, index) => ({
-          ...img,
-          analysis: response.results[index]
+        // 更新图片分析结果并格式化
+        const updatedImages = await Promise.all(images.map(async (img, index) => {
+          const analysis = response.results[index];
+          let formattedAnalysis = '';
+          
+          if (analysis?.description) {
+            // 格式化分析结果，支持Markdown
+            formattedAnalysis = await formatMaxKbContent(analysis.description);
+          }
+          
+          return {
+            ...img,
+            analysis,
+            formattedAnalysis
+          };
         }));
         
         setImages(updatedImages);
@@ -216,11 +231,42 @@ export default function ImageProcessorModal({
     handleClose();
   };
 
+  // 复制单个分析结果
+  const copyAnalysis = (index: number, text: string) => {
+    const formattedText = `图片${index + 1}：${text}`;
+    navigator.clipboard.writeText(formattedText);
+    setCopiedIndex(index);
+    toast.success('已复制到剪贴板');
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  // 复制所有分析结果
+  const copyAllAnalysis = () => {
+    const allAnalysis = images
+      .filter(img => img.analysis?.description)
+      .map((img) => {
+        const actualIndex = images.indexOf(img);
+        return `图片${actualIndex + 1}：${img.analysis!.description}`;
+      })
+      .join('\n\n');
+    
+    if (allAnalysis) {
+      navigator.clipboard.writeText(allAnalysis);
+      setCopiedAll(true);
+      toast.success('已复制所有分析结果');
+      setTimeout(() => setCopiedAll(false), 2000);
+    } else {
+      toast.error('没有可复制的分析结果');
+    }
+  };
+
   // 关闭弹窗
   const handleClose = () => {
     setImages([]);
     setSelectedModel('');
     setAnalysisPrompt('请详细描述这些图片的内容，包括主要物体、场景、文字等信息。');
+    setCopiedIndex(null);
+    setCopiedAll(false);
     onClose();
   };
 
@@ -357,7 +403,27 @@ export default function ImageProcessorModal({
             {/* 分析结果 */}
             {images.some(img => img.analysis) && (
               <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-900">分析结果</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium text-gray-900">分析结果</h3>
+                  {images.filter(img => img.analysis).length > 1 && (
+                    <button
+                      onClick={copyAllAnalysis}
+                      className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center gap-1 transition-colors"
+                    >
+                      {copiedAll ? (
+                        <>
+                          <CopyCheck className="w-4 h-4 text-green-600" />
+                          <span className="text-green-600">已复制全部</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" />
+                          <span>复制全部结果</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
                 <div className="space-y-3">
                   {images.map((image, index) => (
                     image.analysis && (
@@ -371,15 +437,35 @@ export default function ImageProcessorModal({
                             />
                           </div>
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="text-sm font-medium text-gray-900">图片 {index + 1}</span>
-                              <span className="text-xs px-2 py-1 bg-green-100 text-green-600 rounded">
-                                已分析
-                              </span>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-900">图片 {index + 1}</span>
+                                <span className="text-xs px-2 py-1 bg-green-100 text-green-600 rounded">
+                                  已分析
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => copyAnalysis(index, image.analysis!.description || '')}
+                                className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                                title="复制分析结果"
+                              >
+                                {copiedIndex === index ? (
+                                  <CopyCheck className="w-4 h-4 text-green-600" />
+                                ) : (
+                                  <Copy className="w-4 h-4" />
+                                )}
+                              </button>
                             </div>
-                            <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded border">
-                              {image.analysis?.description || '无分析结果'}
-                            </div>
+                            {image.formattedAnalysis ? (
+                              <div 
+                                className="text-sm text-gray-700 bg-gray-50 p-3 rounded border prose prose-sm max-w-none"
+                                dangerouslySetInnerHTML={{ __html: image.formattedAnalysis }}
+                              />
+                            ) : (
+                              <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded border">
+                                {image.analysis?.description || '无分析结果'}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

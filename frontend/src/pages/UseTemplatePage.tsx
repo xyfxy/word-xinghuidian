@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { FileText, Download, Sparkles, ChevronRight, Copy, Eye, ChevronDown, ChevronUp, Upload, X, ArrowLeft, Image as ImageIcon } from 'lucide-react'
 import { templateService, aiService } from '../services/api'
 import { DocumentTemplate, ContentBlock, ImageContent } from '../types'
-import { ImageAnalysisResult } from '../types/model'
 // 已删除未使用的 useAISettings 导入
 import { toast } from '../utils/toast'
 import { exportToWord } from '../utils/document'

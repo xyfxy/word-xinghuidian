@@ -3,7 +3,9 @@ import {
   AIModelListItem, 
   AIModelCreateRequest, 
   AIModelUpdateRequest,
-  AIModelTestResult 
+  AIModelTestResult,
+  ModelCapabilities,
+  MultimodalGenerateRequest
 } from '../types/model';
 
 export const modelService = {
@@ -122,6 +124,60 @@ export const modelService = {
       throw new Error('测试连接失败');
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : '测试连接失败');
+    }
+  },
+
+  // 获取多模态模型列表
+  async getMultimodalModels(): Promise<AIModelListItem[]> {
+    try {
+      const response = await api.get<{ success: boolean; data: AIModelListItem[] }>('/models/multimodal');
+      if (response.data.success) {
+        return response.data.data.map(model => ({
+          ...model,
+          createdAt: new Date(model.createdAt),
+          updatedAt: new Date(model.updatedAt),
+          lastTested: model.lastTested ? new Date(model.lastTested) : undefined
+        }));
+      }
+      throw new Error('获取多模态模型列表失败');
+    } catch (error: any) {
+      console.error('多模态API调用详细错误:', error);
+      console.error('错误响应:', error.response?.data);
+      console.error('错误状态:', error.response?.status);
+      
+      // 如果是404，说明API不存在，降级处理
+      if (error.response?.status === 404) {
+        console.log('多模态API不存在，尝试降级处理...');
+        throw new Error('多模态API不存在');
+      }
+      
+      throw new Error(error.response?.data?.message || error.message || '获取多模态模型列表失败');
+    }
+  },
+
+  // 多模态内容生成
+  async generateMultimodalContent(request: MultimodalGenerateRequest): Promise<any> {
+    try {
+      const response = await api.post<{ success: boolean; data: any }>('/models/multimodal/generate', request);
+      if (response.data.success) {
+        return response.data.data;
+      }
+      throw new Error('多模态内容生成失败');
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : '多模态内容生成失败');
+    }
+  },
+
+  // 检测模型能力
+  async detectModelCapabilities(modelId: string): Promise<ModelCapabilities> {
+    try {
+      const response = await api.get<{ success: boolean; data: ModelCapabilities }>(`/models/${modelId}/capabilities`);
+      if (response.data.success) {
+        return response.data.data;
+      }
+      throw new Error('检测模型能力失败');
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : '检测模型能力失败');
     }
   }
 };
