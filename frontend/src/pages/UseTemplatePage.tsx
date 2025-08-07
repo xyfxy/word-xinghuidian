@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { FileText, Download, Sparkles, ChevronRight, Copy, Eye, ChevronDown, ChevronUp, Upload, X, ArrowLeft } from 'lucide-react'
+import { FileText, Download, Sparkles, ChevronRight, Copy, Eye, ChevronDown, ChevronUp, Upload, X, ArrowLeft, Image as ImageIcon } from 'lucide-react'
 import { templateService, aiService } from '../services/api'
 import { DocumentTemplate, ContentBlock, ImageContent } from '../types'
+import { ImageAnalysisResult } from '../types/model'
 // 已删除未使用的 useAISettings 导入
 import { toast } from '../utils/toast'
 import { exportToWord } from '../utils/document'
 import { formatMaxKbContent } from '../utils/markdown'
 import SimpleRichTextEditor from '../components/Editor/SimpleRichTextEditor'
 import PreviewPanel from '../components/Editor/PreviewPanel'
+import ImageProcessorModal from '../components/ImageProcessor/ImageProcessorModal'
 
 export default function UseTemplatePage() {
   const navigate = useNavigate()
@@ -24,6 +26,7 @@ export default function UseTemplatePage() {
   const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>({})
   const [previewWidth, setPreviewWidth] = useState(730)
   const [isResizing, setIsResizing] = useState(false)
+  const [showImageProcessor, setShowImageProcessor] = useState(false)
   // 已删除未使用的 getSettingsForBlock
 
   useEffect(() => {
@@ -483,6 +486,50 @@ export default function UseTemplatePage() {
     }
   }
 
+  // 处理图片插入
+  const handleInsertImages = (images: { base64: string; filename: string }[]) => {
+    if (!selectedTemplate) return;
+
+    // 查找所有现有的图片内容块，按位置排序
+    const imageBlocks = contentBlocks
+      .filter(block => block.type === 'image')
+      .sort((a, b) => a.position - b.position);
+
+    if (imageBlocks.length === 0) {
+      toast.error('模板中没有图片内容块可以替换');
+      return;
+    }
+
+    // 按顺序替换现有图片块的内容
+    const updatedBlocks = contentBlocks.map(block => {
+      if (block.type === 'image') {
+        const imageIndex = imageBlocks.findIndex(ib => ib.id === block.id);
+        if (imageIndex >= 0 && imageIndex < images.length) {
+          const imageData = images[imageIndex];
+          return {
+            ...block,
+            content: {
+              ...(block.content as ImageContent),
+              src: imageData.base64,
+              alt: imageData.filename,
+              title: imageData.filename
+            } as ImageContent
+          };
+        }
+      }
+      return block;
+    });
+
+    setContentBlocks(updatedBlocks);
+    
+    const replacedCount = Math.min(images.length, imageBlocks.length);
+    toast.success(`成功替换 ${replacedCount} 个图片内容块`);
+    
+    if (images.length > imageBlocks.length) {
+      toast.warning(`还有 ${images.length - imageBlocks.length} 张图片未能插入，模板中图片块不足`);
+    }
+  };
+
   // 判断是否所有块都已展开
   const allBlocksExpanded = Object.values(expandedBlocks).every(v => v)
 
@@ -565,6 +612,14 @@ export default function UseTemplatePage() {
                           >
                             <Eye className="w-4 h-4" />
                             预览
+                          </button>
+                          <button
+                            onClick={() => setShowImageProcessor(true)}
+                            className="px-3 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 text-sm flex items-center gap-2 transition-colors"
+                            title="图片处理模块"
+                          >
+                            <ImageIcon className="w-4 h-4" />
+                            图片处理
                           </button>
                           <button
                             onClick={handleGenerateAllAI}
@@ -694,6 +749,13 @@ export default function UseTemplatePage() {
           </div>
         )}
       </div>
+
+      {/* 图片处理弹窗 */}
+      <ImageProcessorModal
+        isOpen={showImageProcessor}
+        onClose={() => setShowImageProcessor(false)}
+        onInsertImages={handleInsertImages}
+      />
     </div>
   )
 }
