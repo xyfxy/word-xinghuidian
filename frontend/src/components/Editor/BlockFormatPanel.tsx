@@ -122,9 +122,330 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
         </div>
       )}
 
-      {/* 字体设置 */}
+      {/* 标题格式设置 */}
+      <div className="space-y-3 mb-4">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-medium text-gray-600">标题格式分离</p>
+          <label className="inline-flex items-center">
+            <input
+              type="checkbox"
+              checked={blockFormat.enableHeadingFormat || false}
+              onChange={(e) => onUpdate({ 
+                format: { 
+                  ...blockFormat, 
+                  enableHeadingFormat: e.target.checked,
+                  headingFormat: e.target.checked ? (blockFormat.headingFormat || {}) : undefined
+                }
+              })}
+              className="form-checkbox h-4 w-4 text-blue-600"
+            />
+            <span className="ml-2 text-sm text-gray-700">启用</span>
+          </label>
+        </div>
+        <p className="text-xs text-gray-500">
+          启用后，标题（如一级标题、二级标题等）和正文可以使用不同的格式设置
+        </p>
+      </div>
+
+      {blockFormat.enableHeadingFormat && (
+        <div className="border-l-4 border-blue-200 pl-4 mb-4 space-y-3">
+          <p className="text-xs font-medium text-blue-600">标题专用格式</p>
+          
+          {/* 标题字体设置 */}
+          <div className="space-y-3">
+            <p className="text-xs font-medium text-gray-600">标题字体</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor={`heading-font-family-${block.id}`} className="label-text">字体</label>
+                <select
+                  id={`heading-font-family-${block.id}`}
+                  value={blockFormat.headingFormat?.font?.family || globalFormat.font.family}
+                  onChange={(e) => onUpdate({ 
+                    format: { 
+                      ...blockFormat, 
+                      headingFormat: { 
+                        ...blockFormat.headingFormat, 
+                        font: { ...(blockFormat.headingFormat?.font || {}), family: e.target.value } 
+                      } 
+                    } 
+                  })}
+                  className="input-field"
+                >
+                  {FONT_FAMILIES.map(font => <option key={font} value={font}>{font}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor={`heading-font-size-name-${block.id}`} className="label-text">字号</label>
+                <select
+                  id={`heading-font-size-name-${block.id}`}
+                  value={blockFormat.headingFormat?.font?.size || ''}
+                  onChange={(e) => onUpdate({ 
+                    format: { 
+                      ...blockFormat, 
+                      headingFormat: { 
+                        ...blockFormat.headingFormat, 
+                        font: { ...(blockFormat.headingFormat?.font || {}), size: Number(e.target.value) } 
+                      } 
+                    } 
+                  })}
+                  className="input-field"
+                >
+                  <option value="" disabled={getSizeName(blockFormat.headingFormat?.font?.size) !== ''}>选择字号</option>
+                  {Object.entries(FONT_SIZES).map(([name, value]) => (
+                    <option key={name} value={value}>{name} ({value}pt)</option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label htmlFor={`heading-font-size-${block.id}`} className="label-text">字号 (pt)</label>
+                <input
+                  type="number"
+                  id={`heading-font-size-${block.id}`}
+                  placeholder={String(globalFormat.font.size)}
+                  value={blockFormat.headingFormat?.font?.size || ''}
+                  onChange={(e) => onUpdate({ 
+                    format: { 
+                      ...blockFormat, 
+                      headingFormat: { 
+                        ...blockFormat.headingFormat, 
+                        font: { ...(blockFormat.headingFormat?.font || {}), size: Number(e.target.value) } 
+                      } 
+                    } 
+                  })}
+                  className="input-field"
+                />
+              </div>
+              <div>
+                <label htmlFor={`heading-color-${block.id}`} className="label-text">颜色</label>
+                <input
+                  type="color"
+                  id={`heading-color-${block.id}`}
+                  value={blockFormat.headingFormat?.font?.color || globalFormat.font.color}
+                  onChange={(e) => onUpdate({ 
+                    format: { 
+                      ...blockFormat, 
+                      headingFormat: { 
+                        ...blockFormat.headingFormat, 
+                        font: { ...(blockFormat.headingFormat?.font || {}), color: e.target.value } 
+                      } 
+                    } 
+                  })}
+                  className="input-field h-10"
+                />
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center">
+                <input 
+                  type="checkbox" 
+                  checked={blockFormat.headingFormat?.font?.bold || false} 
+                  onChange={(e) => onUpdate({ 
+                    format: { 
+                      ...blockFormat, 
+                      headingFormat: { 
+                        ...blockFormat.headingFormat, 
+                        font: { ...(blockFormat.headingFormat?.font || {}), bold: e.target.checked } 
+                      } 
+                    } 
+                  })}
+                  className="form-checkbox" 
+                />
+                <span className="ml-2">加粗</span>
+              </label>
+              <label className="flex items-center">
+                <input 
+                  type="checkbox" 
+                  checked={blockFormat.headingFormat?.font?.italic || false} 
+                  onChange={(e) => onUpdate({ 
+                    format: { 
+                      ...blockFormat, 
+                      headingFormat: { 
+                        ...blockFormat.headingFormat, 
+                        font: { ...(blockFormat.headingFormat?.font || {}), italic: e.target.checked } 
+                      } 
+                    } 
+                  })}
+                  className="form-checkbox" 
+                />
+                <span className="ml-2">斜体</span>
+              </label>
+              <label className="flex items-center">
+                <input 
+                  type="checkbox" 
+                  checked={blockFormat.headingFormat?.font?.underline || false} 
+                  onChange={(e) => onUpdate({ 
+                    format: { 
+                      ...blockFormat, 
+                      headingFormat: { 
+                        ...blockFormat.headingFormat, 
+                        font: { ...(blockFormat.headingFormat?.font || {}), underline: e.target.checked } 
+                      } 
+                    } 
+                  })}
+                  className="form-checkbox" 
+                />
+                <span className="ml-2">下划线</span>
+              </label>
+            </div>
+          </div>
+
+          {/* 标题段落设置 */}
+          <div className="space-y-3">
+            <p className="text-xs font-medium text-gray-600">标题段落</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor={`heading-alignment-${block.id}`} className="label-text">对齐方式</label>
+                <select 
+                  id={`heading-alignment-${block.id}`} 
+                  value={blockFormat.headingFormat?.paragraph?.alignment || globalFormat.paragraph.alignment} 
+                  onChange={(e) => onUpdate({ 
+                    format: { 
+                      ...blockFormat, 
+                      headingFormat: { 
+                        ...blockFormat.headingFormat, 
+                        paragraph: { ...(blockFormat.headingFormat?.paragraph || {}), alignment: e.target.value as any } 
+                      } 
+                    } 
+                  })}
+                  className="input-field"
+                >
+                  <option value="left">左对齐</option>
+                  <option value="center">居中</option>
+                  <option value="right">右对齐</option>
+                  <option value="justify">两端对齐</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor={`heading-line-height-${block.id}`} className="label-text">行高</label>
+                <input 
+                  type="number" 
+                  step="0.1"
+                  id={`heading-line-height-${block.id}`} 
+                  placeholder={String(globalFormat.paragraph.lineHeight)} 
+                  value={blockFormat.headingFormat?.paragraph?.lineHeight || ''} 
+                  onChange={(e) => onUpdate({ 
+                    format: { 
+                      ...blockFormat, 
+                      headingFormat: { 
+                        ...blockFormat.headingFormat, 
+                        paragraph: { ...(blockFormat.headingFormat?.paragraph || {}), lineHeight: Number(e.target.value) } 
+                      } 
+                    } 
+                  })}
+                  className="input-field" 
+                />
+              </div>
+            </div>
+            
+            {/* 标题缩进设置 */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-gray-600">标题缩进</p>
+              <div className="flex items-center space-x-1">
+                <label htmlFor={`heading-indent-first-${block.id}`} className="label-text w-12">首行</label>
+                <input 
+                  type="number" 
+                  id={`heading-indent-first-${block.id}`} 
+                  placeholder={String(globalFormat.paragraph.indent.firstLine)} 
+                  value={blockFormat.headingFormat?.paragraph?.indent?.firstLine || ''} 
+                  onChange={(e) => onUpdate({ 
+                    format: { 
+                      ...blockFormat, 
+                      headingFormat: { 
+                        ...blockFormat.headingFormat, 
+                        paragraph: { 
+                          ...(blockFormat.headingFormat?.paragraph || {}), 
+                          indent: { 
+                            ...(blockFormat.headingFormat?.paragraph?.indent || {}), 
+                            firstLine: Number(e.target.value) 
+                          } 
+                        } 
+                      } 
+                    } 
+                  })}
+                  className="input-field" 
+                />
+                <select 
+                  value={blockFormat.headingFormat?.paragraph?.indent?.firstLineUnit || 'pt'} 
+                  onChange={(e) => onUpdate({ 
+                    format: { 
+                      ...blockFormat, 
+                      headingFormat: { 
+                        ...blockFormat.headingFormat, 
+                        paragraph: { 
+                          ...(blockFormat.headingFormat?.paragraph || {}), 
+                          indent: { 
+                            ...(blockFormat.headingFormat?.paragraph?.indent || {}), 
+                            firstLineUnit: e.target.value as any 
+                          } 
+                        } 
+                      } 
+                    } 
+                  })}
+                  className="input-field"
+                >
+                  <option value="pt">pt</option>
+                  <option value="cm">cm</option>
+                  <option value="px">px</option>
+                  <option value="char">字符</option>
+                </select>
+              </div>
+              <div className="flex items-center space-x-1">
+                <label htmlFor={`heading-indent-left-${block.id}`} className="label-text w-12">左侧</label>
+                <input 
+                  type="number" 
+                  id={`heading-indent-left-${block.id}`} 
+                  placeholder={String(globalFormat.paragraph.indent.left)} 
+                  value={blockFormat.headingFormat?.paragraph?.indent?.left || ''} 
+                  onChange={(e) => onUpdate({ 
+                    format: { 
+                      ...blockFormat, 
+                      headingFormat: { 
+                        ...blockFormat.headingFormat, 
+                        paragraph: { 
+                          ...(blockFormat.headingFormat?.paragraph || {}), 
+                          indent: { 
+                            ...(blockFormat.headingFormat?.paragraph?.indent || {}), 
+                            left: Number(e.target.value) 
+                          } 
+                        } 
+                      } 
+                    } 
+                  })}
+                  className="input-field" 
+                />
+                <select 
+                  value={blockFormat.headingFormat?.paragraph?.indent?.leftUnit || 'pt'} 
+                  onChange={(e) => onUpdate({ 
+                    format: { 
+                      ...blockFormat, 
+                      headingFormat: { 
+                        ...blockFormat.headingFormat, 
+                        paragraph: { 
+                          ...(blockFormat.headingFormat?.paragraph || {}), 
+                          indent: { 
+                            ...(blockFormat.headingFormat?.paragraph?.indent || {}), 
+                            leftUnit: e.target.value as any 
+                          } 
+                        } 
+                      } 
+                    } 
+                  })}
+                  className="input-field"
+                >
+                  <option value="pt">pt</option>
+                  <option value="cm">cm</option>
+                  <option value="px">px</option>
+                  <option value="char">字符</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 正文字体设置 */}
       <div className="space-y-3">
-        <p className="text-xs font-medium text-gray-600">字体</p>
+        <p className="text-xs font-medium text-gray-600">{blockFormat.enableHeadingFormat ? '正文字体' : '字体'}</p>
         <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor={`font-family-${block.id}`} className="label-text">字体</label>
@@ -189,9 +510,9 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
         </div>
       </div>
 
-      {/* 段落设置 */}
+      {/* 正文段落设置 */}
       <div className="mt-4 space-y-3">
-        <p className="text-xs font-medium text-gray-600">段落</p>
+        <p className="text-xs font-medium text-gray-600">{blockFormat.enableHeadingFormat ? '正文段落' : '段落'}</p>
         <div className="grid grid-cols-2 gap-3">
            <div>
               <label htmlFor={`line-height-${block.id}`} className="label-text">行高</label>
@@ -217,9 +538,9 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
         </div>
       </div>
 
-      {/* 缩进设置 */}
+      {/* 正文缩进设置 */}
       <div className="space-y-3">
-        <p className="text-xs font-medium text-gray-600">缩进</p>
+        <p className="text-xs font-medium text-gray-600">{blockFormat.enableHeadingFormat ? '正文缩进' : '缩进'}</p>
         <div className="grid grid-cols-1 gap-2">
             <div className="flex items-center space-x-1">
               <label htmlFor={`indent-first-${block.id}`} className="label-text w-12">首行</label>

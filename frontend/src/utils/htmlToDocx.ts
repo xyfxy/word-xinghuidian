@@ -237,6 +237,29 @@ export const convertHTMLToDocxParagraphs = (
           ...blockFormat?.paragraph?.indent 
         } 
       };
+
+  // 标题格式设置
+  let headingFontSettings = finalFontSettings;
+  let headingParagraphSettings = finalParagraphSettings;
+
+  if (blockFormat?.enableHeadingFormat && blockFormat?.headingFormat) {
+    // 标题字体设置（优先使用标题设置，否则使用正文设置）
+    headingFontSettings = {
+      ...finalFontSettings,
+      ...blockFormat.headingFormat.font
+    };
+
+    // 标题段落设置
+    headingParagraphSettings = {
+      ...finalParagraphSettings,
+      ...blockFormat.headingFormat.paragraph,
+      indent: {
+        ...finalParagraphSettings.indent,
+        ...blockFormat.headingFormat.paragraph?.indent
+      }
+    };
+  }
+
   if (!htmlContent) return [];
   
   // 创建临时DOM元素来解析HTML
@@ -256,23 +279,23 @@ export const convertHTMLToDocxParagraphs = (
        case 'h4':
        case 'h5':
        case 'h6':
-         // 标题处理
+         // 标题处理 - 使用标题专用格式设置
          const headingLevel = parseInt(tagName.charAt(1)) as 1 | 2 | 3 | 4 | 5 | 6;
-         const headingRuns = parseHTMLNode(element, {}, finalFontSettings);
+         const headingRuns = parseHTMLNode(element, {}, headingFontSettings);
          
          if (headingRuns.length > 0) {
-           const indent = finalParagraphSettings.indent;
-           const fontSize = finalFontSettings.size;
-           const border = finalParagraphSettings.border?.bottom;
+           const indent = headingParagraphSettings.indent;
+           const fontSize = headingFontSettings.size;
+           const border = headingParagraphSettings.border?.bottom;
            
            paragraphs.push(new Paragraph({
              children: headingRuns,
              heading: [HeadingLevel.HEADING_1, HeadingLevel.HEADING_2, HeadingLevel.HEADING_3, 
                       HeadingLevel.HEADING_4, HeadingLevel.HEADING_5, HeadingLevel.HEADING_6][headingLevel - 1],
              spacing: {
-               line: Math.round(finalParagraphSettings.lineHeight * 240), // 转换为TWIPS
-               after: finalParagraphSettings.paragraphSpacing * 20,
-               before: finalParagraphSettings.spaceBefore * 20,
+               line: Math.round(headingParagraphSettings.lineHeight * 240), // 转换为TWIPS
+               after: headingParagraphSettings.paragraphSpacing * 20,
+               before: headingParagraphSettings.spaceBefore * 20,
              },
              indent: {
                firstLine: convertUnitToPt(indent.firstLine, indent.firstLineUnit, fontSize) * 20,
@@ -287,7 +310,7 @@ export const convertHTMLToDocxParagraphs = (
                  space: border.space || 1,
                }
              } : undefined,
-             alignment: getAlignmentType(finalParagraphSettings.alignment),
+             alignment: getAlignmentType(headingParagraphSettings.alignment),
            }));
          }
          break;

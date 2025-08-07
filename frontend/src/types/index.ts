@@ -159,6 +159,12 @@ export interface ContentBlock {
   maxTokens?: number; // 最大token数
 }
 
+// 标题格式设置
+export interface HeadingFormatSettings {
+  font?: Partial<FontSettings>;
+  paragraph?: DeepPartial<ParagraphSettings>;
+}
+
 // 块级格式
 export interface BlockFormat {
   useGlobalFormat?: boolean;
@@ -166,6 +172,9 @@ export interface BlockFormat {
   paragraph?: DeepPartial<ParagraphSettings>;
   style?: 'normal' | 'heading1' | 'heading2' | 'heading3' | 'quote';
   columnRatio?: number;
+  // 标题格式分离相关设置
+  enableHeadingFormat?: boolean; // 是否启用标题格式分离
+  headingFormat?: HeadingFormatSettings; // 标题的专用格式设置
 }
 
 // AI生成请求

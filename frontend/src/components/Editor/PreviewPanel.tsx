@@ -231,11 +231,80 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
                 lineHeight: 'inherit',
                 ...defaultFontStyle,
             };
+
+            // 如果启用了标题格式分离，生成标题样式
+            let headingStyles = '';
+            if (block.format?.enableHeadingFormat && block.format?.headingFormat) {
+                const headingFormat = block.format.headingFormat;
+                const blockId = `block-${block.id}`;
+                
+                // 获取标题字体设置（优先使用标题设置，否则使用正文设置或全局设置）
+                const headingFontFamily = headingFormat.font?.family || 
+                    (shouldUseGlobal ? template.format.font.family : (block.format.font?.family || template.format.font.family));
+                const headingFontSize = headingFormat.font?.size || 
+                    (shouldUseGlobal ? template.format.font.size : (block.format.font?.size || template.format.font.size));
+                const headingColor = headingFormat.font?.color || 
+                    (shouldUseGlobal ? template.format.font.color : (block.format.font?.color || template.format.font.color));
+                const headingBold = headingFormat.font?.bold !== undefined ? headingFormat.font.bold : 
+                    (shouldUseGlobal ? template.format.font.bold : (block.format.font?.bold || template.format.font.bold));
+                const headingItalic = headingFormat.font?.italic !== undefined ? headingFormat.font.italic : 
+                    (shouldUseGlobal ? template.format.font.italic : (block.format.font?.italic || template.format.font.italic));
+                const headingUnderline = headingFormat.font?.underline !== undefined ? headingFormat.font.underline : 
+                    (shouldUseGlobal ? template.format.font.underline : (block.format.font?.underline || template.format.font.underline));
+
+                // 获取标题段落设置
+                const headingAlignment = headingFormat.paragraph?.alignment || 
+                    (shouldUseGlobal ? template.format.paragraph.alignment : (block.format.paragraph?.alignment || template.format.paragraph.alignment));
+                const headingLineHeight = headingFormat.paragraph?.lineHeight || 
+                    (shouldUseGlobal ? template.format.paragraph.lineHeight : (block.format.paragraph?.lineHeight || template.format.paragraph.lineHeight));
+                
+                // 获取标题缩进设置
+                const headingIndentFirst = headingFormat.paragraph?.indent?.firstLine !== undefined 
+                    ? convertUnit(
+                        headingFormat.paragraph.indent.firstLine,
+                        headingFormat.paragraph.indent.firstLineUnit || 'pt',
+                        headingFontSize
+                      )
+                    : (shouldUseGlobal 
+                        ? convertUnit(template.format.paragraph.indent.firstLine, template.format.paragraph.indent.firstLineUnit, currentFontSize)
+                        : (block.format.paragraph?.indent?.firstLine 
+                            ? convertUnit(block.format.paragraph.indent.firstLine, block.format.paragraph.indent.firstLineUnit || 'pt', currentFontSize)
+                            : '0px'));
+                            
+                const headingIndentLeft = headingFormat.paragraph?.indent?.left !== undefined 
+                    ? convertUnit(
+                        headingFormat.paragraph.indent.left,
+                        headingFormat.paragraph.indent.leftUnit || 'pt',
+                        headingFontSize
+                      )
+                    : '0px';
+
+                headingStyles = `
+                    <style>
+                        .${blockId} h1, .${blockId} h2, .${blockId} h3, .${blockId} h4, .${blockId} h5, .${blockId} h6 {
+                            font-family: ${getFontFamilyWithFallback(headingFontFamily)} !important;
+                            font-size: ${headingFontSize}pt !important;
+                            color: ${headingColor} !important;
+                            font-weight: ${headingBold ? 'bold' : 'normal'} !important;
+                            font-style: ${headingItalic ? 'italic' : 'normal'} !important;
+                            text-decoration: ${headingUnderline ? 'underline' : 'none'} !important;
+                            text-align: ${headingAlignment} !important;
+                            line-height: ${headingLineHeight} !important;
+                            text-indent: ${headingIndentFirst} !important;
+                            padding-left: ${headingIndentLeft} !important;
+                            margin: 0 !important;
+                            padding-top: 0 !important;
+                            padding-bottom: 0 !important;
+                        }
+                    </style>
+                `;
+            }
             
             return (
                 <div key={block.id} style={wrapperStyle}>
+                    {headingStyles && <div dangerouslySetInnerHTML={{ __html: headingStyles }} />}
                     <div 
-                        className="preview-content-block"
+                        className={`preview-content-block ${block.format?.enableHeadingFormat ? `block-${block.id}` : ''}`}
                         dangerouslySetInnerHTML={{ __html: content }}
                         style={contentStyle}
                     />
@@ -281,11 +350,80 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
                 lineHeight: 'inherit',
                 ...defaultFontStyle,
             };
+
+            // 如果启用了标题格式分离，生成标题样式
+            let headingStyles = '';
+            if (block.format?.enableHeadingFormat && block.format?.headingFormat) {
+                const headingFormat = block.format.headingFormat;
+                const blockId = `block-${block.id}`;
+                
+                // 获取标题字体设置（优先使用标题设置，否则使用正文设置或全局设置）
+                const headingFontFamily = headingFormat.font?.family || 
+                    (shouldUseGlobal ? template.format.font.family : (block.format.font?.family || template.format.font.family));
+                const headingFontSize = headingFormat.font?.size || 
+                    (shouldUseGlobal ? template.format.font.size : (block.format.font?.size || template.format.font.size));
+                const headingColor = headingFormat.font?.color || 
+                    (shouldUseGlobal ? template.format.font.color : (block.format.font?.color || template.format.font.color));
+                const headingBold = headingFormat.font?.bold !== undefined ? headingFormat.font.bold : 
+                    (shouldUseGlobal ? template.format.font.bold : (block.format.font?.bold || template.format.font.bold));
+                const headingItalic = headingFormat.font?.italic !== undefined ? headingFormat.font.italic : 
+                    (shouldUseGlobal ? template.format.font.italic : (block.format.font?.italic || template.format.font.italic));
+                const headingUnderline = headingFormat.font?.underline !== undefined ? headingFormat.font.underline : 
+                    (shouldUseGlobal ? template.format.font.underline : (block.format.font?.underline || template.format.font.underline));
+
+                // 获取标题段落设置
+                const headingAlignment = headingFormat.paragraph?.alignment || 
+                    (shouldUseGlobal ? template.format.paragraph.alignment : (block.format.paragraph?.alignment || template.format.paragraph.alignment));
+                const headingLineHeight = headingFormat.paragraph?.lineHeight || 
+                    (shouldUseGlobal ? template.format.paragraph.lineHeight : (block.format.paragraph?.lineHeight || template.format.paragraph.lineHeight));
+                
+                // 获取标题缩进设置
+                const headingIndentFirst = headingFormat.paragraph?.indent?.firstLine !== undefined 
+                    ? convertUnit(
+                        headingFormat.paragraph.indent.firstLine,
+                        headingFormat.paragraph.indent.firstLineUnit || 'pt',
+                        headingFontSize
+                      )
+                    : (shouldUseGlobal 
+                        ? convertUnit(template.format.paragraph.indent.firstLine, template.format.paragraph.indent.firstLineUnit, currentFontSize)
+                        : (block.format.paragraph?.indent?.firstLine 
+                            ? convertUnit(block.format.paragraph.indent.firstLine, block.format.paragraph.indent.firstLineUnit || 'pt', currentFontSize)
+                            : '0px'));
+                            
+                const headingIndentLeft = headingFormat.paragraph?.indent?.left !== undefined 
+                    ? convertUnit(
+                        headingFormat.paragraph.indent.left,
+                        headingFormat.paragraph.indent.leftUnit || 'pt',
+                        headingFontSize
+                      )
+                    : '0px';
+
+                headingStyles = `
+                    <style>
+                        .${blockId} h1, .${blockId} h2, .${blockId} h3, .${blockId} h4, .${blockId} h5, .${blockId} h6 {
+                            font-family: ${getFontFamilyWithFallback(headingFontFamily)} !important;
+                            font-size: ${headingFontSize}pt !important;
+                            color: ${headingColor} !important;
+                            font-weight: ${headingBold ? 'bold' : 'normal'} !important;
+                            font-style: ${headingItalic ? 'italic' : 'normal'} !important;
+                            text-decoration: ${headingUnderline ? 'underline' : 'none'} !important;
+                            text-align: ${headingAlignment} !important;
+                            line-height: ${headingLineHeight} !important;
+                            text-indent: ${headingIndentFirst} !important;
+                            padding-left: ${headingIndentLeft} !important;
+                            margin: 0 !important;
+                            padding-top: 0 !important;
+                            padding-bottom: 0 !important;
+                        }
+                    </style>
+                `;
+            }
             
             return (
                 <div key={block.id} style={wrapperStyle}>
+                    {headingStyles && <div dangerouslySetInnerHTML={{ __html: headingStyles }} />}
                     <div 
-                        className="preview-content-block"
+                        className={`preview-content-block ${block.format?.enableHeadingFormat ? `block-${block.id}` : ''}`}
                         dangerouslySetInnerHTML={{ __html: content }}
                         style={contentStyle}
                     />
