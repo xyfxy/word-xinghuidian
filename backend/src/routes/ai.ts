@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { AIGenerateRequest } from '../types';
 import { generateMaxKbContent } from '../services/maxkbService';
 import qianwenService from '../services/qianwenService';
@@ -6,30 +6,33 @@ import qianwenService from '../services/qianwenService';
 const router = express.Router();
 
 // 生成内容
-router.post('/generate', async (req, res) => {
+router.post('/generate', async (req: Request, res: Response): Promise<void> => {
   try {
     const { prompt, maxLength = 3000, temperature = 0.7, context } = req.body as AIGenerateRequest;
 
     // 验证请求参数
     if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '请提供有效的提示词',
       });
+      return;
     }
 
     if (maxLength < 10 || maxLength > 10000) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '内容长度应在10-10000字符之间',
       });
+      return;
     }
 
     if (temperature < 0 || temperature > 1) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '温度参数应在0-1之间',
       });
+      return;
     }
 
     // 调用AI服务生成内容
@@ -51,14 +54,15 @@ router.post('/generate', async (req, res) => {
 });
 
 // 新增：通过MaxKB生成内容
-router.post('/generate-maxkb', async (req, res) => {
+router.post('/generate-maxkb', async (req: Request, res: Response): Promise<void> => {
   const { baseUrl, apiKey, messages, model } = req.body;
 
   if (!baseUrl || !apiKey || !messages || !Array.isArray(messages)) {
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       message: '请提供有效的MaxKB配置 (baseUrl, apiKey) 和 messages 数组',
     });
+    return;
   }
 
   try {
@@ -77,32 +81,35 @@ router.post('/generate-maxkb', async (req, res) => {
 });
 
 // 批量生成内容
-router.post('/batch-generate', async (req, res) => {
+router.post('/batch-generate', async (req: Request, res: Response): Promise<void> => {
   try {
     const { requests } = req.body;
 
     // 验证请求参数
     if (!Array.isArray(requests) || requests.length === 0) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '请提供有效的批量生成请求',
       });
+      return;
     }
 
     if (requests.length > 10) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '批量生成最多支持10个请求',
       });
+      return;
     }
 
     // 验证每个请求
     for (const request of requests) {
       if (!request.prompt || typeof request.prompt !== 'string') {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: '所有请求必须包含有效的提示词',
         });
+        return;
       }
     }
 
@@ -123,15 +130,16 @@ router.post('/batch-generate', async (req, res) => {
 });
 
 // 优化提示词
-router.post('/optimize-prompt', async (req, res) => {
+router.post('/optimize-prompt', async (req: Request, res: Response): Promise<void> => {
   try {
     const { prompt } = req.body;
 
     if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '请提供有效的提示词',
       });
+      return;
     }
 
     const optimizedPrompt = await qianwenService.optimizePrompt(prompt.trim());
@@ -153,7 +161,7 @@ router.post('/optimize-prompt', async (req, res) => {
 });
 
 // AI服务健康检查
-router.get('/health', async (req, res) => {
+router.get('/health', async (req: Request, res: Response): Promise<void> => {
   try {
     const health = await qianwenService.checkHealth();
     
@@ -167,6 +175,7 @@ router.get('/health', async (req, res) => {
         success: false,
         message: health.message,
       });
+      return;
     }
   } catch (error) {
     console.error('AI服务健康检查错误:', error);

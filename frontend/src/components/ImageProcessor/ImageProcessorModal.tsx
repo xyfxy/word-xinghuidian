@@ -30,7 +30,7 @@ export default function ImageProcessorModal({
   const [images, setImages] = useState<ProcessedImage[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [multimodalModels, setMultimodalModels] = useState<AIModelListItem[]>([]);
-  const [analysisPrompt, setAnalysisPrompt] = useState('请详细描述这些图片的内容，包括主要物体、场景、文字等信息。');
+  const [analysisPrompt, setAnalysisPrompt] = useState('多模态提取要点，保持原顺序，禁止扩写，输出讨论大纲。');
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -264,7 +264,7 @@ export default function ImageProcessorModal({
   const handleClose = () => {
     setImages([]);
     setSelectedModel('');
-    setAnalysisPrompt('请详细描述这些图片的内容，包括主要物体、场景、文字等信息。');
+    setAnalysisPrompt('多模态提取要点，保持原顺序，禁止扩写，输出讨论大纲。');
     setCopiedIndex(null);
     setCopiedAll(false);
     onClose();

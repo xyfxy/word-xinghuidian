@@ -1,5 +1,6 @@
 // 基础Word文档解析服务 - 使用mammoth.js
 import * as mammoth from 'mammoth';
+import { JSDOM } from 'jsdom';
 import { 
   ParsedDocument, 
   ParsedElement, 
@@ -51,24 +52,18 @@ export class WordParserService {
   private parseHtmlToElements(html: string): ParsedElement[] {
     const elements: ParsedElement[] = [];
     
-    // 简单的HTML解析 - 在实际应用中可能需要使用更强大的HTML解析库
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
+    // 在 Node 环境使用 JSDOM 解析 HTML
+    const dom = new JSDOM(html);
+    const { document, NodeFilter } = dom.window as any;
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
     
-    // 遍历所有元素
-    const walker = document.createTreeWalker(
-      doc.body,
-      NodeFilter.SHOW_ELEMENT,
-      null
-    );
-    
-    let node;
-    while (node = walker.nextNode()) {
-      const element = node as HTMLElement;
+    let node = walker.nextNode() as any;
+    while (node) {
+      const element = node as any;
       const tagName = element.tagName.toLowerCase();
       
       // 跳过空元素
-      const content = element.textContent?.trim();
+      const content = (element.textContent || '').trim();
       if (!content) continue;
       
       // 根据标签类型创建元素
@@ -79,7 +74,7 @@ export class WordParserService {
           id: this.generateId(),
           type: 'heading',
           content,
-          html: element.outerHTML,
+          html: (element as any).outerHTML || '',
           level
         });
       } else if (tagName === 'p') {
@@ -88,7 +83,7 @@ export class WordParserService {
           id: this.generateId(),
           type: 'paragraph',
           content,
-          html: element.outerHTML
+          html: (element as any).outerHTML || ''
         });
       } else if (tagName === 'ul' || tagName === 'ol') {
         // 列表
@@ -96,7 +91,7 @@ export class WordParserService {
           id: this.generateId(),
           type: 'list',
           content,
-          html: element.outerHTML
+          html: (element as any).outerHTML || ''
         });
       } else if (tagName === 'table') {
         // 表格
@@ -104,9 +99,10 @@ export class WordParserService {
           id: this.generateId(),
           type: 'table',
           content,
-          html: element.outerHTML
+          html: (element as any).outerHTML || ''
         });
       }
+      node = walker.nextNode() as any;
     }
     
     return elements;

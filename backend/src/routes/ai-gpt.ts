@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { AIServiceFactory } from '../services/ai/aiServiceFactory';
 import { GPTRequest, AIServiceFactoryConfig } from '../types/ai';
 import { modelService } from '../services/modelService';
@@ -6,7 +6,7 @@ import { modelService } from '../services/modelService';
 const router = express.Router();
 
 // 通用GPT接口 - 生成内容
-router.post('/generate', async (req, res) => {
+router.post('/generate', async (req: Request, res: Response): Promise<void> => {
   try {
     const { 
       messages, 
@@ -25,19 +25,21 @@ router.post('/generate', async (req, res) => {
 
     // 验证请求参数
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '请提供有效的消息列表',
       });
+      return;
     }
 
     // 验证消息格式
     for (const message of messages) {
       if (!message.role || !message.content) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: '消息格式错误：每条消息必须包含role和content',
         });
+        return;
       }
     }
 
@@ -49,17 +51,19 @@ router.post('/generate', async (req, res) => {
       // 使用模型管理中的配置
       const savedModel = await modelService.getModel(modelId);
       if (!savedModel) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: '指定的模型不存在',
         });
+        return;
       }
       
       if (!savedModel.isActive) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: '指定的模型已禁用',
         });
+        return;
       }
       
       const config: AIServiceFactoryConfig = {
@@ -85,10 +89,11 @@ router.post('/generate', async (req, res) => {
       try {
         aiService = AIServiceFactory.getDefaultService();
       } catch (error) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'AI服务未配置，请提供API密钥、modelId或在环境变量中配置',
         });
+        return;
       }
     }
 
@@ -118,16 +123,17 @@ router.post('/generate', async (req, res) => {
 });
 
 // 兼容旧接口 - 将旧的generate请求转换为GPT格式
-router.post('/generate-legacy', async (req, res) => {
+router.post('/generate-legacy', async (req: Request, res: Response): Promise<void> => {
   try {
     const { prompt, maxLength = 3000, temperature = 0.7, context } = req.body;
 
     // 验证请求参数
     if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '请提供有效的提示词',
       });
+      return;
     }
 
     // 构建GPT格式的消息
@@ -172,7 +178,7 @@ router.post('/generate-legacy', async (req, res) => {
 });
 
 // AI服务健康检查
-router.get('/health', async (req, res) => {
+router.get('/health', async (req: Request, res: Response): Promise<void> => {
   try {
     const { provider, apiKey, baseUrl } = req.query;
 
@@ -189,10 +195,11 @@ router.get('/health', async (req, res) => {
       try {
         aiService = AIServiceFactory.getDefaultService();
       } catch (error) {
-        return res.status(503).json({
+        res.status(503).json({
           success: false,
           message: 'AI服务未配置',
         });
+        return;
       }
     }
 
@@ -208,6 +215,7 @@ router.get('/health', async (req, res) => {
         success: false,
         message: health.message,
       });
+      return;
     }
   } catch (error) {
     console.error('AI服务健康检查错误:', error);
@@ -219,7 +227,7 @@ router.get('/health', async (req, res) => {
 });
 
 // 获取支持的AI服务提供商列表
-router.get('/providers', (req, res) => {
+router.get('/providers', (req: Request, res: Response) => {
   res.json({
     success: true,
     data: [
@@ -245,14 +253,15 @@ router.get('/providers', (req, res) => {
 });
 
 // MaxKB 生成内容接口（兼容旧接口）
-router.post('/generate-maxkb', async (req, res) => {
+router.post('/generate-maxkb', async (req: Request, res: Response): Promise<void> => {
   const { baseUrl, apiKey, messages, model, maxTokens } = req.body;
 
   if (!baseUrl || !apiKey || !messages || !Array.isArray(messages)) {
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       message: '请提供有效的MaxKB配置 (baseUrl, apiKey) 和 messages 数组',
     });
+    return;
   }
 
   try {

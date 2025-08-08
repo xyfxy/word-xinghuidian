@@ -323,7 +323,7 @@ export const exportToWord = async (template: DocumentTemplate): Promise<void> =>
 
           if (imageContent.alignment === 'auto') {
             // 页面内容区宽度 = 页面宽度 - 左右边距
-            const pageWidth = effectivePageWidthPt;
+            const pageWidth = pageWidthPt;
             const marginLeft = template.format.page.margins.left || 72;
             const marginRight = template.format.page.margins.right || 72;
             const contentWidth = pageWidth - marginLeft - marginRight;

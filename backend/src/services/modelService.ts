@@ -523,6 +523,8 @@ export class ModelService {
         return '识别图片中的文字内容。';
       case 'classification':
         return '对这张图片进行分类。';
+      case 'outline':
+        return '多模态提取要点，保持原顺序，禁止扩写，输出讨论大纲。请严格按照图片中显示的顺序提取文字内容，不得添加任何解释或补充，直接输出结构化的讨论大纲。用中文回答。';
       case 'custom':
         return '请描述这张图片的内容。用中文回答，简洁明了。';
       default:

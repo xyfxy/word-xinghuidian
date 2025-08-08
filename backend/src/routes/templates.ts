@@ -1,11 +1,11 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { DocumentTemplate } from '../types';
 import templateService from '../services/templateService';
 
 const router = express.Router();
 
 // 获取模板列表
-router.get('/', async (req, res) => {
+router.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const templates = await templateService.getAllTemplates();
     
@@ -23,24 +23,26 @@ router.get('/', async (req, res) => {
 });
 
 // 获取单个模板
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     
     if (!id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '模板ID不能为空',
       });
+      return;
     }
 
     const template = await templateService.getTemplateById(id);
     
     if (!template) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: '模板不存在',
       });
+      return;
     }
 
     res.json({
@@ -57,41 +59,45 @@ router.get('/:id', async (req, res) => {
 });
 
 // 保存新模板
-router.post('/', async (req, res) => {
+router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const templateData = req.body;
 
     // 验证必需字段
     if (!templateData.name || typeof templateData.name !== 'string') {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '模板名称不能为空',
       });
+      return;
     }
 
     if (!templateData.format || !templateData.content) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '模板格式和内容不能为空',
       });
+      return;
     }
 
     // 验证内容块
     if (!Array.isArray(templateData.content)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '模板内容必须是数组格式',
       });
+      return;
     }
 
     // 检查AI内容块是否有提示词
     const aiBlocks = templateData.content.filter((block: any) => block.type === 'ai-generated');
     for (const block of aiBlocks) {
       if (!block.aiPrompt || typeof block.aiPrompt !== 'string' || block.aiPrompt.trim().length === 0) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'AI生成内容块必须包含提示词',
         });
+        return;
       }
     }
 
@@ -112,25 +118,27 @@ router.post('/', async (req, res) => {
 });
 
 // 更新模板
-router.put('/:id', async (req, res) => {
+router.put('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const updateData = req.body;
 
     if (!id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '模板ID不能为空',
       });
+      return;
     }
 
     // 检查模板是否存在
     const existingTemplate = await templateService.getTemplateById(id);
     if (!existingTemplate) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: '模板不存在',
       });
+      return;
     }
 
     // 如果更新内容，验证AI内容块
@@ -138,10 +146,11 @@ router.put('/:id', async (req, res) => {
       const aiBlocks = updateData.content.filter((block: any) => block.type === 'ai-generated');
       for (const block of aiBlocks) {
         if (!block.aiPrompt || typeof block.aiPrompt !== 'string' || block.aiPrompt.trim().length === 0) {
-          return res.status(400).json({
+          res.status(400).json({
             success: false,
             message: 'AI生成内容块必须包含提示词',
           });
+          return;
         }
       }
     }
@@ -163,24 +172,26 @@ router.put('/:id', async (req, res) => {
 });
 
 // 删除模板
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
 
     if (!id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '模板ID不能为空',
       });
+      return;
     }
 
     // 检查模板是否存在
     const existingTemplate = await templateService.getTemplateById(id);
     if (!existingTemplate) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: '模板不存在',
       });
+      return;
     }
 
     await templateService.deleteTemplate(id);
@@ -199,25 +210,27 @@ router.delete('/:id', async (req, res) => {
 });
 
 // 复制模板
-router.post('/:id/duplicate', async (req, res) => {
+router.post('/:id/duplicate', async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { name } = req.body;
 
     if (!id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '模板ID不能为空',
       });
+      return;
     }
 
     // 检查模板是否存在
     const existingTemplate = await templateService.getTemplateById(id);
     if (!existingTemplate) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: '模板不存在',
       });
+      return;
     }
 
     const duplicatedTemplate = await templateService.duplicateTemplate(id, name);

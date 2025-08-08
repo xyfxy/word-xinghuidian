@@ -22,8 +22,7 @@ export class RuleMatcher {
         return this.matchCustom(element, rule);
       case 'heading-pattern':
         return this.matchHeadingPattern(element, rule);
-      case 'bold-pattern':
-        return this.matchBoldPattern(element, rule);
+      // 移除未定义的规则类型，避免类型不匹配
       default:
         return false;
     }
@@ -241,7 +240,7 @@ export class ContentGrouper {
             // 其他策略使用原有逻辑
             // 对于grouping为'single'的规则，只取当前元素
             if (rule.config.grouping === 'single') {
-              const group = {
+              const group: ContentBlockGroup = {
                 id: this.generateId(),
                 elements: [elements[i]],
                 suggestedType: rule.config.autoConvertToAI ? 'ai-generated' : 'text',

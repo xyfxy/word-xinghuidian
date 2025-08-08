@@ -1,27 +1,29 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { imageService } from '../services/imageService';
 import { v4 as uuidv4 } from 'uuid';
 
 const router = express.Router();
 
 // 上传并分析图片
-router.post('/upload-analyze', async (req, res) => {
+router.post('/upload-analyze', async (req: Request, res: Response): Promise<void> => {
   try {
     const { modelId, images, prompt, analysisType } = req.body;
     
     if (!modelId || !images || !Array.isArray(images) || images.length === 0) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '缺少必填字段或图片数据'
       });
+      return;
     }
 
     // 验证图片数量限制
     if (images.length > 10) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '一次最多只能处理10张图片'
       });
+      return;
     }
 
     const result = await imageService.analyzeImages(modelId, images, prompt, analysisType);
@@ -41,23 +43,25 @@ router.post('/upload-analyze', async (req, res) => {
 });
 
 // 异步分析图片
-router.post('/analyze-async', async (req, res) => {
+router.post('/analyze-async', async (req: Request, res: Response): Promise<void> => {
   try {
     const { modelId, images, prompt, analysisType } = req.body;
     
     if (!modelId || !images || !Array.isArray(images) || images.length === 0) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '缺少必填字段或图片数据'
       });
+      return;
     }
 
     // 验证图片数量限制
     if (images.length > 10) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '一次最多只能处理10张图片'
       });
+      return;
     }
 
     const taskId = uuidv4();
@@ -80,16 +84,17 @@ router.post('/analyze-async', async (req, res) => {
 });
 
 // 查询分析进度
-router.get('/analysis-status/:taskId', (req, res) => {
+router.get('/analysis-status/:taskId', (req: Request, res: Response) => {
   try {
     const { taskId } = req.params;
     const status = imageService.getProcessingStatus(taskId);
     
     if (!status) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: '任务不存在或已过期'
       });
+      return;
     }
     
     res.json({
@@ -111,24 +116,26 @@ router.get('/analysis-status/:taskId', (req, res) => {
 });
 
 // 保存图片文件
-router.post('/save', async (req, res) => {
+router.post('/save', async (req: Request, res: Response): Promise<void> => {
   try {
     const { base64Data, filename } = req.body;
     
     if (!base64Data) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '缺少图片数据'
       });
+      return;
     }
 
     // 验证图片
     const validation = imageService.validateImage(base64Data);
     if (!validation.valid) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: validation.error
       });
+      return;
     }
 
     const savedFilename = await imageService.saveBase64Image(base64Data, filename);
@@ -150,7 +157,7 @@ router.post('/save', async (req, res) => {
 });
 
 // 获取图片文件
-router.get('/:filename', async (req, res) => {
+router.get('/:filename', async (req: Request, res: Response): Promise<void> => {
   try {
     const { filename } = req.params;
     const base64Data = await imageService.readImageAsBase64(filename);
@@ -173,6 +180,7 @@ router.get('/:filename', async (req, res) => {
         success: false,
         message: '无效的图片数据'
       });
+      return;
     }
   } catch (error) {
     console.error('获取图片失败:', error);

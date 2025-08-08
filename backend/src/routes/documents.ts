@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { DocumentTemplate } from '../types';
@@ -77,13 +77,14 @@ const extractUpload = multer({
 });
 
 // 导入Word文档
-router.post('/import', upload.single('document'), async (req, res) => {
+router.post('/import', upload.single('document'), async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.file) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '请选择要导入的Word文档',
       });
+      return;
     }
 
     // 处理文件名编码
@@ -115,16 +116,17 @@ router.post('/import', upload.single('document'), async (req, res) => {
 });
 
 // 导出Word文档
-router.post('/export', async (req, res) => {
+router.post('/export', async (req: Request, res: Response): Promise<void> => {
   try {
     const template: DocumentTemplate = req.body;
 
     // 验证模板数据
     if (!template || !template.name || !template.content) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '模板数据不完整',
       });
+      return;
     }
 
     const buffer = await documentService.exportToWord(template);
@@ -145,15 +147,16 @@ router.post('/export', async (req, res) => {
 });
 
 // 预览文档内容
-router.post('/preview', async (req, res) => {
+router.post('/preview', async (req: Request, res: Response): Promise<void> => {
   try {
     const template: DocumentTemplate = req.body;
 
     if (!template || !template.content) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '模板数据不完整',
       });
+      return;
     }
 
     const htmlContent = await documentService.generatePreview(template);
@@ -172,15 +175,16 @@ router.post('/preview', async (req, res) => {
 });
 
 // 转换为PDF
-router.post('/export-pdf', async (req, res) => {
+router.post('/export-pdf', async (req: Request, res: Response): Promise<void> => {
   try {
     const template: DocumentTemplate = req.body;
 
     if (!template || !template.name || !template.content) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '模板数据不完整',
       });
+      return;
     }
 
     const buffer = await documentService.exportToPDF(template);
@@ -201,15 +205,16 @@ router.post('/export-pdf', async (req, res) => {
 });
 
 // 验证文档格式
-router.post('/validate', async (req, res) => {
+router.post('/validate', async (req: Request, res: Response): Promise<void> => {
   try {
     const template: DocumentTemplate = req.body;
 
     if (!template) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '请提供模板数据',
       });
+      return;
     }
 
     const validation = await documentService.validateDocument(template);
@@ -228,13 +233,14 @@ router.post('/validate', async (req, res) => {
 });
 
 // 提取单个文档文本内容
-router.post('/extract-text', extractUpload.single('document'), async (req, res) => {
+router.post('/extract-text', extractUpload.single('document'), async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.file) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '请选择要提取文本的文档',
       });
+      return;
     }
 
     const fileExt = path.extname(req.file.originalname).toLowerCase();
@@ -288,13 +294,14 @@ router.post('/extract-text', extractUpload.single('document'), async (req, res) 
 });
 
 // 提取多个文档文本内容
-router.post('/extract-texts', extractUpload.array('documents', 10), async (req, res) => {
+router.post('/extract-texts', extractUpload.array('documents', 10), async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '请选择要提取文本的文档',
       });
+      return;
     }
 
     const results = [];
@@ -382,7 +389,7 @@ router.post('/extract-texts', extractUpload.array('documents', 10), async (req, 
 });
 
 // 获取支持的文档格式
-router.get('/formats', (req, res) => {
+router.get('/formats', (req: Request, res: Response) => {
   res.json({
     success: true,
     data: {

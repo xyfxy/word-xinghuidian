@@ -193,8 +193,8 @@ class DocumentService {
         // 根据是否使用全局格式来决定是否清理HTML格式
         const shouldUseGlobal = block.format?.useGlobalFormat !== false;
         const displayContent = shouldUseGlobal 
-          ? this.stripHtmlFormatting(block.content || '')
-          : (block.content || '');
+          ? (typeof block.content === 'string' ? this.stripHtmlFormatting(block.content) : '')
+          : (typeof block.content === 'string' ? block.content : '');
         
         html += `
           <div class="${containerClass}">

@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { modelService } from '../services/modelService';
 import { AIModelCreateRequest, AIModelUpdateRequest, ImageAnalysisRequest, MultimodalGenerateRequest } from '../types/model';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -6,7 +6,7 @@ import { asyncHandler } from '../utils/asyncHandler';
 const router = express.Router();
 
 // 获取所有模型列表
-router.get('/', async (req, res) => {
+router.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const models = await modelService.getAllModels();
     res.json({
@@ -24,25 +24,27 @@ router.get('/', async (req, res) => {
 
 
 // 创建新模型
-router.post('/', async (req, res) => {
+router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const request: AIModelCreateRequest = req.body;
     
     // 验证必填字段
     if (!request.name || !request.provider || !request.baseUrl || !request.apiKey || !request.model) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '缺少必填字段'
       });
+      return;
     }
     
     // 先测试连接
     const testResult = await modelService.testModelConnection(request);
     if (!testResult.success) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: `模型连接测试失败: ${testResult.error || testResult.message}`
       });
+      return;
     }
     
     // 创建模型
@@ -72,7 +74,7 @@ router.post('/', async (req, res) => {
 });
 
 // 更新模型
-router.put('/:id', async (req, res) => {
+router.put('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const request: AIModelUpdateRequest = req.body;
     
@@ -80,10 +82,11 @@ router.put('/:id', async (req, res) => {
     if (request.apiKey) {
       const existingModel = await modelService.getModel(req.params.id);
       if (!existingModel) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           message: '模型不存在'
         });
+        return;
       }
       
       const testRequest = {
@@ -96,19 +99,21 @@ router.put('/:id', async (req, res) => {
       
       const testResult = await modelService.testModelConnection(testRequest);
       if (!testResult.success) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: `模型连接测试失败: ${testResult.error || testResult.message}`
         });
+        return;
       }
     }
     
     const model = await modelService.updateModel(req.params.id, request);
     if (!model) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: '模型不存在'
       });
+      return;
     }
     
     // 不返回API Key
@@ -131,14 +136,15 @@ router.put('/:id', async (req, res) => {
 });
 
 // 删除模型
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const success = await modelService.deleteModel(req.params.id);
     if (!success) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: '模型不存在'
       });
+      return;
     }
     
     res.json({
@@ -158,16 +164,17 @@ router.delete('/:id', async (req, res) => {
 // ========== 具体路径路由 - 必须在 /:id 之前 ==========
 
 // 测试连接（不保存）
-router.post('/test-connection', async (req, res) => {
+router.post('/test-connection', async (req: Request, res: Response): Promise<void> => {
   try {
     const request: AIModelCreateRequest = req.body;
     
     // 验证必填字段
     if (!request.provider || !request.baseUrl || !request.apiKey || !request.model) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: '缺少必填字段'
       });
+      return;
     }
     
     const result = await modelService.testModelConnection(request);
@@ -186,7 +193,7 @@ router.post('/test-connection', async (req, res) => {
 });
 
 // 测试多模态路由是否工作
-router.get('/multimodal-test', asyncHandler(async (req, res) => {
+router.get('/multimodal-test', asyncHandler(async (req: Request, res: Response) => {
   console.log('🧪 多模态测试路由被调用');
   res.json({
     success: true,
@@ -196,7 +203,7 @@ router.get('/multimodal-test', asyncHandler(async (req, res) => {
 }));
 
 // 获取多模态模型列表
-router.get('/multimodal', asyncHandler(async (req, res) => {
+router.get('/multimodal', asyncHandler(async (req: Request, res: Response) => {
   console.log('🔥 收到多模态模型请求');
   const models = await modelService.getMultimodalModels();
   console.log('✅ 返回多模态模型数量:', models.length);
@@ -207,14 +214,15 @@ router.get('/multimodal', asyncHandler(async (req, res) => {
 }));
 
 // 多模态内容生成
-router.post('/multimodal/generate', asyncHandler(async (req, res) => {
+router.post('/multimodal/generate', asyncHandler(async (req: Request, res: Response) => {
   const request: MultimodalGenerateRequest = req.body;
   
   if (!request.modelId || !request.messages) {
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       message: '缺少必填字段'
     });
+    return;
   }
   
   const result = await modelService.generateMultimodalContent(request);
@@ -226,14 +234,15 @@ router.post('/multimodal/generate', asyncHandler(async (req, res) => {
 }));
 
 // 图片分析
-router.post('/analyze-images', asyncHandler(async (req, res) => {
+router.post('/analyze-images', asyncHandler(async (req: Request, res: Response) => {
   const request: ImageAnalysisRequest = req.body;
   
   if (!request.modelId || !request.images || !Array.isArray(request.images)) {
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       message: '缺少必填字段或图片格式不正确'
     });
+    return;
   }
   
   const result = await modelService.analyzeImages(request);
@@ -248,14 +257,15 @@ router.post('/analyze-images', asyncHandler(async (req, res) => {
 // ========== 参数路由 - 必须在最后 ==========
 
 // 检测模型能力
-router.get('/:id/capabilities', asyncHandler(async (req, res) => {
+router.get('/:id/capabilities', asyncHandler(async (req: Request, res: Response) => {
   const capabilities = await modelService.detectModelCapabilities(req.params.id);
   
   if (!capabilities) {
-    return res.status(404).json({
+    res.status(404).json({
       success: false,
       message: '模型不存在'
     });
+    return;
   }
   
   res.json({
@@ -265,7 +275,7 @@ router.get('/:id/capabilities', asyncHandler(async (req, res) => {
 }));
 
 // 测试模型连接
-router.post('/:id/test', async (req, res) => {
+router.post('/:id/test', async (req: Request, res: Response): Promise<void> => {
   try {
     const result = await modelService.testModel(req.params.id);
     
@@ -283,14 +293,15 @@ router.post('/:id/test', async (req, res) => {
 });
 
 // 获取单个模型详情（不返回完整API Key）
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const model = await modelService.getModel(req.params.id);
     if (!model) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: '模型不存在'
       });
+      return;
     }
     
     // 不返回完整的API Key

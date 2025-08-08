@@ -1,5 +1,5 @@
 // Word导入相关的API路由
-import express from 'express';
+import express, { Request, Response } from 'express';
 import multer from 'multer';
 import { EnhancedWordParserService } from '../services/enhancedWordParserService';
 import { DEFAULT_RULES } from '../constants/wordImportRules';
@@ -28,14 +28,15 @@ const upload = multer({
 });
 
 // 解析Word文档
-router.post('/parse-word', upload.single('file'), async (req, res) => {
+router.post('/parse-word', upload.single('file'), async (req: Request, res: Response): Promise<void> => {
   try {
     const file = req.file;
     if (!file) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         success: false, 
         error: '请上传文件' 
       });
+      return;
     }
 
     // 从请求体获取选项 - multer会将非文件字段放在req.body中
@@ -71,7 +72,7 @@ router.post('/parse-word', upload.single('file'), async (req, res) => {
 });
 
 // 获取默认识别规则
-router.get('/recognition-rules', (req, res) => {
+router.get('/recognition-rules', (req: Request, res: Response) => {
   res.json({
     success: true,
     data: DEFAULT_RULES
@@ -79,15 +80,16 @@ router.get('/recognition-rules', (req, res) => {
 });
 
 // 应用识别规则
-router.post('/apply-rules', async (req, res) => {
+router.post('/apply-rules', async (req: Request, res: Response): Promise<void> => {
   try {
     const { parsedDocument, rules } = req.body;
     
     if (!parsedDocument || !rules) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: '缺少必要参数'
       });
+      return;
     }
 
     // 应用规则生成内容块分组
@@ -351,15 +353,16 @@ const extractStylesFromElements = (elements: any[]): any => {
 };
 
 // 生成模板预览
-router.post('/generate-template', async (req, res) => {
+router.post('/generate-template', async (req: Request, res: Response): Promise<void> => {
   try {
     const { contentGroups, templateName, templateDescription } = req.body;
     
     if (!contentGroups || !templateName) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: '缺少必要参数'
       });
+      return;
     }
 
     // 生成唯一ID
