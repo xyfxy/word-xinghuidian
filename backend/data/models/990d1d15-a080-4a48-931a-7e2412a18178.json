@@ -3,10 +3,10 @@
   "name": "gemini-2.5-pro",
   "provider": "custom",
   "baseUrl": "https://openrouter.ai/api/v1",
-  "apiKey": "b9cb976ee4833b35c9d53b9cefe7483ff6602e92201772ce3c954c88189ee9c5fd16a91a1a3acd6025fe51e4811bd9f0b1c76243aa8dcd1ca8324a86feb7f8d4ab306bab9ef56d47247d0758a476c52a",
+  "apiKey": "37ddb75d5778ac3cb00d2d62951f3c3022f7ce988940f89cf15436b5211478a228a422c9c2cf472ba5ab7b02024617c666658e7fefdd15ae693e7182f5ac61e1fd5ba71c8773d466e9ad627015360b98",
   "model": "google/gemini-2.5-pro",
   "createdAt": "2025-08-07T05:07:53.144Z",
-  "updatedAt": "2025-08-07T05:23:42.430Z",
+  "updatedAt": "2025-08-08T08:18:02.416Z",
   "isActive": true,
   "multimodalSupport": true,
   "capabilities": {

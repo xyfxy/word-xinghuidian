@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Copy, Trash2, FileText, Clock, Wand2, Upload } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Search, Edit, Copy, Trash2, FileText, Clock, Wand2, Upload, Download, FileDown } from 'lucide-react';
 import { DocumentTemplate } from '../types';
 import { templateService } from '../services/api';
 import { createDefaultTemplate } from '../utils/document';
@@ -11,6 +11,8 @@ const TemplatePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { setCurrentTemplate } = useEditorStore();
   const navigate = useNavigate();
@@ -94,6 +96,84 @@ const TemplatePage: React.FC = () => {
     }
   };
 
+  // 导出单个模板
+  const handleExportTemplate = async (template: DocumentTemplate) => {
+    if (!template.id) {
+      alert('模板ID无效');
+      return;
+    }
+
+    try {
+      await templateService.exportTemplate(template.id);
+    } catch (error) {
+      console.error('导出模板失败:', error);
+      alert('导出模板失败，请稍后重试');
+    }
+  };
+
+  // 导出所有模板
+  const handleExportAllTemplates = async () => {
+    if (templates.length === 0) {
+      alert('没有可导出的模板');
+      return;
+    }
+
+    try {
+      await templateService.exportAllTemplates();
+    } catch (error) {
+      console.error('导出所有模板失败:', error);
+      alert('导出模板失败，请稍后重试');
+    }
+  };
+
+  // 触发文件选择
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // 处理文件导入
+  const handleImportTemplate = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // 验证文件类型
+    if (!file.name.endsWith('.json')) {
+      alert('请选择JSON格式的文件');
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const result = await templateService.importTemplates(file);
+      
+      // 显示导入结果
+      const { summary, results } = result;
+      let message = `导入完成：\n成功 ${summary.success} 个，失败 ${summary.failed} 个\n\n`;
+      
+      if (summary.failed > 0) {
+        message += '失败的模板：\n';
+        results.filter(r => !r.success).forEach(r => {
+          message += `- ${r.name}: ${r.message}\n`;
+        });
+      }
+
+      alert(message);
+      
+      if (summary.success > 0) {
+        loadTemplates();
+      }
+    } catch (error) {
+      console.error('导入模板失败:', error);
+      alert(`导入失败：${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setImporting(false);
+      // 重置文件输入
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   // 格式化日期
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('zh-CN', {
@@ -128,13 +208,29 @@ const TemplatePage: React.FC = () => {
                 管理您的文档模板，创建可重用的格式和结构
               </p>
             </div>
-            <div className="flex space-x-3">
+            <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => navigate('/import-word')}
                 className="btn-secondary flex items-center"
               >
                 <Upload className="h-5 w-5 mr-2" />
                 导入Word
+              </button>
+              <button
+                onClick={handleImportClick}
+                disabled={importing}
+                className="btn-secondary flex items-center disabled:opacity-50"
+              >
+                <FileDown className="h-5 w-5 mr-2" />
+                {importing ? '导入中...' : '导入模板'}
+              </button>
+              <button
+                onClick={handleExportAllTemplates}
+                disabled={templates.length === 0}
+                className="btn-secondary flex items-center disabled:opacity-50"
+              >
+                <Download className="h-5 w-5 mr-2" />
+                导出全部
               </button>
               <button
                 onClick={handleCreateTemplate}
@@ -157,6 +253,15 @@ const TemplatePage: React.FC = () => {
               className="input-field pl-10"
             />
           </div>
+
+          {/* 隐藏的文件输入 */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleImportTemplate}
+            className="hidden"
+          />
         </div>
 
         {/* 模板统计 */}
@@ -306,6 +411,16 @@ const TemplatePage: React.FC = () => {
                     title="编辑模板"
                   >
                     <Edit className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleExportTemplate(template);
+                    }}
+                    className="p-2 text-gray-400 hover:text-green-600 transition-colors"
+                    title="导出模板"
+                  >
+                    <Download className="h-4 w-4" />
                   </button>
                   <button
                     onClick={(e) => {

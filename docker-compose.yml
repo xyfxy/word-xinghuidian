@@ -1,0 +1,36 @@
+services:
+  backend:
+    image: ${DOCKER_USERNAME}/word-xinghuidian-backend:${VERSION:-latest}
+    container_name: word-xinghuidian-backend
+    environment:
+      - NODE_ENV=production
+      - PORT=3003
+    env_file:
+      - .env
+    volumes:
+      - ./backend/data:/app/data
+      - ./backend/uploads:/app/uploads
+    expose:
+      - "3003"
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  frontend:
+    image: ${DOCKER_USERNAME}/word-xinghuidian-frontend:${VERSION:-latest}
+    container_name: word-xinghuidian-frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  backend_data:
+  backend_uploads:

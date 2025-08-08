@@ -1,0 +1,22 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: ${DOCKER_USERNAME}/word-xinghuidian-backend:${VERSION:-latest}
+    container_name: word-xinghuidian-backend-build
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    image: ${DOCKER_USERNAME}/word-xinghuidian-frontend:${VERSION:-latest}
+    container_name: word-xinghuidian-frontend-build
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

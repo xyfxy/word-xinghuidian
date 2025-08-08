@@ -166,6 +166,115 @@ export const templateService = {
       throw new Error(error instanceof Error ? error.message : '复制模板失败');
     }
   },
+
+  // 导出单个模板
+  async exportTemplate(id: string): Promise<void> {
+    try {
+      const response = await api.get(`/templates/${id}/export`, {
+        responseType: 'blob'
+      });
+      
+      // 从响应头获取文件名
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = 'template.json';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename\*=UTF-8''(.+)/);
+        if (filenameMatch) {
+          filename = decodeURIComponent(filenameMatch[1]);
+        }
+      }
+      
+      // 创建下载链接
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : '导出模板失败');
+    }
+  },
+
+  // 导出所有模板
+  async exportAllTemplates(): Promise<void> {
+    try {
+      const response = await api.get('/templates/export/all', {
+        responseType: 'blob'
+      });
+      
+      // 从响应头获取文件名
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = 'templates-backup.json';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename\*=UTF-8''(.+)/);
+        if (filenameMatch) {
+          filename = decodeURIComponent(filenameMatch[1]);
+        }
+      }
+      
+      // 创建下载链接
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : '导出模板失败');
+    }
+  },
+
+  // 导入模板
+  async importTemplates(file: File): Promise<{
+    success: boolean;
+    results: Array<{ name: string; success: boolean; message: string }>;
+    summary: { total: number; success: number; failed: number };
+  }> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          if (!e.target?.result) {
+            throw new Error('文件读取失败');
+          }
+          
+          const content = e.target.result as string;
+          const importData = JSON.parse(content);
+          
+          const response = await api.post<{
+            success: boolean;
+            data: {
+              results: Array<{ name: string; success: boolean; message: string }>;
+              summary: { total: number; success: number; failed: number };
+            };
+          }>('/templates/import', importData);
+          
+          resolve({
+            success: response.data.success,
+            results: response.data.data.results,
+            summary: response.data.data.summary
+          });
+        } catch (error) {
+          if (error instanceof SyntaxError) {
+            reject(new Error('文件格式不正确，请选择有效的JSON文件'));
+          } else {
+            reject(new Error(error instanceof Error ? error.message : '导入模板失败'));
+          }
+        }
+      };
+      
+      reader.onerror = () => {
+        reject(new Error('文件读取失败'));
+      };
+      
+      reader.readAsText(file);
+    });
+  },
 };
 
 // 文档处理API
