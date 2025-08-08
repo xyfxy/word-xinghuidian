@@ -130,7 +130,21 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
             if (template.format.paragraph.indent.firstLine) {
                 paragraphStyle.textIndent = convertUnit(
                     template.format.paragraph.indent.firstLine,
-                    template.format.paragraph.indent.firstLineUnit,
+                    template.format.paragraph.indent.firstLineUnit || 'pt',
+                    currentFontSize
+                );
+            }
+            if (template.format.paragraph.indent.left) {
+                paragraphStyle.paddingLeft = convertUnit(
+                    template.format.paragraph.indent.left,
+                    template.format.paragraph.indent.leftUnit || 'pt',
+                    currentFontSize
+                );
+            }
+            if (template.format.paragraph.indent.right) {
+                paragraphStyle.paddingRight = convertUnit(
+                    template.format.paragraph.indent.right,
+                    template.format.paragraph.indent.rightUnit || 'pt',
                     currentFontSize
                 );
             }

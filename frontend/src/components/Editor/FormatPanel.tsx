@@ -134,6 +134,17 @@ const FormatPanel: React.FC = () => {
   const handleFontChange = <T extends keyof FontSettings>(key: T, value: FontSettings[T]) => {
     updateTemplateFormat({ font: { ...format.font, [key]: value } });
   };
+  
+  const handleNumberChange = (value: string, callback: (num: number | undefined) => void) => {
+    if (value === '') {
+      callback(undefined as any);
+    } else {
+      const num = Number(value);
+      if (!isNaN(num)) {
+        callback(num);
+      }
+    }
+  };
 
   const handleParagraphChange = <T extends keyof ParagraphSettings>(key: T, value: ParagraphSettings[T]) => {
     updateTemplateFormat({ paragraph: { ...format.paragraph, [key]: value } });
@@ -197,8 +208,8 @@ const FormatPanel: React.FC = () => {
               <label className="label-text">字号 (pt)</label>
               <input
                 type="number"
-                value={format.font.size}
-                onChange={(e) => handleFontChange('size', Number(e.target.value))}
+                value={format.font.size ?? ''}
+                onChange={(e) => handleNumberChange(e.target.value, (num) => handleFontChange('size', num || 10.5))}
                 className="input-field"
                 min="6" max="72" step="0.5"
               />
@@ -234,30 +245,97 @@ const FormatPanel: React.FC = () => {
           </div>
           <div>
             <label className="label-text">行高</label>
-            <input type="number" value={format.paragraph.lineHeight} onChange={(e) => handleParagraphChange('lineHeight', Number(e.target.value))} className="input-field" min="1" step="0.1"/>
+            <input type="number" value={format.paragraph.lineHeight ?? ''} onChange={(e) => handleNumberChange(e.target.value, (num) => handleParagraphChange('lineHeight', num || 1.5))} className="input-field" min="1" step="0.1"/>
           </div>
           <div>
             <label className="label-text">段后距 (pt)</label>
-            <input type="number" value={format.paragraph.paragraphSpacing} onChange={(e) => handleParagraphChange('paragraphSpacing', Number(e.target.value))} className="input-field" min="0" step="1"/>
+            <input type="number" value={format.paragraph.paragraphSpacing ?? ''} onChange={(e) => handleNumberChange(e.target.value, (num) => handleParagraphChange('paragraphSpacing', num || 0))} className="input-field" min="0" step="1"/>
           </div>
           <div>
             <label className="label-text">段前距 (pt)</label>
-            <input type="number" value={format.paragraph.spaceBefore} onChange={(e) => handleParagraphChange('spaceBefore', Number(e.target.value))} className="input-field" min="0" step="1"/>
+            <input type="number" value={format.paragraph.spaceBefore ?? ''} onChange={(e) => handleNumberChange(e.target.value, (num) => handleParagraphChange('spaceBefore', num || 0))} className="input-field" min="0" step="1"/>
           </div>
         </CollapsibleSection>
 
         <CollapsibleSection title="缩进" isOpen={expandedSections.indent} onToggle={() => toggleSection('indent')}>
-          <div>
-            <label className="label-text">左缩进 (pt)</label>
-            <input type="number" value={format.paragraph.indent.left} onChange={(e) => handleIndentChange('left', Number(e.target.value))} className="input-field" min="0" step="1"/>
-          </div>
-          <div>
-            <label className="label-text">右缩进 (pt)</label>
-            <input type="number" value={format.paragraph.indent.right} onChange={(e) => handleIndentChange('right', Number(e.target.value))} className="input-field" min="0" step="1"/>
-          </div>
-          <div>
-            <label className="label-text">首行缩进 (pt)</label>
-            <input type="number" value={format.paragraph.indent.firstLine} onChange={(e) => handleIndentChange('firstLine', Number(e.target.value))} className="input-field" step="1"/>
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <div className="flex-1">
+                <label className="label-text">首行缩进</label>
+                <input 
+                  type="number" 
+                  value={format.paragraph.indent.firstLine ?? ''} 
+                  onChange={(e) => handleNumberChange(e.target.value, (num) => handleIndentChange('firstLine', num || 0))} 
+                  className="input-field" 
+                  step="1"
+                />
+              </div>
+              <div className="w-24">
+                <label className="label-text">单位</label>
+                <select 
+                  value={format.paragraph.indent.firstLineUnit || 'pt'} 
+                  onChange={(e) => handleIndentChange('firstLineUnit', e.target.value as any)}
+                  className="input-field"
+                >
+                  <option value="pt">pt</option>
+                  <option value="cm">cm</option>
+                  <option value="px">px</option>
+                  <option value="char">字符</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="flex-1">
+                <label className="label-text">左缩进</label>
+                <input 
+                  type="number" 
+                  value={format.paragraph.indent.left ?? ''} 
+                  onChange={(e) => handleNumberChange(e.target.value, (num) => handleIndentChange('left', num || 0))} 
+                  className="input-field" 
+                  min="0" 
+                  step="1"
+                />
+              </div>
+              <div className="w-24">
+                <label className="label-text">单位</label>
+                <select 
+                  value={format.paragraph.indent.leftUnit || 'pt'} 
+                  onChange={(e) => handleIndentChange('leftUnit', e.target.value as any)}
+                  className="input-field"
+                >
+                  <option value="pt">pt</option>
+                  <option value="cm">cm</option>
+                  <option value="px">px</option>
+                  <option value="char">字符</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="flex-1">
+                <label className="label-text">右缩进</label>
+                <input 
+                  type="number" 
+                  value={format.paragraph.indent.right ?? ''} 
+                  onChange={(e) => handleNumberChange(e.target.value, (num) => handleIndentChange('right', num || 0))} 
+                  className="input-field" 
+                  min="0" 
+                  step="1"
+                />
+              </div>
+              <div className="w-24">
+                <label className="label-text">单位</label>
+                <select 
+                  value={format.paragraph.indent.rightUnit || 'pt'} 
+                  onChange={(e) => handleIndentChange('rightUnit', e.target.value as any)}
+                  className="input-field"
+                >
+                  <option value="pt">pt</option>
+                  <option value="cm">cm</option>
+                  <option value="px">px</option>
+                  <option value="char">字符</option>
+                </select>
+              </div>
+            </div>
           </div>
         </CollapsibleSection>
 

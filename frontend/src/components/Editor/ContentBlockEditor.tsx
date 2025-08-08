@@ -85,6 +85,17 @@ const ImageEditor: React.FC<{
       }
     });
   };
+  
+  const handleNumberInput = (value: string, callback: (num: number | undefined) => void) => {
+    if (value === '') {
+      callback(undefined);
+    } else {
+      const num = Number(value);
+      if (!isNaN(num)) {
+        callback(num);
+      }
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -137,8 +148,8 @@ const ImageEditor: React.FC<{
           <label className="block text-sm font-medium text-gray-700 mb-1">宽度 (px)</label>
           <input
             type="number"
-            value={imageContent.width || ''}
-            onChange={(e) => handleImageChange('width', Number(e.target.value))}
+            value={imageContent.width ?? ''}
+            onChange={(e) => handleNumberInput(e.target.value, (num) => handleImageChange('width', num))}
             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             min="10"
             max="1000"
@@ -148,8 +159,8 @@ const ImageEditor: React.FC<{
           <label className="block text-sm font-medium text-gray-700 mb-1">高度 (px)</label>
           <input
             type="number"
-            value={imageContent.height || ''}
-            onChange={(e) => handleImageChange('height', Number(e.target.value))}
+            value={imageContent.height ?? ''}
+            onChange={(e) => handleNumberInput(e.target.value, (num) => handleImageChange('height', num))}
             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             min="10"
             max="1000"
@@ -194,7 +205,7 @@ const ImageEditor: React.FC<{
         <label className="block text-sm font-medium text-gray-700 mb-1">图片标题</label>
         <input
           type="text"
-          value={imageContent.caption || ''}
+          value={imageContent.caption ?? ''}
           onChange={(e) => handleImageChange('caption', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
           placeholder="可选的图片标题"
@@ -379,7 +390,7 @@ const ContentBlockEditor: React.FC<ContentBlockEditorProps> = ({
                     {getBlockIcon()}
                     <input
                         type="text"
-                        value={block.title || ''}
+                        value={block.title ?? ''}
                         onChange={(e) => onUpdate({ title: e.target.value })}
                         className="font-semibold bg-transparent border-none outline-none focus:ring-0"
                     />

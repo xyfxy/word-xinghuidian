@@ -51,6 +51,17 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
     onUpdate({ format: { ...blockFormat, font: { ...(blockFormat.font || {}), [key]: value } } });
   };
   
+  const handleNumberChange = (value: string, callback: (num: number) => void) => {
+    if (value === '') {
+      callback(undefined as any);
+    } else {
+      const num = Number(value);
+      if (!isNaN(num)) {
+        callback(num);
+      }
+    }
+  };
+  
   const handleParagraphChange = <K extends keyof NonNullable<typeof blockFormat.paragraph>>(key: K, value: NonNullable<typeof blockFormat.paragraph>[K]) => {
      onUpdate({ format: { ...blockFormat, paragraph: { ...(blockFormat.paragraph || {}), [key]: value } } });
   };
@@ -178,16 +189,16 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
                 <label htmlFor={`heading-font-size-name-${block.id}`} className="label-text">字号</label>
                 <select
                   id={`heading-font-size-name-${block.id}`}
-                  value={blockFormat.headingFormat?.font?.size || ''}
-                  onChange={(e) => onUpdate({ 
+                  value={blockFormat.headingFormat?.font?.size ?? ''}
+                  onChange={(e) => handleNumberChange(e.target.value, (num) => onUpdate({ 
                     format: { 
                       ...blockFormat, 
                       headingFormat: { 
                         ...blockFormat.headingFormat, 
-                        font: { ...(blockFormat.headingFormat?.font || {}), size: Number(e.target.value) } 
+                        font: { ...(blockFormat.headingFormat?.font || {}), size: num } 
                       } 
                     } 
-                  })}
+                  }))}
                   className="input-field"
                 >
                   <option value="" disabled={getSizeName(blockFormat.headingFormat?.font?.size) !== ''}>选择字号</option>
@@ -202,16 +213,16 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
                   type="number"
                   id={`heading-font-size-${block.id}`}
                   placeholder={String(globalFormat.font.size)}
-                  value={blockFormat.headingFormat?.font?.size || ''}
-                  onChange={(e) => onUpdate({ 
+                  value={blockFormat.headingFormat?.font?.size ?? ''}
+                  onChange={(e) => handleNumberChange(e.target.value, (num) => onUpdate({ 
                     format: { 
                       ...blockFormat, 
                       headingFormat: { 
                         ...blockFormat.headingFormat, 
-                        font: { ...(blockFormat.headingFormat?.font || {}), size: Number(e.target.value) } 
+                        font: { ...(blockFormat.headingFormat?.font || {}), size: num } 
                       } 
                     } 
-                  })}
+                  }))}
                   className="input-field"
                 />
               </div>
@@ -322,16 +333,16 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
                   step="0.1"
                   id={`heading-line-height-${block.id}`} 
                   placeholder={String(globalFormat.paragraph.lineHeight)} 
-                  value={blockFormat.headingFormat?.paragraph?.lineHeight || ''} 
-                  onChange={(e) => onUpdate({ 
+                  value={blockFormat.headingFormat?.paragraph?.lineHeight ?? ''} 
+                  onChange={(e) => handleNumberChange(e.target.value, (num) => onUpdate({ 
                     format: { 
                       ...blockFormat, 
                       headingFormat: { 
                         ...blockFormat.headingFormat, 
-                        paragraph: { ...(blockFormat.headingFormat?.paragraph || {}), lineHeight: Number(e.target.value) } 
+                        paragraph: { ...(blockFormat.headingFormat?.paragraph || {}), lineHeight: num } 
                       } 
                     } 
-                  })}
+                  }))}
                   className="input-field" 
                 />
               </div>
@@ -346,8 +357,8 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
                   type="number" 
                   id={`heading-indent-first-${block.id}`} 
                   placeholder={String(globalFormat.paragraph.indent.firstLine)} 
-                  value={blockFormat.headingFormat?.paragraph?.indent?.firstLine || ''} 
-                  onChange={(e) => onUpdate({ 
+                  value={blockFormat.headingFormat?.paragraph?.indent?.firstLine ?? ''} 
+                  onChange={(e) => handleNumberChange(e.target.value, (num) => onUpdate({ 
                     format: { 
                       ...blockFormat, 
                       headingFormat: { 
@@ -356,12 +367,12 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
                           ...(blockFormat.headingFormat?.paragraph || {}), 
                           indent: { 
                             ...(blockFormat.headingFormat?.paragraph?.indent || {}), 
-                            firstLine: Number(e.target.value) 
+                            firstLine: num 
                           } 
                         } 
                       } 
                     } 
-                  })}
+                  }))}
                   className="input-field" 
                 />
                 <select 
@@ -395,8 +406,8 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
                   type="number" 
                   id={`heading-indent-left-${block.id}`} 
                   placeholder={String(globalFormat.paragraph.indent.left)} 
-                  value={blockFormat.headingFormat?.paragraph?.indent?.left || ''} 
-                  onChange={(e) => onUpdate({ 
+                  value={blockFormat.headingFormat?.paragraph?.indent?.left ?? ''} 
+                  onChange={(e) => handleNumberChange(e.target.value, (num) => onUpdate({ 
                     format: { 
                       ...blockFormat, 
                       headingFormat: { 
@@ -405,12 +416,12 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
                           ...(blockFormat.headingFormat?.paragraph || {}), 
                           indent: { 
                             ...(blockFormat.headingFormat?.paragraph?.indent || {}), 
-                            left: Number(e.target.value) 
+                            left: num 
                           } 
                         } 
                       } 
                     } 
-                  })}
+                  }))}
                   className="input-field" 
                 />
                 <select 
@@ -462,8 +473,8 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
                 <label htmlFor={`font-size-name-${block.id}`} className="label-text">字号</label>
                 <select
                   id={`font-size-name-${block.id}`}
-                  value={blockFormat.font?.size || ''}
-                  onChange={(e) => handleFontChange('size', Number(e.target.value))}
+                  value={blockFormat.font?.size ?? ''}
+                  onChange={(e) => handleNumberChange(e.target.value, (num) => handleFontChange('size', num))}
                   className="input-field"
                 >
                   <option value="" disabled={getSizeName(blockFormat.font?.size) !== ''}>选择字号</option>
@@ -478,8 +489,8 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
                     type="number"
                     id={`font-size-${block.id}`}
                     placeholder={String(globalFormat.font.size)}
-                    value={blockFormat.font?.size || ''}
-                    onChange={(e) => handleFontChange('size', Number(e.target.value))}
+                    value={blockFormat.font?.size ?? ''}
+                    onChange={(e) => handleNumberChange(e.target.value, (num) => handleFontChange('size', num))}
                     className="input-field"
                 />
             </div>
@@ -516,15 +527,15 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
         <div className="grid grid-cols-2 gap-3">
            <div>
               <label htmlFor={`line-height-${block.id}`} className="label-text">行高</label>
-              <input type="number" id={`line-height-${block.id}`} placeholder={String(globalFormat.paragraph.lineHeight)} value={blockFormat.paragraph?.lineHeight || ''} onChange={(e) => handleParagraphChange('lineHeight', Number(e.target.value))} className="input-field" />
+              <input type="number" id={`line-height-${block.id}`} placeholder={String(globalFormat.paragraph.lineHeight)} value={blockFormat.paragraph?.lineHeight ?? ''} onChange={(e) => handleNumberChange(e.target.value, (num) => handleParagraphChange('lineHeight', num))} className="input-field" />
            </div>
            <div>
               <label htmlFor={`spacing-${block.id}`} className="label-text">段后距 (pt)</label>
-              <input type="number" id={`spacing-${block.id}`} placeholder={String(globalFormat.paragraph.paragraphSpacing)} value={blockFormat.paragraph?.paragraphSpacing || ''} onChange={(e) => handleParagraphChange('paragraphSpacing', Number(e.target.value))} className="input-field" />
+              <input type="number" id={`spacing-${block.id}`} placeholder={String(globalFormat.paragraph.paragraphSpacing)} value={blockFormat.paragraph?.paragraphSpacing ?? ''} onChange={(e) => handleNumberChange(e.target.value, (num) => handleParagraphChange('paragraphSpacing', num))} className="input-field" />
            </div>
            <div>
               <label htmlFor={`space-before-${block.id}`} className="label-text">段前距 (pt)</label>
-              <input type="number" id={`space-before-${block.id}`} placeholder={String(globalFormat.paragraph.spaceBefore)} value={blockFormat.paragraph?.spaceBefore || ''} onChange={(e) => handleParagraphChange('spaceBefore', Number(e.target.value))} className="input-field" />
+              <input type="number" id={`space-before-${block.id}`} placeholder={String(globalFormat.paragraph.spaceBefore)} value={blockFormat.paragraph?.spaceBefore ?? ''} onChange={(e) => handleNumberChange(e.target.value, (num) => handleParagraphChange('spaceBefore', num))} className="input-field" />
            </div>
            <div className="col-span-2">
               <label htmlFor={`alignment-${block.id}`} className="label-text">对齐方式</label>
@@ -544,7 +555,7 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
         <div className="grid grid-cols-1 gap-2">
             <div className="flex items-center space-x-1">
               <label htmlFor={`indent-first-${block.id}`} className="label-text w-12">首行</label>
-              <input type="number" id={`indent-first-${block.id}`} placeholder={String(globalFormat.paragraph.indent.firstLine)} value={blockFormat.paragraph?.indent?.firstLine || ''} onChange={(e) => handleIndentChange('firstLine', Number(e.target.value))} className="input-field" />
+              <input type="number" id={`indent-first-${block.id}`} placeholder={String(globalFormat.paragraph.indent.firstLine)} value={blockFormat.paragraph?.indent?.firstLine ?? ''} onChange={(e) => handleNumberChange(e.target.value, (num) => handleIndentChange('firstLine', num))} className="input-field" />
               <select 
                 value={blockFormat.paragraph?.indent?.firstLineUnit || 'pt'} 
                 onChange={(e) => handleIndentChange('firstLineUnit', e.target.value as any)}
@@ -558,7 +569,7 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
             </div>
             <div className="flex items-center space-x-1">
               <label htmlFor={`indent-left-${block.id}`} className="label-text w-12">左侧</label>
-              <input type="number" id={`indent-left-${block.id}`} placeholder={String(globalFormat.paragraph.indent.left)} value={blockFormat.paragraph?.indent?.left || ''} onChange={(e) => handleIndentChange('left', Number(e.target.value))} className="input-field" />
+              <input type="number" id={`indent-left-${block.id}`} placeholder={String(globalFormat.paragraph.indent.left)} value={blockFormat.paragraph?.indent?.left ?? ''} onChange={(e) => handleNumberChange(e.target.value, (num) => handleIndentChange('left', num))} className="input-field" />
               <select 
                 value={blockFormat.paragraph?.indent?.leftUnit || 'pt'} 
                 onChange={(e) => handleIndentChange('leftUnit', e.target.value as any)}
@@ -572,7 +583,7 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
             </div>
             <div className="flex items-center space-x-1">
               <label htmlFor={`indent-right-${block.id}`} className="label-text w-12">右侧</label>
-              <input type="number" id={`indent-right-${block.id}`} placeholder={String(globalFormat.paragraph.indent.right)} value={blockFormat.paragraph?.indent?.right || ''} onChange={(e) => handleIndentChange('right', Number(e.target.value))} className="input-field" />
+              <input type="number" id={`indent-right-${block.id}`} placeholder={String(globalFormat.paragraph.indent.right)} value={blockFormat.paragraph?.indent?.right ?? ''} onChange={(e) => handleNumberChange(e.target.value, (num) => handleIndentChange('right', num))} className="input-field" />
               <select 
                 value={blockFormat.paragraph?.indent?.rightUnit || 'pt'} 
                 onChange={(e) => handleIndentChange('rightUnit', e.target.value as any)}
@@ -620,8 +631,8 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
             <input
               type="number"
               id={`border-size-${block.id}`}
-              value={blockFormat.paragraph?.border?.bottom?.size || 1}
-              onChange={(e) => handleBorderChange('size', Number(e.target.value))}
+              value={blockFormat.paragraph?.border?.bottom?.size ?? 1}
+              onChange={(e) => handleNumberChange(e.target.value, (num) => handleBorderChange('size', num))}
               className="input-field"
             />
           </div>
@@ -630,8 +641,8 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
             <input
               type="number"
               id={`border-space-${block.id}`}
-              value={blockFormat.paragraph?.border?.bottom?.space || 1}
-              onChange={(e) => handleBorderChange('space', Number(e.target.value))}
+              value={blockFormat.paragraph?.border?.bottom?.space ?? 1}
+              onChange={(e) => handleNumberChange(e.target.value, (num) => handleBorderChange('space', num))}
               className="input-field"
             />
           </div>
