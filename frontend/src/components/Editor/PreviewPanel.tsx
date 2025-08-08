@@ -584,11 +584,6 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
                                 + 空白页
                             </p>
                         )}
-                        {pageBreakContent.settings.pageOrientation && (
-                            <p style={{ fontSize: '10px', marginTop: '4px' }}>
-                                方向: {pageBreakContent.settings.pageOrientation === 'landscape' ? '横向' : '纵向'}
-                            </p>
-                        )}
                     </div>
                 </div>
             );

@@ -71,7 +71,6 @@ export interface PageSettings {
   width: number;
   height: number;
   margins: MarginSettings;
-  orientation: 'portrait' | 'landscape';
 }
 
 // 页边距设置
@@ -106,7 +105,6 @@ export interface PageBreakContent {
   type: 'page-break';
   settings: {
     addBlankPage: boolean;
-    pageOrientation?: 'portrait' | 'landscape';
   };
 }
 

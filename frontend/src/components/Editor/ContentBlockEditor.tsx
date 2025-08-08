@@ -270,17 +270,6 @@ const PageBreakEditor: React.FC<{
           </Switch>
         </div>
         
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">页面方向</label>
-          <select
-            value={pageBreakContent.settings.pageOrientation || 'portrait'}
-            onChange={(e) => handlePageBreakChange('pageOrientation', e.target.value as 'portrait' | 'landscape')}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-          >
-            <option value="portrait">纵向</option>
-            <option value="landscape">横向</option>
-          </select>
-        </div>
       </div>
     </div>
   );

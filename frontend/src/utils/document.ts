@@ -68,7 +68,6 @@ export const createDefaultTemplate = (): DocumentTemplate => {
           left: 90.14,  // 3.18cm
           right: 90.14, // 3.18cm
         },
-        orientation: 'portrait',
       },
     },
     content: [],
@@ -122,8 +121,7 @@ export const createDefaultContentBlock = (type: 'text' | 'ai-generated' | 'two-c
       content: {
         type: 'page-break',
         settings: {
-          addBlankPage: false,
-          pageOrientation: 'portrait'
+          addBlankPage: false
         }
       } as PageBreakContent,
       format: {
@@ -299,6 +297,9 @@ export const exportToWord = async (template: DocumentTemplate): Promise<void> =>
     const sortedContent = [...template.content].sort((a, b) => a.position - b.position);
     
     // 创建段落或表格，一个内容块可能包含多个段落
+    const pageWidthPt = template.format.page.width || 595;
+    const pageHeightPt = template.format.page.height || 842;
+
     const docxElements = sortedContent.flatMap(block => {
       // 处理图片块
       if (block.type === 'image' && typeof block.content === 'object' && 'src' in block.content) {
@@ -322,7 +323,7 @@ export const exportToWord = async (template: DocumentTemplate): Promise<void> =>
 
           if (imageContent.alignment === 'auto') {
             // 页面内容区宽度 = 页面宽度 - 左右边距
-            const pageWidth = template.format.page.width || 595;
+            const pageWidth = effectivePageWidthPt;
             const marginLeft = template.format.page.margins.left || 72;
             const marginRight = template.format.page.margins.right || 72;
             const contentWidth = pageWidth - marginLeft - marginRight;
@@ -644,8 +645,8 @@ export const exportToWord = async (template: DocumentTemplate): Promise<void> =>
           properties: {
             page: {
               size: {
-                width: template.format.page.width * 20, // 转换为TWIPS
-                height: template.format.page.height * 20,
+                width: pageWidthPt * 20, // 转换为TWIPS
+                height: pageHeightPt * 20,
               },
               margin: {
                 top: template.format.page.margins.top * 20,

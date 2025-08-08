@@ -340,17 +340,6 @@ const FormatPanel: React.FC = () => {
         </CollapsibleSection>
 
         <CollapsibleSection title="页面" isOpen={expandedSections.page} onToggle={() => toggleSection('page')}>
-          <div>
-            <label className="label-text">页面方向</label>
-            <select 
-              value={format.page.orientation} 
-              onChange={(e) => handlePageChange('orientation', e.target.value)}
-              className="input-field"
-            >
-              <option value="portrait">纵向</option>
-              <option value="landscape">横向</option>
-            </select>
-          </div>
           <div className="grid grid-cols-2 gap-3">
             <MarginInput 
               label="上边距 (cm)" 
