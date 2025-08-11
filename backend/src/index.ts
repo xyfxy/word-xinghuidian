@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 
 // 加载环境变量，确保在所有其他模块之前执行
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 // 导入路由
 import aiGptRoutes from './routes/ai-gpt';
@@ -68,12 +68,37 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/word-import', wordImportRoutes);
 app.use('/api/images', imageRoutes);
 
-// 健康检查
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
+// 增强版健康检查 - 包含数据完整性检查
+app.get('/api/health', async (req, res) => {
+  const fs = require('fs').promises;
+  const path = require('path');
+  
+  let dataStatus = {
+    models: false,
+    templates: false
+  };
+  
+  try {
+    // 检查模型数据
+    const modelsDir = path.join(__dirname, '../data/models');
+    const modelFiles = await fs.readdir(modelsDir).catch(() => []);
+    dataStatus.models = modelFiles.filter((f: string) => f.endsWith('.json')).length > 0;
+    
+    // 检查模板数据
+    const templatesDir = path.join(__dirname, '../data/templates');
+    const templateFiles = await fs.readdir(templatesDir).catch(() => []);
+    dataStatus.templates = templateFiles.filter((f: string) => f.endsWith('.json')).length > 0;
+  } catch (e) {
+    // 忽略错误，使用默认值
+  }
+  
+  const isHealthy = dataStatus.models && dataStatus.templates;
+  
+  res.status(isHealthy ? 200 : 503).json({
+    status: isHealthy ? 'ok' : 'degraded',
     timestamp: new Date().toISOString(),
     version: '1.0.0',
+    dataIntegrity: dataStatus
   });
 });
 
@@ -106,7 +131,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 // 启动服务器
 const server = app.listen(PORT, () => {
-  console.log(`🚀 Word星辉点后端服务启动成功`);
+  console.log(`🚀 Word新汇点后端服务启动成功`);
   console.log(`📡 服务地址: http://localhost:${PORT}`);
   console.log(`🌍 环境: ${process.env.NODE_ENV || 'development'}`);
   console.log(`⚡ 使用模型管理和MaxKB进行AI内容生成`);

@@ -1,28 +1,61 @@
 #!/bin/sh
 set -e
 
-echo "🔍 检查预设数据..."
+echo "🔍 Word新汇点数据初始化 v2.0"
 
-# 创建数据目录
+# 核心文件检查函数
+check_data_integrity() {
+    local dir=$1
+    local type=$2
+    
+    if [ ! -d "$dir" ]; then
+        echo "⚠️  $type 目录不存在"
+        return 1
+    fi
+    
+    local count=$(find "$dir" -name "*.json" -type f 2>/dev/null | wc -l)
+    if [ "$count" -eq 0 ]; then
+        echo "⚠️  $type 目录为空"
+        return 1
+    fi
+    
+    echo "✅ $type 数据正常 ($count 个文件)"
+    return 0
+}
+
+# 创建必要目录
 mkdir -p /app/data/models /app/data/templates /app/uploads
 
-# 复制预设模板（如果挂载的目录为空）
-if [ ! "$(ls -A /app/data/templates 2>/dev/null)" ] && [ -d /app/preset-data/templates ]; then
-    echo "📄 复制预设模板..."
-    cp -r /app/preset-data/templates/* /app/data/templates/ 2>/dev/null || true
-    echo "✅ 模板复制完成"
-else
-    echo "ℹ️ 模板目录已存在，跳过复制"
+# 等待挂载稳定
+sleep 1
+
+# 智能数据恢复
+echo "📊 检查数据完整性..."
+
+# 检查模型数据
+if ! check_data_integrity "/app/data/models" "模型"; then
+    echo "🔧 修复模型数据..."
+    mkdir -p /app/data/models
+    if [ -d /app/preset-data/models ] && [ "$(ls -A /app/preset-data/models 2>/dev/null)" ]; then
+        cp -r /app/preset-data/models/* /app/data/models/ 2>/dev/null || true
+        echo "✅ 模型数据已恢复"
+    fi
 fi
 
-# 复制预设模型配置（如果挂载的目录为空）
-if [ ! "$(ls -A /app/data/models 2>/dev/null)" ] && [ -d /app/preset-data/models ]; then
-    echo "🤖 复制预设AI模型配置..."
-    cp -r /app/preset-data/models/* /app/data/models/ 2>/dev/null || true
-    echo "✅ 模型配置复制完成"
-else
-    echo "ℹ️ 模型配置目录已存在，跳过复制"
+# 检查模板数据
+if ! check_data_integrity "/app/data/templates" "模板"; then
+    echo "🔧 修复模板数据..."
+    mkdir -p /app/data/templates
+    if [ -d /app/preset-data/templates ] && [ "$(ls -A /app/preset-data/templates 2>/dev/null)" ]; then
+        cp -r /app/preset-data/templates/* /app/data/templates/ 2>/dev/null || true
+        echo "✅ 模板数据已恢复"
+    fi
 fi
+
+# 最终验证
+echo "📋 最终检查..."
+check_data_integrity "/app/data/models" "模型"
+check_data_integrity "/app/data/templates" "模板"
 
 echo "🚀 启动应用..."
 exec "$@"

@@ -8,11 +8,26 @@ services:
     env_file:
       - .env
     volumes:
-      - ./backend/data:/app/data
-      - ./backend/uploads:/app/uploads
+      # 使用绑定传播以确保挂载稳定性
+      - type: bind
+        source: ./backend/data
+        target: /app/data
+        bind:
+          propagation: shared
+      - type: bind
+        source: ./backend/uploads
+        target: /app/uploads
+        bind:
+          propagation: shared
     expose:
       - "3003"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "sh", "-c", "/app/check-data.sh && wget --no-verbose --tries=1 --spider http://localhost:3003/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - app-network
 

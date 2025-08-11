@@ -13,18 +13,19 @@ import {
 import { AIModelListItem } from '../../types/model';
 import { modelService } from '../../services/modelService';
 import { useModelStore } from '../../stores/modelStore';
+import { EditModelModal } from './EditModelModal';
 import toast from 'react-hot-toast';
 
 interface ModelListProps {
   models: AIModelListItem[];
-  onEdit?: (model: AIModelListItem) => void;
   onRefresh: () => void;
 }
 
-export const ModelList: React.FC<ModelListProps> = ({ models, onEdit, onRefresh }) => {
+export const ModelList: React.FC<ModelListProps> = ({ models, onRefresh }) => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [editingModel, setEditingModel] = useState<AIModelListItem | null>(null);
   
   const { removeModel, upsertModel } = useModelStore();
 
@@ -200,15 +201,13 @@ export const ModelList: React.FC<ModelListProps> = ({ models, onEdit, onRefresh 
               </button>
               
               {/* 编辑按钮 */}
-              {onEdit && (
-                <button
-                  onClick={() => onEdit(model)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  title="编辑"
-                >
-                  <Edit2 className="h-4 w-4" />
-                </button>
-              )}
+              <button
+                onClick={() => setEditingModel(model)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="编辑"
+              >
+                <Edit2 className="h-4 w-4" />
+              </button>
               
               {/* 删除按钮 */}
               <button
@@ -227,6 +226,14 @@ export const ModelList: React.FC<ModelListProps> = ({ models, onEdit, onRefresh 
           </div>
         </div>
       ))}
+      
+      {/* 编辑模态框 */}
+      <EditModelModal
+        isOpen={!!editingModel}
+        model={editingModel}
+        onClose={() => setEditingModel(null)}
+        onSuccess={onRefresh}
+      />
     </div>
   );
 };

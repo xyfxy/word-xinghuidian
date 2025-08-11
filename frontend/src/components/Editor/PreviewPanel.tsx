@@ -224,7 +224,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
                 fontFamily: getFontFamilyWithFallback(template.format.font.family),
                 fontSize: `${template.format.font.size}pt`,
                 color: template.format.font.color,
-                fontWeight: template.format.font.bold ? 'bold' : 'normal',
+                fontWeight: (template.format.font.bold ? 'bold' : 'normal') as any,
                 fontStyle: template.format.font.italic ? 'italic' : 'normal',
                 textDecoration: template.format.font.underline ? 'underline' : 'none',
             } : {
@@ -232,7 +232,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
                 fontFamily: fontStyle.fontFamily || getFontFamilyWithFallback('宋体'),
                 fontSize: fontStyle.fontSize || '12pt',
                 color: fontStyle.color || '#000000',
-                fontWeight: fontStyle.fontWeight || 'normal',
+                fontWeight: fontStyle.fontWeight || 'normal' as any,
                 fontStyle: fontStyle.fontStyle || 'normal',
                 textDecoration: fontStyle.textDecoration || 'none',
             };
@@ -344,7 +344,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
                 fontFamily: getFontFamilyWithFallback(template.format.font.family),
                 fontSize: `${template.format.font.size}pt`,
                 color: template.format.font.color,
-                fontWeight: template.format.font.bold ? 'bold' : 'normal',
+                fontWeight: (template.format.font.bold ? 'bold' : 'normal') as any,
                 fontStyle: template.format.font.italic ? 'italic' : 'normal',
                 textDecoration: template.format.font.underline ? 'underline' : 'none',
             } : {
@@ -352,7 +352,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
                 fontFamily: fontStyle.fontFamily || getFontFamilyWithFallback('宋体'),
                 fontSize: fontStyle.fontSize || '12pt',
                 color: fontStyle.color || '#000000',
-                fontWeight: fontStyle.fontWeight || 'normal',
+                fontWeight: fontStyle.fontWeight || 'normal' as any,
                 fontStyle: fontStyle.fontStyle || 'normal',
                 textDecoration: fontStyle.textDecoration || 'none',
             };
@@ -623,7 +623,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
                     fontFamily: getFontFamilyWithFallback(fontSettings.family),
                     fontSize: `${fontSettings.size}pt`,
                     color: fontSettings.color,
-                    fontWeight: (isHeaderRow && style.headerStyle?.fontBold) || fontSettings.bold ? 'bold' : 'normal',
+                    fontWeight: ((isHeaderRow && style.headerStyle?.fontBold) || fontSettings.bold ? 'bold' : 'normal') as any,
                     fontStyle: fontSettings.italic ? 'italic' : 'normal',
                     textDecoration: fontSettings.underline ? 'underline' : 'none',
                 };
@@ -710,7 +710,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
         fontFamily: fontFamilyWithFallback,
         fontSize: `${template.format.font.size}pt`,
         color: template.format.font.color,
-        fontWeight: template.format.font.bold ? 'bold' : 'normal',
+        fontWeight: (template.format.font.bold ? 'bold' : 'normal') as any,
         fontStyle: template.format.font.italic ? 'italic' : 'normal',
         textDecoration: template.format.font.underline ? 'underline' : 'none',
         lineHeight: template.format.paragraph.lineHeight,

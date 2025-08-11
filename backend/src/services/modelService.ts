@@ -25,8 +25,8 @@ export class ModelService {
   constructor() {
     this.dataDir = join(process.cwd(), 'data', 'models');
     
-    // 从环境变量获取密钥，如果没有则生成默认值
-    const secret = process.env.MODEL_ENCRYPTION_KEY || 'default-secret-key-please-change-in-production';
+    // 从环境变量获取密钥，如果没有则使用默认值666888
+    const secret = process.env.MODEL_ENCRYPTION_KEY || '666888';
     this.secretKey = crypto.createHash('sha256').update(String(secret)).digest();
     this.iv = Buffer.alloc(16, 0); // 初始化向量
     
