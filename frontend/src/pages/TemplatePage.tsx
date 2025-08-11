@@ -9,7 +9,6 @@ const TemplatePage: React.FC = () => {
   const [templates, setTemplates] = useState<TemplateListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalTemplates, setTotalTemplates] = useState(0);
@@ -383,12 +382,7 @@ const TemplatePage: React.FC = () => {
             {filteredTemplates.map((template) => (
               <div
                 key={template.id}
-                className={`card p-6 cursor-pointer hover:shadow-md transition-shadow ${
-                  selectedTemplate === template.id ? 'ring-2 ring-primary-500' : ''
-                }`}
-                onClick={() => setSelectedTemplate(
-                  selectedTemplate === template.id ? null : template.id
-                )}
+                className="card p-6 hover:shadow-md transition-shadow"
               >
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
@@ -413,11 +407,6 @@ const TemplatePage: React.FC = () => {
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                     {Math.round((template.size || 0) / 1024)}KB
                   </span>
-                  {template.contentPreview && (
-                    <span className="text-xs text-gray-500 truncate flex-1" title={template.contentPreview}>
-                      {template.contentPreview}
-                    </span>
-                  )}
                 </div>
 
                 <div className="flex justify-end space-x-2 mt-4">

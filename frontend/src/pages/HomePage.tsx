@@ -1,126 +1,116 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Sparkles, Settings, ArrowRight } from 'lucide-react';
+import { FileText, Sparkles, Settings, ArrowRight, Upload, Database, Cpu } from 'lucide-react';
 
 const HomePage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* 欢迎区域 */}
+    <div className="h-full bg-gradient-to-br from-gray-50 to-gray-100 overflow-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* 标题区域 */}
         <div className="text-center mb-16">
           <div className="flex justify-center mb-6">
-            <div className="flex items-center justify-center w-20 h-20 bg-primary-600 rounded-full">
+            <div className="flex items-center justify-center w-20 h-20 bg-blue-600 rounded-full">
               <Sparkles className="h-10 w-10 text-white" />
             </div>
           </div>
-          <h1 className="text-5xl font-bold text-gray-900 mb-4">
-            欢迎使用 Word
+          
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            Word智能编辑器
           </h1>
+          
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            智能Word编辑器，结合人工编辑和AI内容生成，让文档创作更高效、更智能
+            智能文档编辑平台，支持AI内容生成、模板管理和文档导入导出
           </p>
         </div>
 
-        {/* 功能特性 */}
+        {/* 功能模块 */}
         <div className="grid md:grid-cols-3 gap-8 mb-16">
-          <div className="card p-8 text-center">
+          <Link to="/editor" className="card p-8 hover:shadow-lg transition-shadow">
             <div className="flex justify-center mb-4">
-              <FileText className="h-12 w-12 text-primary-600" />
+              <FileText className="h-12 w-12 text-blue-600" />
             </div>
-            <h3 className="text-xl font-semibold mb-3">智能编辑器</h3>
-            <p className="text-gray-600">
-              可视化Word编辑器，支持字体、行间距、缩进等完整格式设置，所见即所得
+            <h3 className="text-xl font-semibold mb-3 text-center">文档编辑器</h3>
+            <p className="text-gray-600 text-center mb-4">
+              可视化编辑器，支持富文本编辑、格式设置、实时预览
             </p>
-          </div>
+            <div className="text-center">
+              <span className="inline-flex items-center text-blue-600 hover:text-blue-700">
+                进入编辑器 <ArrowRight className="ml-1 h-4 w-4" />
+              </span>
+            </div>
+          </Link>
 
-          <div className="card p-8 text-center">
+          <Link to="/templates" className="card p-8 hover:shadow-lg transition-shadow">
             <div className="flex justify-center mb-4">
-              <Sparkles className="h-12 w-12 text-primary-600" />
+              <Settings className="h-12 w-12 text-green-600" />
             </div>
-            <h3 className="text-xl font-semibold mb-3">AI内容生成</h3>
-            <p className="text-gray-600">
-              集成千问AI，智能生成高质量内容，AI只负责内容，格式完全按预设模板执行
+            <h3 className="text-xl font-semibold mb-3 text-center">模板管理</h3>
+            <p className="text-gray-600 text-center mb-4">
+              创建、编辑和管理文档模板，支持导入导出
             </p>
-          </div>
+            <div className="text-center">
+              <span className="inline-flex items-center text-green-600 hover:text-green-700">
+                管理模板 <ArrowRight className="ml-1 h-4 w-4" />
+              </span>
+            </div>
+          </Link>
 
-          <div className="card p-8 text-center">
+          <Link to="/import-word" className="card p-8 hover:shadow-lg transition-shadow">
             <div className="flex justify-center mb-4">
-              <Settings className="h-12 w-12 text-primary-600" />
+              <Upload className="h-12 w-12 text-purple-600" />
             </div>
-            <h3 className="text-xl font-semibold mb-3">模板系统</h3>
-            <p className="text-gray-600">
-              强大的模板管理系统，区分固定内容和AI生成区域，一键应用格式样式
+            <h3 className="text-xl font-semibold mb-3 text-center">导入Word</h3>
+            <p className="text-gray-600 text-center mb-4">
+              上传Word文档，自动解析结构，转换为可编辑模板
             </p>
-          </div>
+            <div className="text-center">
+              <span className="inline-flex items-center text-purple-600 hover:text-purple-700">
+                导入文档 <ArrowRight className="ml-1 h-4 w-4" />
+              </span>
+            </div>
+          </Link>
         </div>
 
-        {/* 快速开始 */}
+        {/* 次要功能 */}
+        <div className="grid md:grid-cols-2 gap-8 mb-16">
+          <Link to="/use-template" className="card p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-center">
+              <Database className="h-10 w-10 text-indigo-600 mr-4" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold mb-1">使用模板</h3>
+                <p className="text-gray-600 text-sm">
+                  快速应用已有模板，填充内容生成文档
+                </p>
+              </div>
+              <ArrowRight className="h-5 w-5 text-gray-400" />
+            </div>
+          </Link>
+
+          <Link to="/models" className="card p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-center">
+              <Cpu className="h-10 w-10 text-orange-600 mr-4" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold mb-1">AI模型配置</h3>
+                <p className="text-gray-600 text-sm">
+                  配置和管理AI模型，设置API密钥
+                </p>
+              </div>
+              <ArrowRight className="h-5 w-5 text-gray-400" />
+            </div>
+          </Link>
+        </div>
+
+        {/* 快速开始按钮 */}
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8">
-            立即开始创作
-          </h2>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              to="/editor"
-              className="inline-flex items-center btn-primary px-8 py-3 text-lg"
-            >
-              开始编辑
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Link>
-            <Link
-              to="/templates"
-              className="inline-flex items-center btn-secondary px-8 py-3 text-lg"
-            >
-              管理模板
-              <Settings className="ml-2 h-5 w-5" />
-            </Link>
-          </div>
+          <Link
+            to="/editor"
+            className="inline-flex items-center btn-primary px-8 py-3 text-lg"
+          >
+            开始使用
+            <ArrowRight className="ml-2 h-5 w-5" />
+          </Link>
         </div>
 
-        {/* 使用说明 */}
-        <div className="mt-20">
-          <h2 className="text-2xl font-bold text-gray-900 text-center mb-12">
-            如何使用
-          </h2>
-          <div className="grid md:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="w-12 h-12 bg-primary-600 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">
-                1
-              </div>
-              <h3 className="font-semibold mb-2">创建模板</h3>
-              <p className="text-sm text-gray-600">
-                设置文档格式，定义固定内容和AI生成区域
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-primary-600 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">
-                2
-              </div>
-              <h3 className="font-semibold mb-2">编辑内容</h3>
-              <p className="text-sm text-gray-600">
-                手动编辑固定段落，为AI区域设置提示词
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-primary-600 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">
-                3
-              </div>
-              <h3 className="font-semibold mb-2">AI生成</h3>
-              <p className="text-sm text-gray-600">
-                一键生成AI内容，自动应用预设格式
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-primary-600 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">
-                4
-              </div>
-              <h3 className="font-semibold mb-2">导出文档</h3>
-              <p className="text-sm text-gray-600">
-                导出标准Word文档，保持完美格式
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
