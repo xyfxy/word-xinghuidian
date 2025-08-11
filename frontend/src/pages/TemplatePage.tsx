@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Plus, Search, Edit, Copy, Trash2, FileText, Clock, Wand2, Upload, Download, FileDown, RefreshCw } from 'lucide-react';
 import { templateService, TemplateListItem } from '../services/api';
 import { createDefaultTemplate } from '../utils/document';
 import useEditorStore from '../stores/editorStore';
 import { useNavigate } from 'react-router-dom';
 
-const TemplatePage: React.FC = () => {
+const TemplatePage: React.FC = React.memo(() => {
   const [templates, setTemplates] = useState<TemplateListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,7 +19,7 @@ const TemplatePage: React.FC = () => {
   const navigate = useNavigate();
 
   // 加载模板列表（使用简化数据）
-  const loadTemplates = async (page: number = 1) => {
+  const loadTemplates = useCallback(async (page: number = 1) => {
     try {
       setLoading(true);
       const result = await templateService.getTemplateList(page, pageSize);
@@ -32,33 +32,35 @@ const TemplatePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pageSize]);
 
   // 刷新模板列表
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     await loadTemplates(currentPage);
     alert('模板列表已刷新');
-  };
+  }, [currentPage, loadTemplates]);
 
   useEffect(() => {
     loadTemplates(1);
   }, []);
 
   // 过滤模板
-  const filteredTemplates = templates.filter(template =>
-    template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (template.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredTemplates = useMemo(() => 
+    templates.filter(template =>
+      template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (template.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+    ), [templates, searchTerm]
   );
 
   // 创建新模板
-  const handleCreateTemplate = () => {
+  const handleCreateTemplate = useCallback(() => {
     const newTemplate = createDefaultTemplate();
     setCurrentTemplate(newTemplate);
     navigate('/editor');
-  };
+  }, [navigate, setCurrentTemplate]);
 
   // 编辑模板
-  const handleEditTemplate = async (templateItem: TemplateListItem) => {
+  const handleEditTemplate = useCallback(async (templateItem: TemplateListItem) => {
     try {
       setLoading(true);
       // 获取完整模板数据（会使用缓存）
@@ -71,10 +73,10 @@ const TemplatePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate, setCurrentTemplate]);
 
   // 复制模板
-  const handleDuplicateTemplate = async (templateItem: TemplateListItem) => {
+  const handleDuplicateTemplate = useCallback(async (templateItem: TemplateListItem) => {
     try {
       if (!templateItem.id) {
         alert('模板ID无效');
@@ -92,10 +94,10 @@ const TemplatePage: React.FC = () => {
       console.error('复制模板失败:', error);
       alert('复制模板失败，请稍后重试');
     }
-  };
+  }, [currentPage, loadTemplates]);
 
   // 删除模板
-  const handleDeleteTemplate = async (templateItem: TemplateListItem) => {
+  const handleDeleteTemplate = useCallback(async (templateItem: TemplateListItem) => {
     if (!templateItem.id) {
       alert('模板ID无效');
       return;
@@ -113,10 +115,10 @@ const TemplatePage: React.FC = () => {
       console.error('删除模板失败:', error);
       alert('删除模板失败，请稍后重试');
     }
-  };
+  }, [currentPage, loadTemplates]);
 
   // 导出单个模板
-  const handleExportTemplate = async (templateItem: TemplateListItem) => {
+  const handleExportTemplate = useCallback(async (templateItem: TemplateListItem) => {
     if (!templateItem.id) {
       alert('模板ID无效');
       return;
@@ -128,10 +130,10 @@ const TemplatePage: React.FC = () => {
       console.error('导出模板失败:', error);
       alert('导出模板失败，请稍后重试');
     }
-  };
+  }, []);
 
   // 导出所有模板
-  const handleExportAllTemplates = async () => {
+  const handleExportAllTemplates = useCallback(async () => {
     if (templates.length === 0) {
       alert('没有可导出的模板');
       return;
@@ -143,7 +145,7 @@ const TemplatePage: React.FC = () => {
       console.error('导出所有模板失败:', error);
       alert('导出模板失败，请稍后重试');
     }
-  };
+  }, [templates.length]);
 
   // 触发文件选择
   const handleImportClick = () => {
@@ -493,6 +495,6 @@ const TemplatePage: React.FC = () => {
       </div>
     </div>
   );
-};
+});
 
 export default TemplatePage; 

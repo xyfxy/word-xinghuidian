@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
@@ -10,7 +10,7 @@ interface SimpleRichTextEditorProps {
   minHeight?: number;
 }
 
-const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
+const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = React.memo(({
   value,
   onChange,
   placeholder,
@@ -30,21 +30,21 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
     ],
   }), [readOnly]);
 
-  const quillFormats = [
+  const quillFormats = useMemo(() => [
     'header',
     'bold', 'italic', 'underline', 'strike',
     'list', 'bullet',
     'script',
     'indent',
     'align'
-  ];
+  ], []);
 
   return (
     <div className="simple-rich-text-editor">
       <ReactQuill
         theme="snow"
         value={value}
-        onChange={onChange}
+        onChange={useCallback(onChange, [])}
         modules={quillModules}
         formats={quillFormats}
         placeholder={placeholder}
@@ -69,6 +69,8 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
       `}</style>
     </div>
   );
-};
+});
+
+SimpleRichTextEditor.displayName = 'SimpleRichTextEditor';
 
 export default SimpleRichTextEditor;

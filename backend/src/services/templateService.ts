@@ -4,6 +4,9 @@ import { DocumentTemplate } from '../types';
 
 class TemplateService {
   private templatesDir: string;
+  private templateListCache: Map<string, { data: any; timestamp: number }> = new Map();
+  private fullTemplateCache: Map<string, { data: DocumentTemplate; timestamp: number }> = new Map();
+  private cacheTimeout = 5 * 60 * 1000; // 5分钟缓存
 
   constructor() {
     this.templatesDir = path.join(process.cwd(), 'data', 'templates');
@@ -62,6 +65,29 @@ class TemplateService {
     }
   }
 
+  // 清除过期缓存
+  private clearExpiredCache(): void {
+    const now = Date.now();
+    
+    for (const [key, value] of this.templateListCache) {
+      if (now - value.timestamp > this.cacheTimeout) {
+        this.templateListCache.delete(key);
+      }
+    }
+    
+    for (const [key, value] of this.fullTemplateCache) {
+      if (now - value.timestamp > this.cacheTimeout) {
+        this.fullTemplateCache.delete(key);
+      }
+    }
+  }
+
+  // 清除所有缓存
+  private clearAllCache(): void {
+    this.templateListCache.clear();
+    this.fullTemplateCache.clear();
+  }
+
   // 获取简化的模板列表（不包含完整content）
   async getTemplateList(page: number = 1, pageSize: number = 20): Promise<{
     templates: any[];
@@ -70,6 +96,16 @@ class TemplateService {
     pageSize: number;
   }> {
     try {
+      // 检查缓存
+      const cacheKey = `list_${page}_${pageSize}`;
+      const cached = this.templateListCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
+        return cached.data;
+      }
+
+      // 清除过期缓存
+      this.clearExpiredCache();
+
       await this.ensureTemplatesDir();
       const files = await fs.readdir(this.templatesDir);
       const templateFiles = files.filter(file => file.endsWith('.json'));
@@ -111,12 +147,20 @@ class TemplateService {
       const endIndex = startIndex + pageSize;
       const paginatedTemplates = templates.slice(startIndex, endIndex);
       
-      return {
+      const result = {
         templates: paginatedTemplates,
         total,
         page,
         pageSize
       };
+
+      // 保存到缓存
+      this.templateListCache.set(cacheKey, {
+        data: result,
+        timestamp: Date.now()
+      });
+
+      return result;
     } catch (error) {
       console.error('获取模板列表失败:', error);
       return {
@@ -150,6 +194,12 @@ class TemplateService {
   // 根据ID获取模板
   async getTemplateById(id: string): Promise<DocumentTemplate | null> {
     try {
+      // 检查缓存
+      const cached = this.fullTemplateCache.get(id);
+      if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
+        return cached.data;
+      }
+
       const filePath = this.getTemplatePath(id);
       const content = await fs.readFile(filePath, 'utf-8');
       const template = JSON.parse(content);
@@ -158,6 +208,12 @@ class TemplateService {
       template.createdAt = new Date(template.createdAt);
       template.updatedAt = new Date(template.updatedAt);
       
+      // 保存到缓存
+      this.fullTemplateCache.set(id, {
+        data: template,
+        timestamp: Date.now()
+      });
+
       return template;
     } catch (error) {
       console.error(`获取模板 ${id} 失败:`, error);
@@ -219,6 +275,9 @@ class TemplateService {
     try {
       const filePath = this.getTemplatePath(id);
       await fs.unlink(filePath);
+      
+      // 清除缓存
+      this.clearAllCache();
     } catch (error) {
       console.error(`删除模板 ${id} 失败:`, error);
       throw new Error('删除模板失败');
