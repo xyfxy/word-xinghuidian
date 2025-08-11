@@ -11,7 +11,7 @@ import { ModelsPage } from './pages/ModelsPage'
 
 function App() {
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Toaster 
         position="top-center"
         toastOptions={{

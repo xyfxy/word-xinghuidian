@@ -44,16 +44,18 @@ export default function UseTemplatePage() {
 
   const loadTemplates = async () => {
     try {
-      const data = await templateService.getTemplates()
-      setTemplates(data)
+      // 使用简化的模板列表
+      const result = await templateService.getTemplateList(1, 100)
+      setTemplates(result.templates as any)
     } catch (error) {
       console.error('加载模板失败:', error)
       toast.error('加载模板失败')
     }
   }
 
-  const handleTemplateSelect = async (template: DocumentTemplate) => {
+  const handleTemplateSelect = async (template: any) => {
     try {
+      // 获取完整模板数据
       const fullTemplate = await templateService.getTemplate(template.id)
       setSelectedTemplate(fullTemplate)
       
@@ -528,7 +530,7 @@ export default function UseTemplatePage() {
                           <p className="text-sm text-gray-600">{template.description}</p>
                         )}
                         <div className="mt-2 flex items-center text-sm text-gray-500">
-                          <span>{template.content.length} 个内容块</span>
+                          <span>{(template as any).blockCount || (template as any).content?.length || 0} 个内容块</span>
                           <ChevronRight className="w-4 h-4 ml-auto" />
                         </div>
                       </button>

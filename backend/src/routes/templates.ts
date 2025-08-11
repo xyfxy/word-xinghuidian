@@ -1,12 +1,53 @@
 import express, { Request, Response } from 'express';
 import { DocumentTemplate } from '../types';
 import templateService from '../services/templateService';
+import archiver from 'archiver';
 
 const router = express.Router();
 
-// 获取模板列表
+// 获取简化的模板列表（分页，不包含完整content）
+router.get('/list', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 20;
+    
+    const result = await templateService.getTemplateList(page, pageSize);
+    
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error('获取模板列表错误:', error);
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : '获取模板列表失败',
+    });
+  }
+});
+
+// 获取完整模板列表（保留原有接口以保持兼容）
 router.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
+    // 如果有simple参数，返回简化版本
+    if (req.query.simple === 'true') {
+      const page = parseInt(req.query.page as string) || 1;
+      const pageSize = parseInt(req.query.pageSize as string) || 20;
+      const result = await templateService.getTemplateList(page, pageSize);
+      
+      res.json({
+        success: true,
+        data: result.templates,
+        pagination: {
+          total: result.total,
+          page: result.page,
+          pageSize: result.pageSize
+        }
+      });
+      return;
+    }
+    
+    // 否则返回完整数据（保持兼容）
     const templates = await templateService.getAllTemplates();
     
     res.json({
@@ -209,6 +250,87 @@ router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// 导出所有模板 - 必须在 /:id 路由之前定义
+router.get('/export/all', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const templates = await templateService.getAllTemplates();
+    
+    if (templates.length === 0) {
+      res.status(404).json({
+        success: false,
+        message: '没有可导出的模板',
+      });
+      return;
+    }
+    
+    // 设置响应头为zip文件
+    const fileName = `templates-backup-${new Date().toISOString().split('T')[0]}.zip`;
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+    
+    // 创建压缩包
+    const archive = archiver('zip', {
+      zlib: { level: 9 } // 最高压缩级别
+    });
+    
+    // 错误处理
+    archive.on('error', (err) => {
+      throw err;
+    });
+    
+    // 将压缩流输出到响应
+    archive.pipe(res);
+    
+    // 为每个模板创建单独的JSON文件
+    for (const template of templates) {
+      const templateData = {
+        name: template.name,
+        description: template.description,
+        format: template.format,
+        content: template.content,
+        exportTime: new Date().toISOString(),
+        version: '1.3.0'
+      };
+      
+      // 清理文件名中的非法字符
+      const safeFileName = template.name
+        .replace(/[/\\?%*:|"<>]/g, '-')
+        .replace(/\s+/g, '_')
+        .substring(0, 100); // 限制文件名长度
+      
+      // 添加JSON文件到压缩包
+      archive.append(JSON.stringify(templateData, null, 2), { 
+        name: `${safeFileName}.json` 
+      });
+    }
+    
+    // 添加一个索引文件，包含所有模板的基本信息
+    const indexData = {
+      exportTime: new Date().toISOString(),
+      version: '1.3.0',
+      count: templates.length,
+      templates: templates.map(t => ({
+        name: t.name,
+        description: t.description,
+        fileName: `${t.name.replace(/[/\\?%*:|"<>]/g, '-').replace(/\s+/g, '_').substring(0, 100)}.json`
+      }))
+    };
+    
+    archive.append(JSON.stringify(indexData, null, 2), { 
+      name: '_index.json' 
+    });
+    
+    // 完成压缩
+    await archive.finalize();
+  } catch (error) {
+    console.error('导出所有模板错误:', error);
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : '导出模板失败',
+    });
+  }
+});
+
 // 复制模板
 router.post('/:id/duplicate', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -290,39 +412,6 @@ router.get('/:id/export', async (req: Request, res: Response): Promise<void> => 
     res.json(exportData);
   } catch (error) {
     console.error('导出模板错误:', error);
-    res.status(500).json({
-      success: false,
-      message: error instanceof Error ? error.message : '导出模板失败',
-    });
-  }
-});
-
-// 导出所有模板
-router.get('/export/all', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const templates = await templateService.getAllTemplates();
-    
-    // 设置文件下载headers
-    const fileName = `templates-backup-${new Date().toISOString().split('T')[0]}.json`;
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
-    
-    // 返回所有模板数据
-    const exportData = {
-      templates: templates.map(template => ({
-        name: template.name,
-        description: template.description,
-        format: template.format,
-        content: template.content,
-      })),
-      exportTime: new Date().toISOString(),
-      version: '1.3.0',
-      count: templates.length
-    };
-
-    res.json(exportData);
-  } catch (error) {
-    console.error('导出所有模板错误:', error);
     res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : '导出模板失败',

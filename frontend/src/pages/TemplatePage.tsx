@@ -1,28 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Search, Edit, Copy, Trash2, FileText, Clock, Wand2, Upload, Download, FileDown } from 'lucide-react';
-import { DocumentTemplate } from '../types';
-import { templateService } from '../services/api';
+import { Plus, Search, Edit, Copy, Trash2, FileText, Clock, Wand2, Upload, Download, FileDown, RefreshCw } from 'lucide-react';
+import { templateService, TemplateListItem } from '../services/api';
 import { createDefaultTemplate } from '../utils/document';
 import useEditorStore from '../stores/editorStore';
 import { useNavigate } from 'react-router-dom';
 
 const TemplatePage: React.FC = () => {
-  const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
+  const [templates, setTemplates] = useState<TemplateListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalTemplates, setTotalTemplates] = useState(0);
+  const [pageSize] = useState(20);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { setCurrentTemplate } = useEditorStore();
   const navigate = useNavigate();
 
-  // 加载模板列表
-  const loadTemplates = async () => {
+  // 加载模板列表（使用简化数据）
+  const loadTemplates = async (page: number = 1) => {
     try {
       setLoading(true);
-      const templateList = await templateService.getTemplates();
-      setTemplates(templateList);
+      const result = await templateService.getTemplateList(page, pageSize);
+      setTemplates(result.templates);
+      setTotalTemplates(result.total);
+      setCurrentPage(page);
     } catch (error) {
       console.error('加载模板列表失败:', error);
       alert('加载模板列表失败，请刷新页面重试');
@@ -31,8 +35,14 @@ const TemplatePage: React.FC = () => {
     }
   };
 
+  // 刷新模板列表
+  const handleRefresh = async () => {
+    await loadTemplates(currentPage);
+    alert('模板列表已刷新');
+  };
+
   useEffect(() => {
-    loadTemplates();
+    loadTemplates(1);
   }, []);
 
   // 过滤模板
@@ -49,25 +59,35 @@ const TemplatePage: React.FC = () => {
   };
 
   // 编辑模板
-  const handleEditTemplate = (template: DocumentTemplate) => {
-    setCurrentTemplate(template);
-    navigate('/editor');
+  const handleEditTemplate = async (templateItem: TemplateListItem) => {
+    try {
+      setLoading(true);
+      // 获取完整模板数据（会使用缓存）
+      const fullTemplate = await templateService.getTemplate(templateItem.id);
+      setCurrentTemplate(fullTemplate);
+      navigate('/editor');
+    } catch (error) {
+      console.error('加载模板失败:', error);
+      alert('加载模板失败，请稍后重试');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // 复制模板
-  const handleDuplicateTemplate = async (template: DocumentTemplate) => {
+  const handleDuplicateTemplate = async (templateItem: TemplateListItem) => {
     try {
-      if (!template.id) {
+      if (!templateItem.id) {
         alert('模板ID无效');
         return;
       }
       
-      const newName = prompt('请输入新模板名称:', `${template.name} - 副本`);
+      const newName = prompt('请输入新模板名称:', `${templateItem.name} - 副本`);
       if (!newName) return;
 
-      await templateService.duplicateTemplate(template.id, newName);
+      await templateService.duplicateTemplate(templateItem.id, newName);
       
-      loadTemplates();
+      loadTemplates(currentPage);
       alert('模板复制成功！');
     } catch (error) {
       console.error('复制模板失败:', error);
@@ -76,19 +96,19 @@ const TemplatePage: React.FC = () => {
   };
 
   // 删除模板
-  const handleDeleteTemplate = async (template: DocumentTemplate) => {
-    if (!template.id) {
+  const handleDeleteTemplate = async (templateItem: TemplateListItem) => {
+    if (!templateItem.id) {
       alert('模板ID无效');
       return;
     }
     
-    if (!confirm(`确定要删除模板"${template.name}"吗？此操作不可撤销。`)) {
+    if (!confirm(`确定要删除模板"${templateItem.name}"吗？此操作不可撤销。`)) {
       return;
     }
 
     try {
-      await templateService.deleteTemplate(template.id);
-      loadTemplates();
+      await templateService.deleteTemplate(templateItem.id);
+      loadTemplates(currentPage);
       alert('模板删除成功！');
     } catch (error) {
       console.error('删除模板失败:', error);
@@ -97,14 +117,14 @@ const TemplatePage: React.FC = () => {
   };
 
   // 导出单个模板
-  const handleExportTemplate = async (template: DocumentTemplate) => {
-    if (!template.id) {
+  const handleExportTemplate = async (templateItem: TemplateListItem) => {
+    if (!templateItem.id) {
       alert('模板ID无效');
       return;
     }
 
     try {
-      await templateService.exportTemplate(template.id);
+      await templateService.exportTemplate(templateItem.id);
     } catch (error) {
       console.error('导出模板失败:', error);
       alert('导出模板失败，请稍后重试');
@@ -160,7 +180,7 @@ const TemplatePage: React.FC = () => {
       alert(message);
       
       if (summary.success > 0) {
-        loadTemplates();
+        loadTemplates(currentPage);
       }
     } catch (error) {
       console.error('导入模板失败:', error);
@@ -209,6 +229,14 @@ const TemplatePage: React.FC = () => {
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
+              <button
+                onClick={handleRefresh}
+                className="btn-secondary flex items-center"
+                title="刷新模板列表"
+              >
+                <RefreshCw className="h-5 w-5 mr-2" />
+                刷新
+              </button>
               <button
                 onClick={() => navigate('/import-word')}
                 className="btn-secondary flex items-center"
@@ -302,11 +330,9 @@ const TemplatePage: React.FC = () => {
                 <FileText className="h-6 w-6 text-blue-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">AI内容块</p>
+                <p className="text-sm font-medium text-gray-600">模板总块数</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {templates.reduce((sum, t) => 
-                    sum + t.content.filter(c => c.type === 'ai-generated').length, 0
-                  )}
+                  {templates.reduce((sum, t) => sum + (t.blockCount || 0), 0)}
                 </p>
               </div>
             </div>
@@ -318,11 +344,12 @@ const TemplatePage: React.FC = () => {
                 <FileText className="h-6 w-6 text-orange-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">固定内容块</p>
+                <p className="text-sm font-medium text-gray-600">平均大小</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {templates.reduce((sum, t) => 
-                    sum + t.content.filter(c => c.type === 'text').length, 0
-                  )}
+                  {templates.length > 0 
+                    ? `${Math.round(templates.reduce((sum, t) => sum + (t.size || 0), 0) / templates.length / 1024)}KB`
+                    : '0KB'
+                  }
                 </p>
               </div>
             </div>
@@ -379,16 +406,18 @@ const TemplatePage: React.FC = () => {
                     <Clock className="h-4 w-4 mr-1" />
                     {formatDate(template.updatedAt)}
                   </div>
-                  <span>{template.content.length} 个内容块</span>
+                  <span>{template.blockCount || 0} 个内容块</span>
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {template.content.filter(c => c.type === 'text').length} 固定
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                    {Math.round((template.size || 0) / 1024)}KB
                   </span>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    {template.content.filter(c => c.type === 'ai-generated').length} AI
-                  </span>
+                  {template.contentPreview && (
+                    <span className="text-xs text-gray-500 truncate flex-1" title={template.contentPreview}>
+                      {template.contentPreview}
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex justify-end space-x-2 mt-4">
@@ -445,6 +474,31 @@ const TemplatePage: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* 分页控件 */}
+        {totalTemplates > pageSize && (
+          <div className="mt-8 flex justify-center">
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => loadTemplates(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                上一页
+              </button>
+              <span className="px-4 py-2 text-sm text-gray-700">
+                第 {currentPage} 页 / 共 {Math.ceil(totalTemplates / pageSize)} 页
+              </span>
+              <button
+                onClick={() => loadTemplates(currentPage + 1)}
+                disabled={currentPage >= Math.ceil(totalTemplates / pageSize)}
+                className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                下一页
+              </button>
+            </div>
           </div>
         )}
       </div>

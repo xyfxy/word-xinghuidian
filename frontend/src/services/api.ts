@@ -2,6 +2,17 @@ import axios from 'axios';
 import { AIGenerateResponse, DocumentTemplate } from '../types';
 import { ParsedDocument, RecognitionRule, ContentBlockGroup } from '../types/wordImport';
 
+export interface TemplateListItem {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  contentPreview: string;
+  blockCount: number;
+  size: number;
+}
+
 interface MaxKbRequest {
   baseUrl: string;
   apiKey: string;
@@ -38,7 +49,22 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    const message = error.response?.data?.message || error.message || '网络请求失败';
+    // 处理错误信息
+    let message = '网络请求失败';
+    
+    if (error.response?.data) {
+      // 如果响应数据是对象且包含message字段
+      if (typeof error.response.data === 'object' && error.response.data.message) {
+        message = error.response.data.message;
+      }
+      // 如果响应数据是字符串
+      else if (typeof error.response.data === 'string') {
+        message = error.response.data;
+      }
+    } else if (error.message) {
+      message = error.message;
+    }
+    
     return Promise.reject(new Error(message));
   }
 );
@@ -106,11 +132,46 @@ export const aiService = {
 
 // 模板管理API
 export const templateService = {
-  // 获取模板列表
+  // 获取简化的模板列表（分页）
+  async getTemplateList(page: number = 1, pageSize: number = 20): Promise<{
+    templates: TemplateListItem[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
+    try {
+      const response = await api.get<{ 
+        success: boolean;
+        data: {
+          templates: TemplateListItem[];
+          total: number;
+          page: number;
+          pageSize: number;
+        }
+      }>('/templates/list', {
+        params: { page, pageSize }
+      });
+      
+      return response.data.data;
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : '获取模板列表失败');
+    }
+  },
+  
+  // 获取完整模板列表（保留以便兼容）
   async getTemplates(): Promise<DocumentTemplate[]> {
     try {
-      const response = await api.get<{ data: DocumentTemplate[] }>('/templates');
-      return response.data.data || [];
+      // 使用简化版本接口
+      const response = await api.get<{ 
+        success: boolean;
+        data: TemplateListItem[];
+        pagination?: any;
+      }>('/templates', {
+        params: { simple: true, pageSize: 100 }
+      });
+      
+      // 返回简化数据，前端在需要时加载完整数据
+      return response.data.data as any || [];
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : '获取模板列表失败');
     }
@@ -207,7 +268,7 @@ export const templateService = {
       
       // 从响应头获取文件名
       const contentDisposition = response.headers['content-disposition'];
-      let filename = 'templates-backup.json';
+      let filename = 'templates-backup.zip';
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename\*=UTF-8''(.+)/);
         if (filenameMatch) {
@@ -216,7 +277,7 @@ export const templateService = {
       }
       
       // 创建下载链接
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/zip' }));
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', filename);

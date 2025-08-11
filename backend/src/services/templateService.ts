@@ -62,6 +62,91 @@ class TemplateService {
     }
   }
 
+  // 获取简化的模板列表（不包含完整content）
+  async getTemplateList(page: number = 1, pageSize: number = 20): Promise<{
+    templates: any[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
+    try {
+      await this.ensureTemplatesDir();
+      const files = await fs.readdir(this.templatesDir);
+      const templateFiles = files.filter(file => file.endsWith('.json'));
+      
+      const templates: any[] = [];
+      
+      for (const file of templateFiles) {
+        try {
+          const filePath = path.join(this.templatesDir, file);
+          const stats = await fs.stat(filePath);
+          const content = await fs.readFile(filePath, 'utf-8');
+          const template = JSON.parse(content);
+          
+          // 创建简化版本
+          const simplifiedTemplate = {
+            id: template.id,
+            name: template.name,
+            description: template.description,
+            createdAt: new Date(template.createdAt),
+            updatedAt: new Date(template.updatedAt),
+            blockCount: Array.isArray(template.content) ? template.content.length : 0,
+            size: stats.size,
+            // 添加内容预览（前100个字符）
+            contentPreview: this.generateContentPreview(template.content)
+          };
+          
+          templates.push(simplifiedTemplate);
+        } catch (error) {
+          console.error(`读取模板文件 ${file} 失败:`, error);
+        }
+      }
+      
+      // 按更新时间倒序排列
+      templates.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+      
+      // 分页处理
+      const total = templates.length;
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const paginatedTemplates = templates.slice(startIndex, endIndex);
+      
+      return {
+        templates: paginatedTemplates,
+        total,
+        page,
+        pageSize
+      };
+    } catch (error) {
+      console.error('获取模板列表失败:', error);
+      return {
+        templates: [],
+        total: 0,
+        page,
+        pageSize
+      };
+    }
+  }
+
+  // 生成内容预览
+  private generateContentPreview(content: any[]): string {
+    if (!Array.isArray(content) || content.length === 0) {
+      return '';
+    }
+    
+    let preview = '';
+    for (const block of content) {
+      if (block.type === 'text' && typeof block.content === 'string') {
+        preview += block.content;
+        if (preview.length > 100) {
+          break;
+        }
+      }
+    }
+    
+    return preview.length > 100 ? preview.substring(0, 100) + '...' : preview;
+  }
+
   // 根据ID获取模板
   async getTemplateById(id: string): Promise<DocumentTemplate | null> {
     try {
