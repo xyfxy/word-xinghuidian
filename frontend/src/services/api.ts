@@ -24,7 +24,7 @@ interface MaxKbRequest {
 // 创建axios实例
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-  timeout: 120000, // 120秒超时
+  timeout: 300000, // 5分钟超时
   headers: {
     'Content-Type': 'application/json',
   },

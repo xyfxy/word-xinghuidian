@@ -27,7 +27,7 @@ export class OpenAIService extends BaseAIService {
             'Authorization': `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json',
           },
-          timeout: 120000,
+          timeout: 300000,
         }
       );
 

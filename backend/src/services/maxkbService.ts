@@ -61,7 +61,7 @@ export async function generateMaxKbContent(
       requestBody,
       { 
         headers: requestHeaders,
-        timeout: 120000 // 120秒超时
+        timeout: 600000 // 10分钟超时
       }
     );
 

@@ -49,20 +49,9 @@ export default defineConfig({
     // 分包配置
     rollupOptions: {
       output: {
-        // 分包策略
-        manualChunks: (id) => {
-          if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-              return 'react-vendor';
-            }
-            if (id.includes('lucide-react') || id.includes('quill')) {
-              return 'ui-vendor';
-            }
-            if (id.includes('zustand') || id.includes('axios') || id.includes('docx') || id.includes('mammoth')) {
-              return 'utils-vendor';
-            }
-            return 'vendor';
-          }
+        // 分包策略 - 简化以避免React加载问题
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
         },
         // 用于从入口点创建的块的打包输出格式
         chunkFileNames: 'js/[name]-[hash].js',

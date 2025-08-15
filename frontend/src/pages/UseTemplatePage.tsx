@@ -21,6 +21,9 @@ export default function UseTemplatePage() {
   const [selectedTemplate, setSelectedTemplate] = useState<DocumentTemplate | null>(null)
   const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
+  const [generatingBlockId, setGeneratingBlockId] = useState<string | null>(null)
+  const [generationStartTime, setGenerationStartTime] = useState<number | null>(null)
+  // 移除未使用的 generationTime 状态
   const [isExporting, setIsExporting] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>({})
@@ -100,6 +103,9 @@ export default function UseTemplatePage() {
     if (!block || block.type !== 'ai-generated' || !block.aiPrompt) return
 
     setIsGenerating(true)
+    setGeneratingBlockId(blockId)
+    setGenerationStartTime(Date.now())
+    // 重置计时器
     try {
       // 处理提示词中的内容块引用
       let processedPrompt = block.aiPrompt
@@ -199,13 +205,28 @@ export default function UseTemplatePage() {
       toast.error('AI内容生成失败')
     } finally {
       setIsGenerating(false)
+      setGeneratingBlockId(null)
+      if (generationStartTime) {
+        const totalTime = Math.round((Date.now() - generationStartTime) / 1000)
+        toast.success(`生成完成，耗时 ${totalTime} 秒`)
+      }
+      setGenerationStartTime(null)
     }
   }
 
   const handleGenerateAllAI = async () => {
     const aiBlocks = contentBlocks.filter(b => b.type === 'ai-generated' && b.aiPrompt)
+    const totalBlocks = aiBlocks.length
+    let completed = 0
+    
     for (const block of aiBlocks) {
+      completed++
+      toast.info(`正在生成第 ${completed}/${totalBlocks} 个AI内容块`)
       await handleAIGenerate(block.id)
+    }
+    
+    if (totalBlocks > 0) {
+      toast.success(`所有AI内容生成完成！共处理了 ${totalBlocks} 个内容块`)
     }
   }
 
@@ -394,7 +415,8 @@ export default function UseTemplatePage() {
             updateBlockContent={updateBlockContent}
             updateBlockPrompt={updateBlockPrompt}
             handleAIGenerate={handleAIGenerate}
-            isGenerating={isGenerating}
+            isGenerating={isGenerating && generatingBlockId === block.id}
+            generationStartTime={generatingBlockId === block.id ? generationStartTime : null}
           />
         )
       
@@ -736,6 +758,7 @@ interface AIGeneratorBlockInputProps {
   updateBlockPrompt: (blockId: string, aiPrompt: string) => void;
   handleAIGenerate: (blockId: string) => void;
   isGenerating: boolean;
+  generationStartTime: number | null;
 }
 
 const AIGeneratorBlockInput: React.FC<AIGeneratorBlockInputProps> = ({ 
@@ -743,13 +766,37 @@ const AIGeneratorBlockInput: React.FC<AIGeneratorBlockInputProps> = ({
   updateBlockContent, 
   updateBlockPrompt, 
   handleAIGenerate, 
-  isGenerating 
+  isGenerating,
+  generationStartTime 
 }) => {
+    const [elapsedTime, setElapsedTime] = useState(0)
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
     const [extractedContents, setExtractedContents] = useState<Map<string, string>>(new Map())
     const [isExtracting, setIsExtracting] = useState(false)
     const [showPreview, setShowPreview] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+    // 生成时间计时器
+    useEffect(() => {
+      if (isGenerating && generationStartTime) {
+        timerRef.current = setInterval(() => {
+          setElapsedTime(Math.floor((Date.now() - generationStartTime) / 1000))
+        }, 1000)
+      } else {
+        if (timerRef.current) {
+          clearInterval(timerRef.current)
+          timerRef.current = null
+        }
+        setElapsedTime(0)
+      }
+
+      return () => {
+        if (timerRef.current) {
+          clearInterval(timerRef.current)
+        }
+      }
+    }, [isGenerating, generationStartTime])
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(event.target.files || [])
@@ -854,14 +901,30 @@ const AIGeneratorBlockInput: React.FC<AIGeneratorBlockInputProps> = ({
               minHeight={120}
             />
           </div>
-          <button
-            onClick={() => handleAIGenerate(block.id)}
-            disabled={isGenerating || (!block.aiPrompt?.trim() && uploadedFiles.length === 0)}
-            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            <Sparkles className="w-4 h-4" />
-            生成
-          </button>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => handleAIGenerate(block.id)}
+              disabled={isGenerating || (!block.aiPrompt?.trim() && uploadedFiles.length === 0)}
+              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[100px]"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader className="w-4 h-4 animate-spin" />
+                  生成中
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  生成
+                </>
+              )}
+            </button>
+            {isGenerating && (
+              <div className="text-xs text-center text-gray-500">
+                已用时: {elapsedTime}s
+              </div>
+            )}
+          </div>
         </div>
 
         {/* 提示词输入 */}

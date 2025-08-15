@@ -55,7 +55,7 @@ export class CustomGPTService extends BaseAIService {
         },
         {
           headers,
-          timeout: 120000,
+          timeout: 300000,
         }
       );
 

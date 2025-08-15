@@ -34,7 +34,7 @@ export class QianwenAIService extends BaseAIService {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
         },
-        timeout: 120000,
+        timeout: 300000,
       });
 
       // 转换响应为GPT格式

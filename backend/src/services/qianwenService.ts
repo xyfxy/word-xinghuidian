@@ -34,7 +34,7 @@ class QianwenService {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
         },
-        timeout: 120000, // 120秒超时
+        timeout: 300000, // 5分钟超时
       });
 
       return response.data;

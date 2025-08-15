@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, lazy, Suspense, useState } from 'react';
+import React, { useMemo, useRef, lazy, Suspense, useState, useEffect } from 'react';
 import 'react-quill/dist/quill.snow.css';
 
 // 懒加载 ReactQuill 以提升性能
@@ -545,11 +545,48 @@ const AIGeneratorBlock: React.FC<{
     onGenerateAI: () => void;
     isGenerating: boolean;
 }> = ({ block, onUpdate, onGenerateAI, isGenerating }) => {
+    const [elapsedTime, setElapsedTime] = useState(0)
+    const [generationStartTime, setGenerationStartTime] = useState<number | null>(null)
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
     const [extractedContents, setExtractedContents] = useState<Map<string, string>>(new Map());
     const [isExtracting, setIsExtracting] = useState(false);
     const [showPreview, setShowPreview] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // 生成时间计时器
+    useEffect(() => {
+      if (isGenerating) {
+        if (!generationStartTime) {
+          setGenerationStartTime(Date.now())
+        }
+        timerRef.current = setInterval(() => {
+          if (generationStartTime) {
+            setElapsedTime(Math.floor((Date.now() - generationStartTime) / 1000))
+          }
+        }, 1000)
+      } else {
+        if (timerRef.current) {
+          clearInterval(timerRef.current)
+          timerRef.current = null
+        }
+        if (generationStartTime) {
+          const totalTime = Math.floor((Date.now() - generationStartTime) / 1000)
+          setElapsedTime(totalTime)
+          // 显示最终生成时间
+          setTimeout(() => {
+            setElapsedTime(0)
+            setGenerationStartTime(null)
+          }, 3000)
+        }
+      }
+
+      return () => {
+        if (timerRef.current) {
+          clearInterval(timerRef.current)
+        }
+      }
+    }, [isGenerating, generationStartTime])
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(event.target.files || []);
@@ -780,23 +817,54 @@ const AIGeneratorBlock: React.FC<{
                 )}
             </div>
 
-            <button
-                onClick={onGenerateAI}
-                disabled={isGenerating || isExtracting || (!block.aiPrompt?.trim() && uploadedFiles.length === 0)}
-                className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                {isGenerating ? (
-                    <>
-                        <Loader className="animate-spin h-4 w-4 mr-2" />
-                        生成中...
-                    </>
-                ) : (
-                    <>
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        生成内容
-                    </>
+            <div className="space-y-2">
+                <button
+                    onClick={onGenerateAI}
+                    disabled={isGenerating || isExtracting || (!block.aiPrompt?.trim() && uploadedFiles.length === 0)}
+                    className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {isGenerating ? (
+                        <>
+                            <Loader className="animate-spin h-4 w-4 mr-2" />
+                            AI正在生成...
+                        </>
+                    ) : (
+                        <>
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            生成内容
+                        </>
+                    )}
+                </button>
+                
+                {/* 生成状态提示 */}
+                {(isGenerating || elapsedTime > 0) && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center text-blue-700">
+                                {isGenerating ? (
+                                    <>
+                                        <Loader className="animate-spin h-4 w-4 mr-2" />
+                                        <span>AI正在生成内容...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Sparkles className="h-4 w-4 mr-2 text-green-600" />
+                                        <span className="text-green-700">生成完成！</span>
+                                    </>
+                                )}
+                            </div>
+                            <div className="text-blue-600 font-mono">
+                                {isGenerating ? `${elapsedTime}s` : `耗时 ${elapsedTime}s`}
+                            </div>
+                        </div>
+                        {isGenerating && (
+                            <div className="mt-2 text-xs text-blue-600">
+                                请耐心等待，AI正在根据您的提示生成内容...
+                            </div>
+                        )}
+                    </div>
                 )}
-            </button>
+            </div>
 
             {/* AI设置面板 */}
             <AIBlockSettings 
