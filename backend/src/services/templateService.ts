@@ -237,6 +237,9 @@ class TemplateService {
       const filePath = this.getTemplatePath(template.id);
       await fs.writeFile(filePath, JSON.stringify(template, null, 2), 'utf-8');
       
+      // 清除缓存以确保数据一致性
+      this.clearAllCache();
+      
       return template;
     } catch (error) {
       console.error('保存模板失败:', error);
@@ -262,6 +265,9 @@ class TemplateService {
 
       const filePath = this.getTemplatePath(id);
       await fs.writeFile(filePath, JSON.stringify(updatedTemplate, null, 2), 'utf-8');
+      
+      // 清除缓存以确保数据一致性
+      this.clearAllCache();
       
       return updatedTemplate;
     } catch (error) {

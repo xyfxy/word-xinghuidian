@@ -167,6 +167,7 @@ const EditorPage: React.FC = () => {
     addContentBlock,
     updateContentBlock,
     removeContentBlock,
+    convertBlockType,
     aiSettings,
   } = useEditorStore();
 
@@ -257,24 +258,30 @@ const EditorPage: React.FC = () => {
     try {
       let result;
       
+      // 处理提示词中的内容块引用
+      let processedPrompt = block.aiPrompt
+      
+      // 查找并替换 {{blockId}} 格式的引用
+      const blockRefs = processedPrompt.match(/\{\{([^}]+)\}\}/g)
+      if (blockRefs) {
+        blockRefs.forEach(ref => {
+          const refBlockId = ref.replace(/\{\{|\}\}/g, '')
+          const refBlock = currentTemplate.content.find(b => b.id === refBlockId)
+          if (refBlock && typeof refBlock.content === 'string') {
+            processedPrompt = processedPrompt.replace(ref, refBlock.content)
+          }
+        })
+      }
+      
       // 检查是否使用新的模型管理方式
       if (block.modelId) {
         // 使用新的模型管理API
         const systemPrompt = block.systemPrompt || '你是一个专业的文档编写助手。';
-        const context = currentTemplate.content
-          .filter(b => b.position < block.position && b.content)
-          .map(b => typeof b.content === 'string' ? b.content : '')
-          .join('\n');
         
         const messages = [
           { role: 'system' as const, content: systemPrompt },
+          { role: 'system' as const, content: processedPrompt }
         ];
-        
-        if (context) {
-          messages.push({ role: 'system' as const, content: `参考上下文：${context}` });
-        }
-        
-        messages.push({ role: 'system' as const, content: block.aiPrompt });
         
         if (block.modelId === 'maxkb') {
           // 特殊处理MaxKB（保持兼容）
@@ -316,27 +323,18 @@ const EditorPage: React.FC = () => {
             apiKey: blockAiSettings.maxkbApiKey,
             messages: [
               { role: 'system' as const, content: blockAiSettings.systemPrompt || '你是一个专业的文档编写助手。' },
-              { role: 'system' as const, content: block.aiPrompt },
+              { role: 'system' as const, content: processedPrompt },
             ],
             maxTokens: block.maxTokens || 3000,
           });
         } else {
           // 使用全局默认模型
           const systemPrompt = blockAiSettings.systemPrompt || '你是一个专业的文档编写助手。';
-          const context = currentTemplate.content
-            .filter(b => b.position < block.position && b.content)
-            .map(b => typeof b.content === 'string' ? b.content : '')
-            .join('\n');
           
           const messages = [
             { role: 'system' as const, content: systemPrompt },
+            { role: 'system' as const, content: processedPrompt }
           ];
-          
-          if (context) {
-            messages.push({ role: 'system' as const, content: `参考上下文：${context}` });
-          }
-          
-          messages.push({ role: 'system' as const, content: block.aiPrompt });
           
           result = await aiService.generateWithModel({
             modelId: effectiveModelId,
@@ -383,7 +381,8 @@ const EditorPage: React.FC = () => {
 
       if (currentTemplate.id && currentTemplate.id.length > 10) {
         // 更新现有模板
-        await templateService.updateTemplate(currentTemplate.id, templateToSave);
+        const updatedTemplate = await templateService.updateTemplate(currentTemplate.id, templateToSave);
+        setCurrentTemplate(updatedTemplate);
         alert('模板保存成功！');
       } else {
         // 保存新模板
@@ -394,7 +393,9 @@ const EditorPage: React.FC = () => {
       }
     } catch (error) {
       console.error('保存模板错误:', error);
-      alert('保存模板失败，请稍后重试');
+      // 显示具体的错误信息
+      const errorMessage = error instanceof Error ? error.message : '保存模板失败';
+      alert(`保存失败：${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -548,6 +549,7 @@ const EditorPage: React.FC = () => {
                         onUpdate={(updates) => updateContentBlock(block.id, updates)}
                         onGenerateAI={() => handleGenerateAI(block.id)}
                         isGenerating={isGenerating && selectedBlock === block.id}
+                        onConvertType={(newType) => convertBlockType(block.id, newType)}
                       />
                       <button
                         onClick={() => removeContentBlock(block.id)}
