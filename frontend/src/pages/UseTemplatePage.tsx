@@ -743,15 +743,165 @@ export default function UseTemplatePage() {
   const allBlocksExpanded = Object.values(expandedBlocks).every(v => v)
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="h-screen bg-gray-50 flex flex-col">
+      {/* 顶部工具栏 */}
+      {selectedTemplate && (
+        <div className="bg-white border-b px-6 py-4 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setSelectedTemplate(null)}
+              className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+              title="返回模板列表"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">{selectedTemplate.name}</h2>
+              <p className="text-sm text-gray-500">{selectedTemplate.description || '编辑模板内容'}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {contentBlocks.length > 0 && (
+              <button
+                onClick={toggleAllBlocks}
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm flex items-center gap-2 transition-colors"
+                title={allBlocksExpanded ? '收缩全部' : '展开全部'}
+              >
+                {allBlocksExpanded ? (
+                  <><ChevronUp className="w-4 h-4" /> 收缩全部</>
+                ) : (
+                  <><ChevronDown className="w-4 h-4" /> 展开全部</>
+                )}
+              </button>
+            )}
+            <button
+              onClick={() => setShowPreview(!showPreview)}
+              className={`px-3 py-2 rounded-md text-sm flex items-center gap-2 transition-colors ${
+                showPreview ? 'bg-blue-100 hover:bg-blue-200 text-blue-700' : 'bg-gray-100 hover:bg-gray-200'
+              }`}
+              title="预览文档"
+            >
+              <Eye className="w-4 h-4" />
+              预览
+            </button>
+            <button
+              onClick={() => setShowImageProcessor(true)}
+              className="px-3 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 text-sm flex items-center gap-2 transition-colors"
+              title="图片处理模块"
+            >
+              <ImageIcon className="w-4 h-4" />
+              图片处理
+            </button>
+            <div className="relative" ref={generateOptionsRef}>
+              <button
+                onClick={() => setShowGenerateOptions(!showGenerateOptions)}
+                disabled={isGenerating}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+              >
+                <Sparkles className="w-4 h-4" />
+                生成所有AI内容
+                <ChevronDown className={`w-4 h-4 transition-transform ${showGenerateOptions ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {showGenerateOptions && !isGenerating && (
+                <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                  <div className="p-2">
+                    <button
+                      onClick={() => {
+                        setShowGenerateOptions(false)
+                        setShowExecutionOrderModal(true)
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-purple-50 rounded-md transition-colors border border-purple-200 mb-2"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Layers className="w-4 h-4 text-purple-600" />
+                        <div>
+                          <div className="font-medium text-purple-700">自定义执行顺序</div>
+                          <div className="text-xs text-gray-500">配置详细的执行顺序和分组</div>
+                        </div>
+                      </div>
+                    </button>
+                    
+                    <div className="border-t pt-2 mt-2">
+                      <div className="text-xs text-gray-500 px-3 pb-2">快速选项</div>
+                      <button
+                        onClick={() => handleGenerateAllAI('smart')}
+                        className="w-full text-left px-3 py-2 hover:bg-purple-50 rounded-md transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Settings2 className="w-4 h-4 text-purple-600" />
+                          <div>
+                            <div className="font-medium text-gray-900">智能执行（推荐）</div>
+                            <div className="text-xs text-gray-500">第一个先执行，其余并行</div>
+                          </div>
+                        </div>
+                      </button>
+                    
+                      <button
+                        onClick={() => handleGenerateAllAI('serial')}
+                        className="w-full text-left px-3 py-2 hover:bg-purple-50 rounded-md transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Settings2 className="w-4 h-4 text-blue-600" />
+                          <div>
+                            <div className="font-medium text-gray-900">串行执行</div>
+                            <div className="text-xs text-gray-500">按顺序一个接一个执行</div>
+                          </div>
+                        </div>
+                      </button>
+                      
+                      <button
+                        onClick={() => handleGenerateAllAI('parallel')}
+                        className="w-full text-left px-3 py-2 hover:bg-purple-50 rounded-md transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Settings2 className="w-4 h-4 text-green-600" />
+                          <div>
+                            <div className="font-medium text-gray-900">并行执行</div>
+                            <div className="text-xs text-gray-500">全部同时执行（最快）</div>
+                          </div>
+                        </div>
+                      </button>
+                      
+                      <button
+                        onClick={() => handleGenerateAllAI('batch')}
+                        className="w-full text-left px-3 py-2 hover:bg-purple-50 rounded-md transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Settings2 className="w-4 h-4 text-orange-600" />
+                          <div>
+                            <div className="font-medium text-gray-900">分批执行</div>
+                            <div className="text-xs text-gray-500">每批3个并行执行</div>
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={handleExportDocument}
+              disabled={isExporting}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              导出文档
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 flex overflow-hidden">
         <div className={`flex-1 transition-all duration-300 ${showPreview ? '' : 'w-full'}`}>
           <div className="h-full overflow-y-auto">
             <div className="max-w-6xl mx-auto px-4 py-8">
-              <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">使用模板</h1>
-                <p className="text-gray-600">选择模板，填写内容，快速生成文档</p>
-              </div>
+              {!selectedTemplate && (
+                <div className="mb-8">
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">使用模板</h1>
+                  <p className="text-gray-600">选择模板，填写内容，快速生成文档</p>
+                </div>
+              )}
 
               {!selectedTemplate ? (
                 <div className="bg-white rounded-lg shadow-md p-6">
@@ -781,155 +931,6 @@ export default function UseTemplatePage() {
               ) : (
                 <div className="space-y-6">
                   <div className="bg-white rounded-lg shadow-lg">
-                    <div className="border-b border-gray-200 px-6 py-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <button
-                            onClick={() => setSelectedTemplate(null)}
-                            className="p-2 hover:bg-gray-100 rounded-md transition-colors"
-                            title="返回模板列表"
-                          >
-                            <ArrowLeft className="w-5 h-5" />
-                          </button>
-                          <div>
-                            <h2 className="text-xl font-semibold text-gray-900">{selectedTemplate.name}</h2>
-                            {selectedTemplate.description && (
-                              <p className="text-gray-600 mt-1 text-sm">{selectedTemplate.description}</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          {contentBlocks.length > 0 && (
-                            <button
-                              onClick={toggleAllBlocks}
-                              className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm flex items-center gap-2 transition-colors"
-                              title={allBlocksExpanded ? '收缩全部' : '展开全部'}
-                            >
-                              {allBlocksExpanded ? (
-                                <><ChevronUp className="w-4 h-4" /> 收缩全部</>
-                              ) : (
-                                <><ChevronDown className="w-4 h-4" /> 展开全部</>
-                              )}
-                            </button>
-                          )}
-                          <button
-                            onClick={() => setShowPreview(!showPreview)}
-                            className={`px-3 py-2 rounded-md text-sm flex items-center gap-2 transition-colors ${
-                              showPreview ? 'bg-blue-100 hover:bg-blue-200 text-blue-700' : 'bg-gray-100 hover:bg-gray-200'
-                            }`}
-                            title="预览文档"
-                          >
-                            <Eye className="w-4 h-4" />
-                            预览
-                          </button>
-                          <button
-                            onClick={() => setShowImageProcessor(true)}
-                            className="px-3 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 text-sm flex items-center gap-2 transition-colors"
-                            title="图片处理模块"
-                          >
-                            <ImageIcon className="w-4 h-4" />
-                            图片处理
-                          </button>
-                          <div className="relative" ref={generateOptionsRef}>
-                            <button
-                              onClick={() => setShowGenerateOptions(!showGenerateOptions)}
-                              disabled={isGenerating}
-                              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
-                            >
-                              <Sparkles className="w-4 h-4" />
-                              生成所有AI内容
-                              <ChevronDown className={`w-4 h-4 transition-transform ${showGenerateOptions ? 'rotate-180' : ''}`} />
-                            </button>
-                            
-                            {showGenerateOptions && !isGenerating && (
-                              <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                                <div className="p-2">
-                                  <button
-                                    onClick={() => {
-                                      setShowGenerateOptions(false)
-                                      setShowExecutionOrderModal(true)
-                                    }}
-                                    className="w-full text-left px-3 py-2 hover:bg-purple-50 rounded-md transition-colors border border-purple-200 mb-2"
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <Layers className="w-4 h-4 text-purple-600" />
-                                      <div>
-                                        <div className="font-medium text-purple-700">自定义执行顺序</div>
-                                        <div className="text-xs text-gray-500">配置详细的执行顺序和分组</div>
-                                      </div>
-                                    </div>
-                                  </button>
-                                  
-                                  <div className="border-t pt-2 mt-2">
-                                    <div className="text-xs text-gray-500 px-3 pb-2">快速选项</div>
-                                    <button
-                                      onClick={() => handleGenerateAllAI('smart')}
-                                      className="w-full text-left px-3 py-2 hover:bg-purple-50 rounded-md transition-colors"
-                                    >
-                                      <div className="flex items-center gap-3">
-                                        <Settings2 className="w-4 h-4 text-purple-600" />
-                                        <div>
-                                          <div className="font-medium text-gray-900">智能执行（推荐）</div>
-                                          <div className="text-xs text-gray-500">第一个先执行，其余并行</div>
-                                        </div>
-                                      </div>
-                                    </button>
-                                  
-                                  <button
-                                    onClick={() => handleGenerateAllAI('serial')}
-                                    className="w-full text-left px-3 py-2 hover:bg-purple-50 rounded-md transition-colors"
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <Settings2 className="w-4 h-4 text-blue-600" />
-                                      <div>
-                                        <div className="font-medium text-gray-900">串行执行</div>
-                                        <div className="text-xs text-gray-500">按顺序一个接一个执行</div>
-                                      </div>
-                                    </div>
-                                  </button>
-                                  
-                                  <button
-                                    onClick={() => handleGenerateAllAI('parallel')}
-                                    className="w-full text-left px-3 py-2 hover:bg-purple-50 rounded-md transition-colors"
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <Settings2 className="w-4 h-4 text-green-600" />
-                                      <div>
-                                        <div className="font-medium text-gray-900">并行执行</div>
-                                        <div className="text-xs text-gray-500">全部同时执行（最快）</div>
-                                      </div>
-                                    </div>
-                                  </button>
-                                  
-                                  <button
-                                    onClick={() => handleGenerateAllAI('batch')}
-                                    className="w-full text-left px-3 py-2 hover:bg-purple-50 rounded-md transition-colors"
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <Settings2 className="w-4 h-4 text-orange-600" />
-                                      <div>
-                                        <div className="font-medium text-gray-900">分批执行</div>
-                                        <div className="text-xs text-gray-500">每批3个并行执行</div>
-                                      </div>
-                                    </div>
-                                  </button>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                          <button
-                            onClick={handleExportDocument}
-                            disabled={isExporting}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
-                          >
-                            <Download className="w-4 h-4" />
-                            导出文档
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
                     <div className="p-6 space-y-4">
                       {contentBlocks.map((block, index) => (
                         <div key={block.id} className="border border-gray-200 rounded-lg overflow-hidden transition-all duration-200 hover:shadow-md">
