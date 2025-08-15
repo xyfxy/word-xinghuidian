@@ -1,12 +1,12 @@
 {
-  "id": "990d1d15-a080-4a48-931a-7e2412a18178",
-  "name": "gemini-2.5-pro",
+  "id": "91594339-c4e0-42c1-a045-e47ccf02ea15",
+  "name": "gemini-2.5-flash",
   "provider": "custom",
   "baseUrl": "https://openrouter.ai/api/v1",
   "apiKey": "37ddb75d5778ac3cb00d2d62951f3c3022f7ce988940f89cf15436b5211478a228a422c9c2cf472ba5ab7b02024617c666658e7fefdd15ae693e7182f5ac61e1fd5ba71c8773d466e9ad627015360b98",
-  "model": "google/gemini-2.5-pro",
-  "createdAt": "2025-08-07T05:07:53.144Z",
-  "updatedAt": "2025-08-15T01:54:56.836Z",
+  "model": "google/gemini-2.5-flash",
+  "createdAt": "2025-08-15T02:22:49.003Z",
+  "updatedAt": "2025-08-15T02:22:59.152Z",
   "isActive": true,
   "multimodalSupport": true,
   "capabilities": {
@@ -22,9 +22,9 @@
       "gif",
       "webp"
     ],
-    "maxImagesPerRequest": 5
+    "maxImagesPerRequest": 4
   },
-  "lastTested": "2025-08-15T01:54:56.839Z",
+  "lastTested": "2025-08-15T02:22:59.154Z",
   "testStatus": "success",
-  "responseTime": 2963
+  "responseTime": 1306
 }

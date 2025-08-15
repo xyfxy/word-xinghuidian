@@ -40,6 +40,7 @@ interface EditorStore {
   removeContentBlock: (blockId: string) => void;
   reorderContentBlocks: (fromIndex: number, toIndex: number) => void;
   updateTemplateFormat: (format: Partial<DocumentFormat>) => void;
+  convertBlockType: (blockId: string, newType: 'text' | 'ai-generated') => void;
 
   // 重置编辑器
   resetEditor: () => void;
@@ -182,7 +183,10 @@ const useEditorStore = create<EditorStore>()(
           
           updatedContent = [...adjustedContent, blockToAdd].sort((a, b) => a.position - b.position);
         } else {
-          // 在末尾添加
+          // 在末尾添加 - 找到最大的position值并加1
+          const maxPosition = currentTemplate.content.reduce((max, block) => 
+            Math.max(max, block.position), -1);
+          blockToAdd.position = maxPosition + 1;
           updatedContent = [...currentTemplate.content, blockToAdd].sort((a, b) => a.position - b.position);
         }
 
@@ -297,6 +301,52 @@ const useEditorStore = create<EditorStore>()(
             },
           },
         };
+        set({ currentTemplate: updatedTemplate });
+      },
+
+      convertBlockType: (blockId, newType) => {
+        const { currentTemplate, aiSettings } = get();
+        if (!currentTemplate) return;
+
+        const updatedTemplate = {
+          ...currentTemplate,
+          content: currentTemplate.content.map(block => {
+            if (block.id === blockId) {
+              // 只允许在text和ai-generated之间转换
+              if ((block.type === 'text' || block.type === 'ai-generated') && 
+                  (newType === 'text' || newType === 'ai-generated')) {
+                
+                const updatedBlock = {
+                  ...block,
+                  type: newType,
+                };
+
+                // 如果转换为AI块，添加AI设置
+                if (newType === 'ai-generated') {
+                  updatedBlock.aiSettings = block.aiSettings || deepCloneAiSettings(aiSettings);
+                  updatedBlock.aiPrompt = block.aiPrompt || '';
+                  updatedBlock.systemPrompt = block.systemPrompt || aiSettings.systemPrompt;
+                  updatedBlock.maxTokens = block.maxTokens || 3000;
+                  updatedBlock.temperature = block.temperature || 0.7;
+                }
+                
+                // 如果从AI块转换为文本块，清理AI相关字段
+                if (newType === 'text' && block.type === 'ai-generated') {
+                  delete updatedBlock.aiSettings;
+                  delete updatedBlock.aiPrompt;
+                  delete updatedBlock.systemPrompt;
+                  delete updatedBlock.maxTokens;
+                  delete updatedBlock.temperature;
+                  delete updatedBlock.modelId;
+                }
+
+                return updatedBlock;
+              }
+            }
+            return block;
+          }),
+        };
+        
         set({ currentTemplate: updatedTemplate });
       },
 

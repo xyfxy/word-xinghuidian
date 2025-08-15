@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { FileText, Download, Sparkles, ChevronRight, Copy, Eye, ChevronDown, ChevronUp, Upload, X, ArrowLeft, Image as ImageIcon, File, Loader } from 'lucide-react'
+import { FileText, Download, Sparkles, ChevronRight, Copy, Eye, ChevronDown, ChevronUp, Upload, X, ArrowLeft, Image as ImageIcon, File, Loader, Settings2, Layers } from 'lucide-react'
 import { templateService, aiService } from '../services/api'
 import { DocumentTemplate, ContentBlock, ImageContent } from '../types'
 // 已删除未使用的 useAISettings 导入
@@ -10,6 +10,7 @@ import { formatMaxKbContent } from '../utils/markdown'
 import SimpleRichTextEditor from '../components/Editor/SimpleRichTextEditor'
 import PreviewPanel from '../components/Editor/PreviewPanel'
 import ImageProcessorModal from '../components/ImageProcessor/ImageProcessorModal'
+import AIExecutionOrderModal from '../components/AIExecutionOrderModal'
 import documentService from '../services/documentService'
 
 export default function UseTemplatePage() {
@@ -30,11 +31,31 @@ export default function UseTemplatePage() {
   const [previewWidth, setPreviewWidth] = useState(730)
   const [isResizing, setIsResizing] = useState(false)
   const [showImageProcessor, setShowImageProcessor] = useState(false)
+  const [showGenerateOptions, setShowGenerateOptions] = useState(false)
+  const [showExecutionOrderModal, setShowExecutionOrderModal] = useState(false)
+  const generateOptionsRef = useRef<HTMLDivElement>(null)
   // 已删除未使用的 getSettingsForBlock
 
   useEffect(() => {
     loadTemplates()
   }, [])
+  
+  // 点击外部关闭生成选项菜单
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (generateOptionsRef.current && !generateOptionsRef.current.contains(event.target as Node)) {
+        setShowGenerateOptions(false)
+      }
+    }
+    
+    if (showGenerateOptions) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showGenerateOptions])
 
   useEffect(() => {
     if (templateId && templates.length > 0) {
@@ -128,20 +149,11 @@ export default function UseTemplatePage() {
       if (block.modelId) {
         // 使用新的模型管理API
         const systemPrompt = block.systemPrompt || '你是一个专业的文档编写助手。'
-        const context = contentBlocks
-          .filter(b => b.position < block.position && typeof b.content === 'string')
-          .map(b => b.content as string)
-          .join('\n')
         
         const messages = [
           { role: 'system' as const, content: systemPrompt },
+          { role: 'system' as const, content: processedPrompt }
         ]
-        
-        if (context) {
-          messages.push({ role: 'system' as const, content: `参考上下文：${context}` })
-        }
-        
-        messages.push({ role: 'system' as const, content: processedPrompt })
         
         if (block.modelId === 'maxkb') {
           // 特殊处理MaxKB（保持兼容）
@@ -214,19 +226,224 @@ export default function UseTemplatePage() {
     }
   }
 
-  const handleGenerateAllAI = async () => {
-    const aiBlocks = contentBlocks.filter(b => b.type === 'ai-generated' && b.aiPrompt)
-    const totalBlocks = aiBlocks.length
-    let completed = 0
+  // 生成策略类型
+  type GenerateStrategy = 'serial' | 'parallel' | 'smart' | 'batch' | 'custom'
+  
+  // 处理自定义执行组
+  const handleCustomExecution = async (groups: any[]) => {
+    const totalBlocks = groups.reduce((sum, g) => sum + g.blockIds.length, 0)
     
-    for (const block of aiBlocks) {
-      completed++
-      toast.info(`正在生成第 ${completed}/${totalBlocks} 个AI内容块`)
-      await handleAIGenerate(block.id)
+    if (totalBlocks === 0) {
+      toast.warning('没有找到需要生成的AI内容块')
+      return
     }
     
-    if (totalBlocks > 0) {
-      toast.success(`所有AI内容生成完成！共处理了 ${totalBlocks} 个内容块`)
+    toast.info(`开始按自定义顺序生成 ${totalBlocks} 个AI内容块...`)
+    
+    let successCount = 0
+    let failCount = 0
+    
+    try {
+      // 按组顺序执行
+      for (let i = 0; i < groups.length; i++) {
+        const group = groups[i]
+        const groupBlocks = group.blockIds
+        
+        if (groupBlocks.length === 0) continue
+        
+        toast.info(`正在执行 ${group.name}（${group.type === 'serial' ? '串行' : '并行'}，${groupBlocks.length} 个内容块）`)
+        
+        if (group.type === 'serial') {
+          // 串行执行组内的块
+          for (const blockId of groupBlocks) {
+            try {
+              await handleAIGenerate(blockId)
+              successCount++
+              toast.success(`内容块生成完成：${contentBlocks.find(b => b.id === blockId)?.title}`)
+            } catch (error) {
+              failCount++
+              console.error(`生成块 ${blockId} 失败:`, error)
+              toast.error(`内容块生成失败：${contentBlocks.find(b => b.id === blockId)?.title}`)
+            }
+          }
+        } else {
+          // 并行执行组内的块
+          const promises = groupBlocks.map((blockId: string) => 
+            handleAIGenerate(blockId)
+              .then(() => {
+                successCount++
+                toast.success(`内容块生成完成：${contentBlocks.find(b => b.id === blockId)?.title}`)
+                return true
+              })
+              .catch(error => {
+                failCount++
+                console.error(`生成块 ${blockId} 失败:`, error)
+                toast.error(`内容块生成失败：${contentBlocks.find(b => b.id === blockId)?.title}`)
+                return false
+              })
+          )
+          
+          await Promise.all(promises)
+        }
+      }
+      
+      // 显示最终结果
+      if (failCount > 0) {
+        toast.warning(`生成完成：${successCount} 个成功，${failCount} 个失败`)
+      } else if (successCount > 0) {
+        toast.success(`所有AI内容生成完成！共成功生成 ${successCount} 个内容块`)
+      }
+    } catch (error) {
+      console.error('执行自定义顺序时出错:', error)
+      toast.error('部分AI内容生成失败，请检查配置后重试')
+    }
+    
+    setShowExecutionOrderModal(false)
+  }
+  
+  const handleGenerateAllAI = async (strategy: GenerateStrategy = 'smart') => {
+    const aiBlocks = contentBlocks.filter(b => b.type === 'ai-generated' && b.aiPrompt)
+    const totalBlocks = aiBlocks.length
+    
+    if (totalBlocks === 0) {
+      toast.warning('没有找到需要生成的AI内容块')
+      return
+    }
+    
+    const strategyNames: Record<GenerateStrategy, string> = {
+      serial: '串行执行',
+      parallel: '并行执行',
+      smart: '智能执行（第一个先执行，其余并行）',
+      batch: '分批执行（每批3个并行）',
+      custom: '自定义执行顺序'
+    }
+    
+    toast.info(`开始使用【${strategyNames[strategy]}】策略生成 ${totalBlocks} 个AI内容块...`)
+    setShowGenerateOptions(false)
+    
+    try {
+      let successCount = 0
+      let failCount = 0
+      
+      switch (strategy) {
+        case 'serial':
+          // 串行执行：一个接一个
+          for (let i = 0; i < aiBlocks.length; i++) {
+            try {
+              toast.info(`正在生成第 ${i + 1}/${totalBlocks} 个AI内容块`)
+              await handleAIGenerate(aiBlocks[i].id)
+              successCount++
+            } catch (error) {
+              failCount++
+              console.error(`生成块 ${aiBlocks[i].id} 失败:`, error)
+            }
+          }
+          break
+          
+        case 'parallel':
+          // 并行执行：全部同时
+          const parallelPromises = aiBlocks.map((block, index) => 
+            handleAIGenerate(block.id)
+              .then(() => {
+                toast.success(`第 ${index + 1}/${totalBlocks} 个AI内容块生成完成`)
+                return true
+              })
+              .catch(error => {
+                toast.error(`第 ${index + 1}/${totalBlocks} 个AI内容块生成失败`)
+                console.error(`生成块 ${block.id} 失败:`, error)
+                return false
+              })
+          )
+          const parallelResults = await Promise.all(parallelPromises)
+          successCount = parallelResults.filter(r => r).length
+          failCount = parallelResults.filter(r => !r).length
+          break
+          
+        case 'smart':
+          // 智能执行：第一个先执行，其余并行
+          if (aiBlocks.length === 1) {
+            try {
+              await handleAIGenerate(aiBlocks[0].id)
+              successCount = 1
+            } catch (error) {
+              failCount = 1
+              console.error(`生成块 ${aiBlocks[0].id} 失败:`, error)
+            }
+          } else {
+            // 第一个块先执行
+            try {
+              toast.info(`正在生成第 1/${totalBlocks} 个AI内容块（优先执行）`)
+              await handleAIGenerate(aiBlocks[0].id)
+              successCount++
+            } catch (error) {
+              failCount++
+              console.error(`生成第一个块 ${aiBlocks[0].id} 失败:`, error)
+            }
+            
+            // 其余块并行执行
+            if (aiBlocks.length > 1) {
+              const remainingBlocks = aiBlocks.slice(1)
+              toast.info(`正在并行生成剩余 ${remainingBlocks.length} 个AI内容块...`)
+              
+              const promises = remainingBlocks.map((block, index) => 
+                handleAIGenerate(block.id)
+                  .then(() => {
+                    toast.success(`第 ${index + 2}/${totalBlocks} 个AI内容块生成完成`)
+                    return true
+                  })
+                  .catch(error => {
+                    toast.error(`第 ${index + 2}/${totalBlocks} 个AI内容块生成失败`)
+                    console.error(`生成块 ${block.id} 失败:`, error)
+                    return false
+                  })
+              )
+              
+              const results = await Promise.all(promises)
+              successCount += results.filter(r => r).length
+              failCount += results.filter(r => !r).length
+            }
+          }
+          break
+          
+        case 'batch':
+          // 分批执行：每批3个并行
+          const batchSize = 3
+          for (let i = 0; i < aiBlocks.length; i += batchSize) {
+            const batch = aiBlocks.slice(i, Math.min(i + batchSize, aiBlocks.length))
+            const batchNumber = Math.floor(i / batchSize) + 1
+            const totalBatches = Math.ceil(aiBlocks.length / batchSize)
+            
+            toast.info(`正在处理第 ${batchNumber}/${totalBatches} 批（${batch.length} 个内容块）`)
+            
+            const batchPromises = batch.map((block, index) => 
+              handleAIGenerate(block.id)
+                .then(() => {
+                  toast.success(`第 ${i + index + 1}/${totalBlocks} 个AI内容块生成完成`)
+                  return true
+                })
+                .catch(error => {
+                  toast.error(`第 ${i + index + 1}/${totalBlocks} 个AI内容块生成失败`)
+                  console.error(`生成块 ${block.id} 失败:`, error)
+                  return false
+                })
+            )
+            
+            const batchResults = await Promise.all(batchPromises)
+            successCount += batchResults.filter(r => r).length
+            failCount += batchResults.filter(r => !r).length
+          }
+          break
+      }
+      
+      // 显示最终结果
+      if (failCount > 0) {
+        toast.warning(`生成完成：${successCount} 个成功，${failCount} 个失败`)
+      } else if (successCount > 0) {
+        toast.success(`所有AI内容生成完成！共成功生成 ${successCount} 个内容块`)
+      }
+    } catch (error) {
+      console.error('生成AI内容时出错:', error)
+      toast.error('部分AI内容生成失败，请检查配置后重试')
     }
   }
 
@@ -611,14 +828,94 @@ export default function UseTemplatePage() {
                             <ImageIcon className="w-4 h-4" />
                             图片处理
                           </button>
-                          <button
-                            onClick={handleGenerateAllAI}
-                            disabled={isGenerating}
-                            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
-                          >
-                            <Sparkles className="w-4 h-4" />
-                            生成所有AI内容
-                          </button>
+                          <div className="relative" ref={generateOptionsRef}>
+                            <button
+                              onClick={() => setShowGenerateOptions(!showGenerateOptions)}
+                              disabled={isGenerating}
+                              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+                            >
+                              <Sparkles className="w-4 h-4" />
+                              生成所有AI内容
+                              <ChevronDown className={`w-4 h-4 transition-transform ${showGenerateOptions ? 'rotate-180' : ''}`} />
+                            </button>
+                            
+                            {showGenerateOptions && !isGenerating && (
+                              <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                                <div className="p-2">
+                                  <button
+                                    onClick={() => {
+                                      setShowGenerateOptions(false)
+                                      setShowExecutionOrderModal(true)
+                                    }}
+                                    className="w-full text-left px-3 py-2 hover:bg-purple-50 rounded-md transition-colors border border-purple-200 mb-2"
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <Layers className="w-4 h-4 text-purple-600" />
+                                      <div>
+                                        <div className="font-medium text-purple-700">自定义执行顺序</div>
+                                        <div className="text-xs text-gray-500">配置详细的执行顺序和分组</div>
+                                      </div>
+                                    </div>
+                                  </button>
+                                  
+                                  <div className="border-t pt-2 mt-2">
+                                    <div className="text-xs text-gray-500 px-3 pb-2">快速选项</div>
+                                    <button
+                                      onClick={() => handleGenerateAllAI('smart')}
+                                      className="w-full text-left px-3 py-2 hover:bg-purple-50 rounded-md transition-colors"
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <Settings2 className="w-4 h-4 text-purple-600" />
+                                        <div>
+                                          <div className="font-medium text-gray-900">智能执行（推荐）</div>
+                                          <div className="text-xs text-gray-500">第一个先执行，其余并行</div>
+                                        </div>
+                                      </div>
+                                    </button>
+                                  
+                                  <button
+                                    onClick={() => handleGenerateAllAI('serial')}
+                                    className="w-full text-left px-3 py-2 hover:bg-purple-50 rounded-md transition-colors"
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <Settings2 className="w-4 h-4 text-blue-600" />
+                                      <div>
+                                        <div className="font-medium text-gray-900">串行执行</div>
+                                        <div className="text-xs text-gray-500">按顺序一个接一个执行</div>
+                                      </div>
+                                    </div>
+                                  </button>
+                                  
+                                  <button
+                                    onClick={() => handleGenerateAllAI('parallel')}
+                                    className="w-full text-left px-3 py-2 hover:bg-purple-50 rounded-md transition-colors"
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <Settings2 className="w-4 h-4 text-green-600" />
+                                      <div>
+                                        <div className="font-medium text-gray-900">并行执行</div>
+                                        <div className="text-xs text-gray-500">全部同时执行（最快）</div>
+                                      </div>
+                                    </div>
+                                  </button>
+                                  
+                                  <button
+                                    onClick={() => handleGenerateAllAI('batch')}
+                                    className="w-full text-left px-3 py-2 hover:bg-purple-50 rounded-md transition-colors"
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <Settings2 className="w-4 h-4 text-orange-600" />
+                                      <div>
+                                        <div className="font-medium text-gray-900">分批执行</div>
+                                        <div className="text-xs text-gray-500">每批3个并行执行</div>
+                                      </div>
+                                    </div>
+                                  </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                           <button
                             onClick={handleExportDocument}
                             disabled={isExporting}
@@ -745,6 +1042,14 @@ export default function UseTemplatePage() {
         isOpen={showImageProcessor}
         onClose={() => setShowImageProcessor(false)}
         onInsertImages={handleInsertImages}
+      />
+      
+      {/* AI执行顺序配置弹窗 */}
+      <AIExecutionOrderModal
+        isOpen={showExecutionOrderModal}
+        onClose={() => setShowExecutionOrderModal(false)}
+        contentBlocks={contentBlocks}
+        onExecute={handleCustomExecution}
       />
     </div>
   )

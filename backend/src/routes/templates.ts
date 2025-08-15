@@ -130,17 +130,18 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // 检查AI内容块是否有提示词
-    const aiBlocks = templateData.content.filter((block: any) => block.type === 'ai-generated');
-    for (const block of aiBlocks) {
-      if (!block.aiPrompt || typeof block.aiPrompt !== 'string' || block.aiPrompt.trim().length === 0) {
-        res.status(400).json({
-          success: false,
-          message: 'AI生成内容块必须包含提示词',
-        });
-        return;
-      }
-    }
+    // AI生成块的提示词可以为空，在使用时再填写
+    // 这样用户可以先保存模板结构，后续再添加提示词
+    // const aiBlocks = templateData.content.filter((block: any) => block.type === 'ai-generated');
+    // for (const block of aiBlocks) {
+    //   if (!block.aiPrompt || typeof block.aiPrompt !== 'string' || block.aiPrompt.trim().length === 0) {
+    //     res.status(400).json({
+    //       success: false,
+    //       message: 'AI生成内容块必须包含提示词',
+    //     });
+    //     return;
+    //   }
+    // }
 
     const savedTemplate = await templateService.saveTemplate(templateData);
 
@@ -182,19 +183,19 @@ router.put('/:id', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // 如果更新内容，验证AI内容块
-    if (updateData.content && Array.isArray(updateData.content)) {
-      const aiBlocks = updateData.content.filter((block: any) => block.type === 'ai-generated');
-      for (const block of aiBlocks) {
-        if (!block.aiPrompt || typeof block.aiPrompt !== 'string' || block.aiPrompt.trim().length === 0) {
-          res.status(400).json({
-            success: false,
-            message: 'AI生成内容块必须包含提示词',
-          });
-          return;
-        }
-      }
-    }
+    // AI生成块的提示词可以为空，在使用时再填写
+    // if (updateData.content && Array.isArray(updateData.content)) {
+    //   const aiBlocks = updateData.content.filter((block: any) => block.type === 'ai-generated');
+    //   for (const block of aiBlocks) {
+    //     if (!block.aiPrompt || typeof block.aiPrompt !== 'string' || block.aiPrompt.trim().length === 0) {
+    //       res.status(400).json({
+    //         success: false,
+    //         message: 'AI生成内容块必须包含提示词',
+    //       });
+    //       return;
+    //     }
+    //   }
+    // }
 
     const updatedTemplate = await templateService.updateTemplate(id, updateData);
 
@@ -478,21 +479,21 @@ router.post('/import', async (req: Request, res: Response): Promise<void> => {
           continue;
         }
 
-        // 检查AI内容块
-        const aiBlocks = templateData.content.filter((block: any) => block.type === 'ai-generated');
+        // AI生成块的提示词可以为空，在使用时再填写
+        // const aiBlocks = templateData.content.filter((block: any) => block.type === 'ai-generated');
         let hasValidationError = false;
-        for (const block of aiBlocks) {
-          if (!block.aiPrompt || typeof block.aiPrompt !== 'string' || block.aiPrompt.trim().length === 0) {
-            results.push({
-              name: templateData.name,
-              success: false,
-              message: 'AI生成内容块必须包含提示词'
-            });
-            failCount++;
-            hasValidationError = true;
-            break;
-          }
-        }
+        // for (const block of aiBlocks) {
+        //   if (!block.aiPrompt || typeof block.aiPrompt !== 'string' || block.aiPrompt.trim().length === 0) {
+        //     results.push({
+        //       name: templateData.name,
+        //       success: false,
+        //       message: 'AI生成内容块必须包含提示词'
+        //     });
+        //     failCount++;
+        //     hasValidationError = true;
+        //     break;
+        //   }
+        // }
 
         if (hasValidationError) continue;
 

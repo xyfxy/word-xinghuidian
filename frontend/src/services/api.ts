@@ -192,8 +192,10 @@ export const templateService = {
     try {
       const response = await api.post<{ data: DocumentTemplate }>('/templates', template);
       return response.data.data;
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : '保存模板失败');
+    } catch (error: any) {
+      // 优先使用后端返回的错误消息
+      const errorMessage = error.response?.data?.message || error.message || '保存模板失败';
+      throw new Error(errorMessage);
     }
   },
 
@@ -202,8 +204,10 @@ export const templateService = {
     try {
       const response = await api.put<{ data: DocumentTemplate }>(`/templates/${id}`, template);
       return response.data.data;
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : '更新模板失败');
+    } catch (error: any) {
+      // 优先使用后端返回的错误消息
+      const errorMessage = error.response?.data?.message || error.message || '更新模板失败';
+      throw new Error(errorMessage);
     }
   },
 

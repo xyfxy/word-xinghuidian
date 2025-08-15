@@ -4,12 +4,13 @@ import 'react-quill/dist/quill.snow.css';
 // 懒加载 ReactQuill 以提升性能
 const ReactQuill = lazy(() => import('react-quill'));
 import { ContentBlock, TwoColumnContent, ImageContent, PageBreakContent, TableContent } from '../../types';
-import { Sparkles, Type, Loader, ChevronDown, ChevronRight, Image as ImageIcon, FileText, Upload, AlignLeft, AlignCenter, AlignRight, Table, File, X } from 'lucide-react';
+import { Sparkles, Type, Loader, ChevronDown, ChevronRight, Image as ImageIcon, FileText, Upload, AlignLeft, AlignCenter, AlignRight, Table, File, X, Link, Hash, Copy } from 'lucide-react';
 import { Switch } from '@headlessui/react';
 import BlockFormatPanel from './BlockFormatPanel';
 import TableEditor from './TableEditor';
 import useEditorStore from '../../stores/editorStore';
 import { AIBlockSettings } from './AIBlockSettings';
+import BlockReferenceSelector from './BlockReferenceSelector';
 import documentService from '../../services/documentService';
 
 interface ContentBlockEditorProps {
@@ -19,6 +20,7 @@ interface ContentBlockEditorProps {
     onUpdate: (updates: Partial<ContentBlock>) => void;
     onGenerateAI: () => void;
     isGenerating: boolean;
+    onConvertType?: (newType: 'text' | 'ai-generated') => void;
 }
 
 // 已删除未使用的 deepCloneAiSettings 函数
@@ -282,6 +284,7 @@ const ContentBlockEditor: React.FC<ContentBlockEditorProps> = ({
     onUpdate,
     onGenerateAI,
     isGenerating,
+    onConvertType,
 }) => {
     const isAiBlock = block.type === 'ai-generated';
     const { expandedBlocks, setBlockExpanded } = useEditorStore();
@@ -289,6 +292,9 @@ const ContentBlockEditor: React.FC<ContentBlockEditorProps> = ({
     // 从store获取展开状态，如果不存在则默认为false（新内容块收缩）
     const isExpanded = expandedBlocks[block.id] ?? false;
     const setIsExpanded = (expanded: boolean) => setBlockExpanded(block.id, expanded);
+    
+    // 复制成功状态
+    const [copiedId, setCopiedId] = useState(false);
 
     const blockStyle = useMemo(() => {
         const border = block.format?.paragraph?.border?.bottom;
@@ -383,25 +389,82 @@ const ContentBlockEditor: React.FC<ContentBlockEditorProps> = ({
                         onChange={(e) => onUpdate({ title: e.target.value })}
                         className="font-semibold bg-transparent border-none outline-none focus:ring-0"
                     />
+                    
+                    {/* 显示内容块ID和复制按钮 */}
+                    <div className="flex items-center gap-2 ml-3">
+                        <span className="text-xs text-gray-400">
+                            ID: {block.id}
+                        </span>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const reference = `{{${block.id}}}`;
+                                navigator.clipboard.writeText(reference).then(() => {
+                                    setCopiedId(true);
+                                    setTimeout(() => setCopiedId(false), 2000);
+                                }).catch(() => {
+                                    console.error('复制失败');
+                                });
+                            }}
+                            className={`p-1 transition-colors ${copiedId ? 'text-green-600' : 'text-gray-400 hover:text-gray-600'}`}
+                            title={`复制引用 {{${block.id}}}`}
+                        >
+                            {copiedId ? (
+                                <span className="text-xs">✓</span>
+                            ) : (
+                                <Copy className="w-3 h-3" />
+                            )}
+                        </button>
+                        {copiedId && (
+                            <span className="text-xs text-green-600 ml-1">已复制!</span>
+                        )}
+                    </div>
                 </div>
 
-                {/* 只有非换页块才显示自定义格式选项 */}
-                {block.type !== 'page-break' && (
-                    <div className="flex items-center space-x-2">
-                        <span className="text-sm text-gray-600">自定义格式</span>
-                        <Switch
-                            checked={!block.format?.useGlobalFormat}
-                            onChange={(checked) => handleFormatChange(!checked)}
-                            className={`${!block.format?.useGlobalFormat ? 'bg-primary-600' : 'bg-gray-200'
-                                } relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2`}
+                <div className="flex items-center space-x-4">
+                    {/* 类型转换按钮 - 仅对text和ai-generated类型显示 */}
+                    {onConvertType && (block.type === 'text' || block.type === 'ai-generated') && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const newType = block.type === 'text' ? 'ai-generated' : 'text';
+                                onConvertType(newType);
+                            }}
+                            className="px-3 py-1 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md transition-colors flex items-center gap-2"
+                            title={block.type === 'text' ? '转换为AI生成块' : '转换为固定内容块'}
                         >
-                            <span
-                                className={`${!block.format?.useGlobalFormat ? 'translate-x-6' : 'translate-x-1'
-                                    } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
-                            />
-                        </Switch>
-                    </div>
-                )}
+                            {block.type === 'text' ? (
+                                <>
+                                    <Sparkles className="h-4 w-4" />
+                                    转为AI块
+                                </>
+                            ) : (
+                                <>
+                                    <Type className="h-4 w-4" />
+                                    转为固定块
+                                </>
+                            )}
+                        </button>
+                    )}
+                    
+                    {/* 只有非换页块才显示自定义格式选项 */}
+                    {block.type !== 'page-break' && (
+                        <div className="flex items-center space-x-2">
+                            <span className="text-sm text-gray-600">自定义格式</span>
+                            <Switch
+                                checked={!block.format?.useGlobalFormat}
+                                onChange={(checked) => handleFormatChange(!checked)}
+                                className={`${!block.format?.useGlobalFormat ? 'bg-primary-600' : 'bg-gray-200'
+                                    } relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2`}
+                            >
+                                <span
+                                    className={`${!block.format?.useGlobalFormat ? 'translate-x-6' : 'translate-x-1'
+                                        } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
+                                />
+                            </Switch>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* 只在展开状态下显示内容 */}
@@ -551,8 +614,13 @@ const AIGeneratorBlock: React.FC<{
     const [extractedContents, setExtractedContents] = useState<Map<string, string>>(new Map());
     const [isExtracting, setIsExtracting] = useState(false);
     const [showPreview, setShowPreview] = useState(false);
+    const [showBlockSelector, setShowBlockSelector] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
+    
+    // 获取当前模板的所有内容块
+    const { currentTemplate } = useEditorStore();
 
     // 生成时间计时器
     useEffect(() => {
@@ -677,6 +745,46 @@ const AIGeneratorBlock: React.FC<{
         const basePrompt = block.aiPrompt?.split('\n===== 文档内容 ====')[0] || '';
         onUpdate({ aiPrompt: basePrompt });
     };
+    
+    // 插入内容块引用
+    const handleInsertReference = (reference: string) => {
+        if (promptTextareaRef.current) {
+            const textarea = promptTextareaRef.current;
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const currentValue = block.aiPrompt?.split('\n===== 文档内容 ====')[0] || '';
+            
+            // 在光标位置插入引用
+            const newValue = currentValue.substring(0, start) + reference + currentValue.substring(end);
+            
+            // 保留文档部分
+            const documentsSection = block.aiPrompt?.split('\n===== 文档内容 ====')[1] || '';
+            const newPrompt = documentsSection 
+                ? newValue + '\n===== 文档内容 ====' + documentsSection
+                : newValue;
+            
+            onUpdate({ aiPrompt: newPrompt });
+            
+            // 恢复光标位置
+            setTimeout(() => {
+                if (promptTextareaRef.current) {
+                    promptTextareaRef.current.focus();
+                    promptTextareaRef.current.setSelectionRange(
+                        start + reference.length,
+                        start + reference.length
+                    );
+                }
+            }, 0);
+        }
+        setShowBlockSelector(false);
+    };
+    
+    // 获取已引用的内容块ID列表
+    const getReferencedBlockIds = () => {
+        const prompt = block.aiPrompt || '';
+        const matches = prompt.match(/\{\{([^}]+)\}\}/g) || [];
+        return matches.map(match => match.replace(/\{\{|\}\}/g, ''));
+    };
 
     return (
         <div className="my-4 space-y-3">
@@ -688,8 +796,22 @@ const AIGeneratorBlock: React.FC<{
             <div className="space-y-3">
                 {/* 文本输入区域 */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">提示词</label>
+                    <div className="flex items-center justify-between mb-1">
+                        <label className="block text-sm font-medium text-gray-700">提示词</label>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowBlockSelector(true);
+                            }}
+                            className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                            title="插入内容块引用"
+                        >
+                            <Link className="w-4 h-4" />
+                            插入内容块引用
+                        </button>
+                    </div>
                     <textarea
+                        ref={promptTextareaRef}
                         value={block.aiPrompt?.split('\n===== 文档内容 ====')[0] || ''}
                         onChange={(e) => {
                             const basePrompt = e.target.value;
@@ -699,11 +821,32 @@ const AIGeneratorBlock: React.FC<{
                                 : basePrompt;
                             onUpdate({ aiPrompt: newPrompt });
                         }}
-                        placeholder="输入AI生成提示词..."
+                        placeholder="输入AI生成提示词，可使用 {{blockId}} 格式引用其他内容块..."
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
                         rows={4}
                         disabled={isExtracting}
                     />
+                    
+                    {/* 显示已引用的内容块 */}
+                    {getReferencedBlockIds().length > 0 && (
+                        <div className="mt-2 p-2 bg-blue-50 rounded-md">
+                            <div className="text-xs text-blue-700 mb-1">已引用的内容块：</div>
+                            <div className="flex flex-wrap gap-1">
+                                {getReferencedBlockIds().map(blockId => {
+                                    const referencedBlock = currentTemplate?.content.find(b => b.id === blockId);
+                                    return (
+                                        <span
+                                            key={blockId}
+                                            className="inline-flex items-center gap-1 px-2 py-0.5 bg-white text-xs rounded border border-blue-200"
+                                        >
+                                            <Hash className="w-3 h-3" />
+                                            {referencedBlock?.title || blockId}
+                                        </span>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* 文档上传区域 */}
@@ -873,6 +1016,17 @@ const AIGeneratorBlock: React.FC<{
                 defaultModelId={null}
                 defaultSystemPrompt="你是一个专业的文档编写助手。"
             />
+            
+            {/* 内容块引用选择器 */}
+            {showBlockSelector && (
+                <BlockReferenceSelector
+                    isOpen={showBlockSelector}
+                    onClose={() => setShowBlockSelector(false)}
+                    blocks={currentTemplate?.content || []}
+                    currentBlockId={block.id}
+                    onInsertReference={handleInsertReference}
+                />
+            )}
         </div>
     );
 };

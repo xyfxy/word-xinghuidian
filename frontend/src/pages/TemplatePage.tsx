@@ -3,7 +3,7 @@ import { Plus, Search, Edit, Copy, Trash2, FileText, Clock, Wand2, Upload, Downl
 import { templateService, TemplateListItem } from '../services/api';
 import { createDefaultTemplate } from '../utils/document';
 import useEditorStore from '../stores/editorStore';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const TemplatePage: React.FC = React.memo(() => {
   const [templates, setTemplates] = useState<TemplateListItem[]>([]);
@@ -17,6 +17,7 @@ const TemplatePage: React.FC = React.memo(() => {
   
   const { setCurrentTemplate } = useEditorStore();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // 加载模板列表（使用简化数据）
   const loadTemplates = useCallback(async (page: number = 1) => {
@@ -43,6 +44,34 @@ const TemplatePage: React.FC = React.memo(() => {
   useEffect(() => {
     loadTemplates(1);
   }, []);
+
+  // 监听页面可见性变化，当从其他页面返回时刷新列表
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // 页面变为可见时，刷新模板列表
+        loadTemplates(currentPage);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [currentPage, loadTemplates]);
+
+  // 监听路由变化，当从编辑器返回时刷新列表
+  useEffect(() => {
+    if (location.pathname === '/templates') {
+      // 如果路径包含来源信息，说明是从编辑器返回
+      const urlParams = new URLSearchParams(location.search);
+      if (urlParams.get('from') === 'editor') {
+        loadTemplates(currentPage);
+        // 清理URL参数
+        window.history.replaceState({}, '', '/templates');
+      }
+    }
+  }, [location, currentPage, loadTemplates]);
 
   // 过滤模板
   const filteredTemplates = useMemo(() => 
