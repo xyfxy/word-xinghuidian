@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, lazy, Suspense, useState, useEffect } from 'react';
 import 'react-quill/dist/quill.snow.css';
+import { copyToClipboard } from '../../utils/clipboard';
 
 // 懒加载 ReactQuill 以提升性能
 const ReactQuill = lazy(() => import('react-quill'));
@@ -396,15 +397,18 @@ const ContentBlockEditor: React.FC<ContentBlockEditorProps> = ({
                             ID: {block.id}
                         </span>
                         <button
-                            onClick={(e) => {
+                            onClick={async (e) => {
                                 e.stopPropagation();
                                 const reference = `{{${block.id}}}`;
-                                navigator.clipboard.writeText(reference).then(() => {
+                                const success = await copyToClipboard(reference);
+                                if (success) {
                                     setCopiedId(true);
                                     setTimeout(() => setCopiedId(false), 2000);
-                                }).catch(() => {
+                                } else {
                                     console.error('复制失败');
-                                });
+                                    // 可以显示提示信息给用户
+                                    alert('复制失败，请手动选择并复制ID：' + reference);
+                                }
                             }}
                             className={`p-1 transition-colors ${copiedId ? 'text-green-600' : 'text-gray-400 hover:text-gray-600'}`}
                             title={`复制引用 {{${block.id}}}`}

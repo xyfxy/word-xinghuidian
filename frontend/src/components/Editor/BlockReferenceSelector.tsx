@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { X, Copy, Link, Hash, FileText } from 'lucide-react'
 import { ContentBlock } from '../../types'
+import { copyToClipboard } from '../../utils/clipboard'
 
 interface BlockReferenceSelectorProps {
   isOpen: boolean
@@ -63,12 +64,15 @@ const BlockReferenceSelector: React.FC<BlockReferenceSelectorProps> = ({
     setTimeout(() => setCopiedId(null), 2000)
   }
 
-  const handleCopyReference = (blockId: string) => {
+  const handleCopyReference = async (blockId: string) => {
     const reference = `{{${blockId}}}`
-    navigator.clipboard.writeText(reference).then(() => {
+    const success = await copyToClipboard(reference)
+    if (success) {
       setCopiedId(blockId)
       setTimeout(() => setCopiedId(null), 2000)
-    })
+    } else {
+      alert('复制失败，请手动选择并复制ID：' + reference)
+    }
   }
 
   if (!isOpen) return null

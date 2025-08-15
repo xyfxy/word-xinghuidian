@@ -5,6 +5,7 @@ import { modelService } from '../../services/modelService';
 import { AIModelListItem, ImageAnalysisResult } from '../../types/model';
 import { toast } from '../../utils/toast';
 import { formatMaxKbContent } from '../../utils/markdown';
+import { copyToClipboard } from '../../utils/clipboard';
 
 interface ImageProcessorModalProps {
   isOpen: boolean;
@@ -232,16 +233,20 @@ export default function ImageProcessorModal({
   };
 
   // 复制单个分析结果
-  const copyAnalysis = (index: number, text: string) => {
+  const copyAnalysis = async (index: number, text: string) => {
     const formattedText = `图片${index + 1}：${text}`;
-    navigator.clipboard.writeText(formattedText);
-    setCopiedIndex(index);
-    toast.success('已复制到剪贴板');
-    setTimeout(() => setCopiedIndex(null), 2000);
+    const success = await copyToClipboard(formattedText);
+    if (success) {
+      setCopiedIndex(index);
+      toast.success('已复制到剪贴板');
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } else {
+      toast.error('复制失败，请手动复制');
+    }
   };
 
   // 复制所有分析结果
-  const copyAllAnalysis = () => {
+  const copyAllAnalysis = async () => {
     const allAnalysis = images
       .filter(img => img.analysis?.description)
       .map((img) => {
@@ -251,10 +256,14 @@ export default function ImageProcessorModal({
       .join('\n\n');
     
     if (allAnalysis) {
-      navigator.clipboard.writeText(allAnalysis);
-      setCopiedAll(true);
-      toast.success('已复制所有分析结果');
-      setTimeout(() => setCopiedAll(false), 2000);
+      const success = await copyToClipboard(allAnalysis);
+      if (success) {
+        setCopiedAll(true);
+        toast.success('已复制所有分析结果');
+        setTimeout(() => setCopiedAll(false), 2000);
+      } else {
+        toast.error('复制失败，请手动复制');
+      }
     } else {
       toast.error('没有可复制的分析结果');
     }

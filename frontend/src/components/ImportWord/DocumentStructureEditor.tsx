@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { ParsedDocument, ContentBlockGroup, ParsedElement } from '../../types/wordImport';
 import { toast } from '../../utils/toast';
+import { copyToClipboard } from '../../utils/clipboard';
 
 interface DocumentStructureEditorProps {
   parsedDocument: ParsedDocument;
@@ -150,13 +151,14 @@ const DocumentStructureEditor: React.FC<DocumentStructureEditorProps> = ({
   };
 
   // 复制组ID引用
-  const copyGroupReference = (groupId: string) => {
+  const copyGroupReference = async (groupId: string) => {
     const reference = `{{${groupId}}}`;
-    navigator.clipboard.writeText(reference).then(() => {
+    const success = await copyToClipboard(reference);
+    if (success) {
       toast.success(`已复制引用: ${reference}`);
-    }).catch(() => {
+    } else {
       toast.error('复制失败，请手动复制');
-    });
+    }
   };
 
   // 截取内容预览

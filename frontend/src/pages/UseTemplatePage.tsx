@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { FileText, Download, Sparkles, ChevronRight, Copy, Eye, ChevronDown, ChevronUp, Upload, X, ArrowLeft, Image as ImageIcon, File, Loader, Settings2, Layers } from 'lucide-react'
 import { templateService, aiService } from '../services/api'
 import { DocumentTemplate, ContentBlock, ImageContent } from '../types'
+import { copyToClipboard } from '../utils/clipboard'
 // 已删除未使用的 useAISettings 导入
 import { toast } from '../utils/toast'
 import { exportToWord } from '../utils/document'
@@ -468,13 +469,14 @@ export default function UseTemplatePage() {
     }
   }
 
-  const copyBlockReference = (blockId: string) => {
+  const copyBlockReference = async (blockId: string) => {
     const reference = `{{${blockId}}}`
-    navigator.clipboard.writeText(reference).then(() => {
+    const success = await copyToClipboard(reference)
+    if (success) {
       toast.success(`已复制引用: ${reference}`)
-    }).catch(() => {
+    } else {
       toast.error('复制失败，请手动复制')
-    })
+    }
   }
 
   // 切换所有内容块的展开/收缩状态
@@ -1002,15 +1004,15 @@ export default function UseTemplatePage() {
           </div>
         </div>
 
-        {/* 预览面板 */}
+        {/* 预览面板 - 可调整大小的右侧边栏 */}
         {showPreview && selectedTemplate && (
           <div 
-            className={`bg-white border-l shadow-lg overflow-hidden flex flex-col relative ${isResizing ? 'select-none' : ''}`}
+            className={`preview-panel bg-white border-l shadow-lg overflow-hidden flex flex-col relative ${isResizing ? 'resizing' : ''}`}
             style={{ width: previewWidth }}
           >
             {/* 调整大小的拖拽条 */}
             <div
-              className="absolute left-0 top-0 bottom-0 w-1 hover:w-2 bg-transparent hover:bg-blue-400 cursor-col-resize transition-all z-10"
+              className="resize-handle"
               onMouseDown={handleMouseDown}
               title="拖拽调整预览面板大小"
             />
@@ -1031,7 +1033,9 @@ export default function UseTemplatePage() {
               </div>
             </div>
             <div className="flex-1 overflow-y-auto">
-              <PreviewPanel template={{ ...selectedTemplate, content: contentBlocks }} />
+              <div className="transform scale-90 origin-top"> {/* 添加缩放效果，与编辑模板页面保持一致 */}
+                <PreviewPanel template={{ ...selectedTemplate, content: contentBlocks }} />
+              </div>
             </div>
           </div>
         )}

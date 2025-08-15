@@ -5,13 +5,13 @@ FROM node:18-alpine
 WORKDIR /app
 
 # 复制 package.json 和 package-lock.json（如果存在）
-COPY package*.json ./
+COPY backend/package*.json ./
 
 # 安装依赖
 RUN npm ci --only=production
 
 # 复制后端源代码
-COPY . .
+COPY backend/ .
 
 # 编译 TypeScript
 RUN npm run build
@@ -20,19 +20,19 @@ RUN npm run build
 RUN mkdir -p preset-data/models preset-data/templates data/models data/templates uploads
 
 # 复制预设的模板和模型配置到预设目录（作为备份）
-COPY data/templates/ preset-data/templates/
-COPY data/models/ preset-data/models/
+COPY backend/data/templates/ preset-data/templates/
+COPY backend/data/models/ preset-data/models/
 
 # 同时复制到data目录作为默认数据（镜像内置）
-COPY data/templates/ data/templates/
-COPY data/models/ data/models/
+COPY backend/data/templates/ data/templates/
+COPY backend/data/models/ data/models/
 
 # 复制增强版初始化脚本
-COPY init-data.sh /app/
+COPY backend/init-data.sh /app/
 RUN chmod +x /app/init-data.sh
 
 # 创建数据完整性检查脚本
-COPY check-data.sh /app/
+COPY backend/check-data.sh /app/
 RUN chmod +x /app/check-data.sh
 
 # 暴露端口

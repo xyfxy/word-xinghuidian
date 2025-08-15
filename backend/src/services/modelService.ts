@@ -445,60 +445,73 @@ export class ModelService {
     }
 
     try {
-      const results = [];
+      console.log(`🖼️ 开始并行分析 ${request.images.length} 张图片`);
       
-      for (let i = 0; i < request.images.length; i++) {
-        const imageBase64 = request.images[i];
-        
-        // 构建多模态消息
-        const imageUrl = imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
-        const prompt = request.prompt || this.getDefaultAnalysisPrompt(request.analysisType || 'description');
-        
-        console.log(`🖼️ 分析第 ${i + 1} 张图片`);
-        
-        const messages: MultimodalMessage[] = [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: prompt
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: imageUrl,
-                  detail: 'high'
+      // 并行处理所有图片
+      const analysisPromises = request.images.map(async (imageBase64, i) => {
+        try {
+          // 构建多模态消息
+          const imageUrl = imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+          const prompt = request.prompt || this.getDefaultAnalysisPrompt(request.analysisType || 'description');
+          
+          console.log(`🖼️ 开始分析第 ${i + 1} 张图片`);
+          
+          const messages: MultimodalMessage[] = [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: prompt
+                },
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: imageUrl,
+                    detail: 'high'
+                  }
                 }
-              }
-            ]
+              ]
+            }
+          ];
+
+          const generateRequest: MultimodalGenerateRequest = {
+            modelId: request.modelId,
+            messages,
+            temperature: 0.3,
+            maxTokens: 20000  // 大幅增加token限制
+          };
+
+          const response = await this.generateMultimodalContent(generateRequest);
+          
+          console.log(`✅ 第 ${i + 1} 张图片分析完成`);
+          
+          if (response.success) {
+            return {
+              imageIndex: i,
+              description: response.content,
+              confidence: 0.9 // 暂时固定值，实际应该从模型返回
+            };
+          } else {
+            return {
+              imageIndex: i,
+              description: `分析失败: ${response.error}`,
+              confidence: 0
+            };
           }
-        ];
-
-
-        const generateRequest: MultimodalGenerateRequest = {
-          modelId: request.modelId,
-          messages,
-          temperature: 0.3,
-          maxTokens: 20000  // 大幅增加token限制
-        };
-
-        const response = await this.generateMultimodalContent(generateRequest);
-        
-        if (response.success) {
-          results.push({
+        } catch (error) {
+          console.error(`❌ 第 ${i + 1} 张图片分析出错:`, error);
+          return {
             imageIndex: i,
-            description: response.content,
-            confidence: 0.9 // 暂时固定值，实际应该从模型返回
-          });
-        } else {
-          results.push({
-            imageIndex: i,
-            description: `分析失败: ${response.error}`,
+            description: `分析出错: ${error instanceof Error ? error.message : '未知错误'}`,
             confidence: 0
-          });
+          };
         }
-      }
+      });
+
+      // 等待所有图片分析完成
+      const results = await Promise.all(analysisPromises);
+      console.log(`🎉 所有 ${results.length} 张图片分析完成`);
 
       return {
         success: true,
