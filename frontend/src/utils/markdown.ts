@@ -77,24 +77,29 @@ export function formatPlainText(text: string): string {
   // 转义HTML特殊字符
   const escaped = escapeHtml(text);
   
-  // 处理段落：保留空行作为空段落
+  // 处理段落：正确处理双换行符为段落分隔
   const lines = escaped.split('\n');
   const paragraphs: string[] = [];
   let currentParagraph: string[] = [];
+  let consecutiveEmptyLines = 0;
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     
     if (line === '') {
-      // 遇到空行
-      if (currentParagraph.length > 0) {
+      consecutiveEmptyLines++;
+      // 只在第一个空行时结束当前段落
+      if (consecutiveEmptyLines === 1 && currentParagraph.length > 0) {
         // 结束当前段落
         paragraphs.push(`<p>${currentParagraph.join('<br>')}</p>`);
         currentParagraph = [];
       }
-      // 添加空段落表示空行
-      paragraphs.push('<p>&nbsp;</p>');
     } else {
+      // 如果之前有连续空行，添加一个空段落表示段落间的间隔
+      if (consecutiveEmptyLines > 0 && paragraphs.length > 0) {
+        paragraphs.push('<p>&nbsp;</p>');
+      }
+      consecutiveEmptyLines = 0;
       // 非空行，添加到当前段落
       currentParagraph.push(line);
     }
