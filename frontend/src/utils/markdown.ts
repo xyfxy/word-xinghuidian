@@ -36,7 +36,7 @@ export async function formatMaxKbContent(content: string): Promise<string> {
   // 清理内容
   let cleanContent = content.trim();
   
-  // 移除可能的多余空白行
+  // 保留所有换行符，只移除连续3个或更多的换行符
   cleanContent = cleanContent.replace(/\n{3,}/g, '\n\n');
   
   // 检查是否包含Markdown标记（更全面的检测）
@@ -72,12 +72,16 @@ export function formatPlainText(text: string): string {
   // 转义HTML特殊字符
   const escaped = escapeHtml(text);
   
-  // 将双换行符转换为段落
+  // 处理段落：双换行符分割段落，单换行符保留为<br>
   const paragraphs = escaped
-    .split(/\n{2,}/)
+    .split(/\n\n+/)  // 用两个或更多换行符分割段落
     .map(p => p.trim())
     .filter(p => p.length > 0)
-    .map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`);
+    .map(p => {
+      // 将段落内的单个换行符替换为<br>
+      const withLineBreaks = p.replace(/\n/g, '<br>');
+      return `<p>${withLineBreaks}</p>`;
+    });
   
   return paragraphs.join('');
 }
