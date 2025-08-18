@@ -40,16 +40,16 @@ export async function formatMaxKbContent(content: string): Promise<string> {
   cleanContent = cleanContent.replace(/\n{3,}/g, '\n\n');
   
   // 检查是否包含Markdown标记（更全面的检测）
-  const hasMarkdown = /^#{1,6}\s/.test(cleanContent) || // 标题
+  const hasMarkdown = /^#{1,6}\s/m.test(cleanContent) || // 标题（多行模式）
                      /\*\*.*?\*\*/.test(cleanContent) || // 加粗
-                     /\*[^*].*?[^*]\*/.test(cleanContent) || // 斜体（避免与加粗冲突）
+                     /\*[^*\s].*?[^*]\*/.test(cleanContent) || // 斜体（避免与加粗和列表冲突）
                      /__.*?__/.test(cleanContent) || // 下划线加粗
-                     /_.*?_/.test(cleanContent) || // 下划线斜体
-                     /^\d+\.\s/.test(cleanContent) || // 有序列表
-                     /^[-*+]\s/.test(cleanContent) || // 无序列表
+                     /_[^_\s].*?[^_]_/.test(cleanContent) || // 下划线斜体（避免单独的下划线）
+                     /^\d+\.\s/m.test(cleanContent) || // 有序列表（多行模式）
+                     /^[-*+]\s/m.test(cleanContent) || // 无序列表（多行模式）
                      /`.*?`/.test(cleanContent) || // 内联代码
-                     /^```/.test(cleanContent) || // 代码块
-                     /^>/.test(cleanContent) || // 引用
+                     /^```/m.test(cleanContent) || // 代码块（多行模式）
+                     /^>/m.test(cleanContent) || // 引用（多行模式）
                      /\[.*?\]\(.*?\)/.test(cleanContent); // 链接
   
   if (hasMarkdown) {
