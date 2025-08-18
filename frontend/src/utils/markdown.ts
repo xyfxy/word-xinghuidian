@@ -72,16 +72,33 @@ export function formatPlainText(text: string): string {
   // 转义HTML特殊字符
   const escaped = escapeHtml(text);
   
-  // 处理段落：双换行符分割段落，单换行符保留为<br>
-  const paragraphs = escaped
-    .split(/\n\n+/)  // 用两个或更多换行符分割段落
-    .map(p => p.trim())
-    .filter(p => p.length > 0)
-    .map(p => {
-      // 将段落内的单个换行符替换为<br>
-      const withLineBreaks = p.replace(/\n/g, '<br>');
-      return `<p>${withLineBreaks}</p>`;
-    });
+  // 处理段落：保留空行作为空段落
+  const lines = escaped.split('\n');
+  const paragraphs: string[] = [];
+  let currentParagraph: string[] = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    if (line === '') {
+      // 遇到空行
+      if (currentParagraph.length > 0) {
+        // 结束当前段落
+        paragraphs.push(`<p>${currentParagraph.join('<br>')}</p>`);
+        currentParagraph = [];
+      }
+      // 添加空段落表示空行
+      paragraphs.push('<p>&nbsp;</p>');
+    } else {
+      // 非空行，添加到当前段落
+      currentParagraph.push(line);
+    }
+  }
+  
+  // 处理最后一个段落
+  if (currentParagraph.length > 0) {
+    paragraphs.push(`<p>${currentParagraph.join('<br>')}</p>`);
+  }
   
   return paragraphs.join('');
 }

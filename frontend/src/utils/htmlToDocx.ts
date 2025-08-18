@@ -195,12 +195,17 @@ const parseHTMLNode = (node: Node, inheritedStyle: StyleOptions = {}, userFontSe
   const runs: TextRun[] = [];
   
   if (node.nodeType === Node.TEXT_NODE) {
-    const text = node.textContent?.trim();
-    if (text) {
-      runs.push(createTextRun({
-        text,
-        ...inheritedStyle,
-      }, userFontSettings));
+    const text = node.textContent;
+    // 保留&nbsp;作为空格，但仍需要trim处理其他空白
+    if (text && (text.trim() || text.includes('\u00A0'))) {
+      // 如果只包含&nbsp;（不可断空格），保留它
+      const processedText = text.includes('\u00A0') && !text.trim() ? ' ' : text.trim();
+      if (processedText) {
+        runs.push(createTextRun({
+          text: processedText,
+          ...inheritedStyle,
+        }, userFontSettings));
+      }
     }
   } else if (node.nodeType === Node.ELEMENT_NODE) {
     const element = node as HTMLElement;
