@@ -451,6 +451,31 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
               </div>
             </div>
           </div>
+          
+          {/* 标题空行设置 */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-gray-600">标题空行</p>
+            <label className="flex items-center">
+              <input 
+                type="checkbox" 
+                checked={blockFormat.headingFormat?.addSpaceBeforeExceptFirst || false} 
+                onChange={(e) => onUpdate({ 
+                  format: { 
+                    ...blockFormat, 
+                    headingFormat: { 
+                      ...blockFormat.headingFormat, 
+                      addSpaceBeforeExceptFirst: e.target.checked 
+                    } 
+                  } 
+                })}
+                className="form-checkbox h-4 w-4 text-blue-600" 
+              />
+              <span className="ml-2 text-sm text-gray-700">除第一个标题外向上空一行</span>
+            </label>
+            <p className="text-xs text-gray-500 ml-6">
+              启用后，文档中除第一个标题外，其他标题上方会自动添加一个空行
+            </p>
+          </div>
         </div>
       )}
 

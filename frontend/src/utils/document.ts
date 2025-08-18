@@ -281,13 +281,20 @@ const convertUnitToPt = (value: number, unit: 'pt' | 'cm' | 'px' | 'char' | unde
 };
 
 // 创建段落
-const createParagraphs = (block: ContentBlock, defaultFormat: DocumentFormat): Paragraph[] => {
+const createParagraphs = (
+  block: ContentBlock, 
+  defaultFormat: DocumentFormat,
+  options?: {
+    addSpaceBefore?: boolean;
+    isFirstHeadingBlock?: boolean;
+  }
+): Paragraph[] => {
   if (typeof block.content !== 'string') {
     return [];
   }
 
   // 使用新的HTML转换函数，它会处理用户格式设置优先级
-  return convertHTMLToDocxParagraphs(block.content, defaultFormat, block.format);
+  return convertHTMLToDocxParagraphs(block.content, defaultFormat, block.format, options);
 };
 
 // 导出Word文档
@@ -296,11 +303,29 @@ export const exportToWord = async (template: DocumentTemplate): Promise<void> =>
     // 按position排序内容块
     const sortedContent = [...template.content].sort((a, b) => a.position - b.position);
     
+    // 检查内容块是否包含标题
+    const hasHeading = (content: string) => {
+      // 检查HTML标题标签
+      const htmlHeadingRegex = /<h[1-6][^>]*>/i;
+      // 检查Quill编辑器的标题类
+      const quillHeadingRegex = /class="[^"]*ql-header-[1-6][^"]*"/i;
+      
+      return htmlHeadingRegex.test(content) || quillHeadingRegex.test(content);
+    };
+    
+    // 找到第一个包含标题的内容块索引
+    const firstHeadingIndex = sortedContent.findIndex(block => {
+      if ((block.type === 'text' || block.type === 'ai-generated') && typeof block.content === 'string') {
+        return hasHeading(block.content);
+      }
+      return false;
+    });
+    
     // 创建段落或表格，一个内容块可能包含多个段落
     const pageWidthPt = template.format.page.width || 595;
     const pageHeightPt = template.format.page.height || 842;
 
-    const docxElements = sortedContent.flatMap(block => {
+    const docxElements = sortedContent.flatMap((block, index) => {
       // 处理图片块
       if (block.type === 'image' && typeof block.content === 'object' && 'src' in block.content) {
         const imageContent = block.content as ImageContent;
@@ -634,8 +659,22 @@ export const exportToWord = async (template: DocumentTemplate): Promise<void> =>
       if (typeof block.content !== 'string') {
         return [];
       }
+      
+      // 检查是否需要在标题前添加空行
+      const shouldAddSpaceBefore = 
+        block.format?.enableHeadingFormat && 
+        block.format?.headingFormat?.addSpaceBeforeExceptFirst &&
+        index !== firstHeadingIndex &&
+        hasHeading(block.content);
+      
+      // 传递选项给createParagraphs
+      const paragraphs = createParagraphs(block, template.format, {
+        addSpaceBefore: shouldAddSpaceBefore,
+        isFirstHeadingBlock: index === firstHeadingIndex
+      });
+      
       // 为文本/ai生成块创建段落
-      return createParagraphs(block, template.format);
+      return paragraphs;
     });
     
     // 创建文档

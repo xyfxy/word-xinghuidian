@@ -231,7 +231,11 @@ const parseHTMLNode = (node: Node, inheritedStyle: StyleOptions = {}, userFontSe
 export const convertHTMLToDocxParagraphs = (
   htmlContent: string,
   defaultFormat: DocumentFormat,
-  blockFormat?: any
+  blockFormat?: any,
+  options?: {
+    addSpaceBefore?: boolean;
+    isFirstHeadingBlock?: boolean;
+  }
 ): Paragraph[] => {
   // 确定最终的格式设置
   const shouldUseGlobal = blockFormat?.useGlobalFormat !== false;
@@ -281,6 +285,9 @@ export const convertHTMLToDocxParagraphs = (
   
   const paragraphs: Paragraph[] = [];
   
+  // 记录是否已经处理过第一个标题（用于处理同一块中的多个标题）
+  let isFirstHeadingInBlock = true;
+  
   // 处理不同的HTML元素
   const processElement = (element: Element, listLevel = 0): void => {
     const tagName = element.tagName.toLowerCase();
@@ -301,6 +308,39 @@ export const convertHTMLToDocxParagraphs = (
            const fontSize = headingFontSettings.size;
            const border = headingParagraphSettings.border?.bottom;
            
+           // 计算标题前的间距（保持原有的段前距设置）
+           const beforeSpacing = headingParagraphSettings.spaceBefore * 20;
+           
+           // 判断是否需要插入空行
+           const shouldAddEmptyLine = blockFormat?.enableHeadingFormat && 
+                                     blockFormat?.headingFormat?.addSpaceBeforeExceptFirst;
+           
+           let shouldInsertEmptyParagraph = false;
+           
+           if (shouldAddEmptyLine) {
+             // 如果是第一个包含标题的内容块
+             if (options?.isFirstHeadingBlock) {
+               // 只有在不是块中第一个标题时才插入空行
+               if (!isFirstHeadingInBlock) {
+                 shouldInsertEmptyParagraph = true;
+               }
+             } else if (options?.addSpaceBefore) {
+               // 如果不是第一个包含标题的内容块，所有标题都插入空行
+               shouldInsertEmptyParagraph = true;
+             }
+           }
+           
+           // 如果需要，先插入一个空段落
+           if (shouldInsertEmptyParagraph) {
+             paragraphs.push(new Paragraph({
+               children: [new TextRun({ text: '' })],
+               spacing: { after: 0, before: 0, line: 240 },
+             }));
+           }
+           
+           // 标记已经处理过第一个标题
+           isFirstHeadingInBlock = false;
+           
            paragraphs.push(new Paragraph({
              children: headingRuns,
              heading: [HeadingLevel.HEADING_1, HeadingLevel.HEADING_2, HeadingLevel.HEADING_3, 
@@ -308,7 +348,7 @@ export const convertHTMLToDocxParagraphs = (
              spacing: {
                line: Math.round(headingParagraphSettings.lineHeight * 240), // 转换为TWIPS
                after: headingParagraphSettings.paragraphSpacing * 20,
-               before: headingParagraphSettings.spaceBefore * 20,
+               before: beforeSpacing,
              },
              indent: {
                firstLine: convertUnitToPt(indent.firstLine, indent.firstLineUnit, fontSize) * 20,

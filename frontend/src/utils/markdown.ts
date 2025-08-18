@@ -36,14 +36,22 @@ export async function formatMaxKbContent(content: string): Promise<string> {
   // 清理内容
   let cleanContent = content.trim();
   
+  // 处理AI返回内容中的字面/n字符串（将/n转换为真正的换行符\n）
+  // /n/n 转换为双换行符（段落分隔）
+  cleanContent = cleanContent.replace(/\/n\/n/g, '\n\n');
+  // 单个 /n 转换为单换行符
+  cleanContent = cleanContent.replace(/\/n/g, '\n');
+  
   // 保留所有换行符，只移除连续3个或更多的换行符
   cleanContent = cleanContent.replace(/\n{3,}/g, '\n\n');
   
   // 移除行首的列表符号（* - + 及其后的空格）
   cleanContent = cleanContent.replace(/^[\*\-\+]\s+/gm, '');
+  cleanContent = cleanContent.replace(/^\s*[\*\-\+]\s+/gm, '');
   
   // 移除有序列表的数字编号（如 1. 2. 等）
   cleanContent = cleanContent.replace(/^\d+\.\s+/gm, '');
+  cleanContent = cleanContent.replace(/^\s*\d+\.\s+/gm, '');
   
   // 检查是否包含Markdown标记（更全面的检测）
   // 注意：列表符号已在上面被移除，所以这里不再检测列表
@@ -77,36 +85,19 @@ export function formatPlainText(text: string): string {
   // 转义HTML特殊字符
   const escaped = escapeHtml(text);
   
-  // 用双换行符分割段落
-  const paragraphTexts = escaped.split(/\n\n+/);
-  const paragraphs: string[] = [];
+  // 替换换行符为HTML格式
+  // 双换行符（段落分隔）替换为段落标签
+  // 单换行符替换为<br>标签
+  let formatted = escaped
+    // 先替换双换行符为特殊标记
+    .replace(/\n\n+/g, '[[PARAGRAPH_BREAK]]')
+    // 替换单换行符为<br>
+    .replace(/\n/g, '<br>')
+    // 将段落分隔标记替换为段落结束和开始标签
+    .replace(/\[\[PARAGRAPH_BREAK\]\]/g, '</p><p>');
   
-  for (const paragraphText of paragraphTexts) {
-    if (paragraphText.trim()) {
-      // 将段落内的单换行符替换为<br>
-      const lines = paragraphText.split('\n').map(line => line.trim()).filter(line => line);
-      if (lines.length > 0) {
-        paragraphs.push(`<p>${lines.join('<br>')}</p>`);
-      }
-    }
-  }
-  
-  // 如果没有段落，返回空字符串
-  if (paragraphs.length === 0) {
-    return '';
-  }
-  
-  // 在段落之间插入空段落作为间隔
-  const result: string[] = [];
-  for (let i = 0; i < paragraphs.length; i++) {
-    result.push(paragraphs[i]);
-    // 在非最后一个段落后添加空段落（使用<br>标签，Quill更容易识别）
-    if (i < paragraphs.length - 1) {
-      result.push('<p><br></p>');
-    }
-  }
-  
-  return result.join('');
+  // 包装在段落标签中
+  return `<p>${formatted}</p>`;
 }
 
 /**

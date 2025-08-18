@@ -161,6 +161,7 @@ export interface ContentBlock {
 export interface HeadingFormatSettings {
   font?: Partial<FontSettings>;
   paragraph?: DeepPartial<ParagraphSettings>;
+  addSpaceBeforeExceptFirst?: boolean; // 除第一个标题外向上空一行
 }
 
 // 块级格式
