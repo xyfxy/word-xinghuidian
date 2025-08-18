@@ -73,6 +73,7 @@
   margin: 0 !important;
   padding: 0 !important;
   line-height: inherit;
+  min-height: 1em; /* 确保空段落有高度 */
 }
 
 /* 确保HTML内联样式优先级 */
@@ -219,6 +220,7 @@
   margin-top: 0;
   margin-bottom: 1em;
   line-height: 1.5;
+  min-height: 1em; /* 确保空段落有高度 */
 }
 
 .word-preview .word-content ul,

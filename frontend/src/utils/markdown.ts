@@ -77,40 +77,36 @@ export function formatPlainText(text: string): string {
   // 转义HTML特殊字符
   const escaped = escapeHtml(text);
   
-  // 处理段落：正确处理双换行符为段落分隔
-  const lines = escaped.split('\n');
+  // 用双换行符分割段落
+  const paragraphTexts = escaped.split(/\n\n+/);
   const paragraphs: string[] = [];
-  let currentParagraph: string[] = [];
-  let consecutiveEmptyLines = 0;
   
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    
-    if (line === '') {
-      consecutiveEmptyLines++;
-      // 只在第一个空行时结束当前段落
-      if (consecutiveEmptyLines === 1 && currentParagraph.length > 0) {
-        // 结束当前段落
-        paragraphs.push(`<p>${currentParagraph.join('<br>')}</p>`);
-        currentParagraph = [];
+  for (const paragraphText of paragraphTexts) {
+    if (paragraphText.trim()) {
+      // 将段落内的单换行符替换为<br>
+      const lines = paragraphText.split('\n').map(line => line.trim()).filter(line => line);
+      if (lines.length > 0) {
+        paragraphs.push(`<p>${lines.join('<br>')}</p>`);
       }
-    } else {
-      // 如果之前有连续空行，添加一个空段落表示段落间的间隔
-      if (consecutiveEmptyLines > 0 && paragraphs.length > 0) {
-        paragraphs.push('<p>&nbsp;</p>');
-      }
-      consecutiveEmptyLines = 0;
-      // 非空行，添加到当前段落
-      currentParagraph.push(line);
     }
   }
   
-  // 处理最后一个段落
-  if (currentParagraph.length > 0) {
-    paragraphs.push(`<p>${currentParagraph.join('<br>')}</p>`);
+  // 如果没有段落，返回空字符串
+  if (paragraphs.length === 0) {
+    return '';
   }
   
-  return paragraphs.join('');
+  // 在段落之间插入空段落作为间隔
+  const result: string[] = [];
+  for (let i = 0; i < paragraphs.length; i++) {
+    result.push(paragraphs[i]);
+    // 在非最后一个段落后添加空段落
+    if (i < paragraphs.length - 1) {
+      result.push('<p>&nbsp;</p>');
+    }
+  }
+  
+  return result.join('');
 }
 
 /**
