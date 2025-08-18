@@ -100,9 +100,9 @@ export function formatPlainText(text: string): string {
   const result: string[] = [];
   for (let i = 0; i < paragraphs.length; i++) {
     result.push(paragraphs[i]);
-    // 在非最后一个段落后添加空段落
+    // 在非最后一个段落后添加空段落（使用<br>标签，Quill更容易识别）
     if (i < paragraphs.length - 1) {
-      result.push('<p>&nbsp;</p>');
+      result.push('<p><br></p>');
     }
   }
   
