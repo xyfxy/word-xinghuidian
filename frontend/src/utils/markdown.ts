@@ -39,14 +39,19 @@ export async function formatMaxKbContent(content: string): Promise<string> {
   // 保留所有换行符，只移除连续3个或更多的换行符
   cleanContent = cleanContent.replace(/\n{3,}/g, '\n\n');
   
+  // 移除行首的列表符号（* - + 及其后的空格）
+  cleanContent = cleanContent.replace(/^[\*\-\+]\s+/gm, '');
+  
+  // 移除有序列表的数字编号（如 1. 2. 等）
+  cleanContent = cleanContent.replace(/^\d+\.\s+/gm, '');
+  
   // 检查是否包含Markdown标记（更全面的检测）
+  // 注意：列表符号已在上面被移除，所以这里不再检测列表
   const hasMarkdown = /^#{1,6}\s/m.test(cleanContent) || // 标题（多行模式）
                      /\*\*.*?\*\*/.test(cleanContent) || // 加粗
-                     /\*[^*\s].*?[^*]\*/.test(cleanContent) || // 斜体（避免与加粗和列表冲突）
+                     /\*[^*\s].*?[^*]\*/.test(cleanContent) || // 斜体（避免与加粗冲突）
                      /__.*?__/.test(cleanContent) || // 下划线加粗
                      /_[^_\s].*?[^_]_/.test(cleanContent) || // 下划线斜体（避免单独的下划线）
-                     /^\d+\.\s/m.test(cleanContent) || // 有序列表（多行模式）
-                     /^[-*+]\s/m.test(cleanContent) || // 无序列表（多行模式）
                      /`.*?`/.test(cleanContent) || // 内联代码
                      /^```/m.test(cleanContent) || // 代码块（多行模式）
                      /^>/m.test(cleanContent) || // 引用（多行模式）
