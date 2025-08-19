@@ -231,11 +231,7 @@ const parseHTMLNode = (node: Node, inheritedStyle: StyleOptions = {}, userFontSe
 export const convertHTMLToDocxParagraphs = (
   htmlContent: string,
   defaultFormat: DocumentFormat,
-  blockFormat?: any,
-  options?: {
-    addSpaceBefore?: boolean;
-    isFirstHeadingBlock?: boolean;
-  }
+  blockFormat?: any
 ): Paragraph[] => {
   // 确定最终的格式设置
   const shouldUseGlobal = blockFormat?.useGlobalFormat !== false;
@@ -295,8 +291,9 @@ export const convertHTMLToDocxParagraphs = (
   
   const paragraphs: Paragraph[] = [];
   
-  // 记录是否已经处理过第一个标题（用于处理同一块中的多个标题）
-  let isFirstHeadingInBlock = true;
+  // 记录每个级别是否已经处理过第一个标题（用于分级空行设置）
+  // 注意：这个对象是每个内容块独立的，不是整个文档共享的
+  const firstHeadingByLevel: { [key: string]: boolean } = {};
   
   // 处理不同的HTML元素
   const processElement = (element: Element, listLevel = 0): void => {
@@ -322,22 +319,31 @@ export const convertHTMLToDocxParagraphs = (
            // 计算标题前的间距（保持原有的段前距设置）
            const beforeSpacing = headingParagraphSettings.spaceBefore * 20;
            
-           // 判断是否需要插入空行
-           const shouldAddEmptyLine = blockFormat?.enableHeadingFormat && 
-                                     blockFormat?.headingFormat?.addSpaceBeforeExceptFirst;
-           
+           // 判断是否需要插入空行（支持分级设置）
+           const levelKey = tagName as 'h1' | 'h2' | 'h3';
            let shouldInsertEmptyParagraph = false;
            
-           if (shouldAddEmptyLine) {
-             // 如果是第一个包含标题的内容块
-             if (options?.isFirstHeadingBlock) {
-               // 只有在不是块中第一个标题时才插入空行
-               if (!isFirstHeadingInBlock) {
-                 shouldInsertEmptyParagraph = true;
-               }
-             } else if (options?.addSpaceBefore) {
-               // 如果不是第一个包含标题的内容块，所有标题都插入空行
+           if (blockFormat?.enableHeadingFormat) {
+             const levelFormat = blockFormat.headingFormat?.levels?.[levelKey];
+             
+             // 检查是否启用了"所有标题上空行"
+             if (levelFormat?.addSpaceBeforeAll) {
+               // 所有该级别标题都插入空行
                shouldInsertEmptyParagraph = true;
+             } else {
+               // 检查是否启用了"除第一个外空行"
+               // 仅检查当前级别的设置，不使用全局设置作为回退
+               const shouldAddEmptyLineExceptFirst = levelFormat?.addSpaceBeforeExceptFirst;
+               
+               if (shouldAddEmptyLineExceptFirst) {
+                 // 如果不是该级别的第一个标题，插入空行
+                 if (firstHeadingByLevel[levelKey]) {
+                   shouldInsertEmptyParagraph = true;
+                 } else {
+                   // 标记该级别的第一个标题已处理
+                   firstHeadingByLevel[levelKey] = true;
+                 }
+               }
              }
            }
            
@@ -348,9 +354,6 @@ export const convertHTMLToDocxParagraphs = (
                spacing: { after: 0, before: 0, line: 240 },
              }));
            }
-           
-           // 标记已经处理过第一个标题
-           isFirstHeadingInBlock = false;
            
            paragraphs.push(new Paragraph({
              children: headingRuns,

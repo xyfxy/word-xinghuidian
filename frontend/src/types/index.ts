@@ -161,6 +161,8 @@ export interface ContentBlock {
 export interface HeadingLevelFormat {
   font?: Partial<FontSettings>;
   paragraph?: DeepPartial<ParagraphSettings>;
+  addSpaceBeforeExceptFirst?: boolean; // 除第一个标题外向上空一行
+  addSpaceBeforeAll?: boolean; // 所有标题上面空一行（包括第一个）
 }
 
 // 标题格式设置（支持多级标题）

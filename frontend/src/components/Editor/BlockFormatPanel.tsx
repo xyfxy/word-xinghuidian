@@ -677,29 +677,86 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
             </div>
           </div>
           
-          {/* 标题空行设置 */}
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-gray-600">标题空行</p>
-            <label className="flex items-center">
-              <input 
-                type="checkbox" 
-                checked={blockFormat.headingFormat?.addSpaceBeforeExceptFirst || false} 
-                onChange={(e) => onUpdate({ 
-                  format: { 
-                    ...blockFormat, 
-                    headingFormat: { 
-                      ...blockFormat.headingFormat, 
-                      addSpaceBeforeExceptFirst: e.target.checked 
-                    } 
-                  } 
-                })}
-                className="form-checkbox h-4 w-4 text-blue-600" 
-              />
-              <span className="ml-2 text-sm text-gray-700">除第一个标题外向上空一行</span>
-            </label>
-            <p className="text-xs text-gray-500 ml-6">
-              启用后，文档中除第一个标题外，其他标题上方会自动添加一个空行
+          {/* 当前级别标题空行设置 */}
+          <div className="space-y-3">
+            <p className="text-xs font-medium text-gray-600">
+              {blockFormat.currentHeadingLevel === 'h2' ? '二级' : 
+               blockFormat.currentHeadingLevel === 'h3' ? '三级' : '一级'}标题空行
             </p>
+            
+            {/* 除第一个标题外向上空一行 */}
+            <div>
+              <label className="flex items-center">
+                <input 
+                  type="checkbox" 
+                  checked={
+                    blockFormat.headingFormat?.levels?.[blockFormat.currentHeadingLevel || 'h1']?.addSpaceBeforeExceptFirst || false
+                  } 
+                  onChange={(e) => {
+                    const level = blockFormat.currentHeadingLevel || 'h1';
+                    onUpdate({ 
+                      format: { 
+                        ...blockFormat, 
+                        headingFormat: { 
+                          ...blockFormat.headingFormat,
+                          levels: {
+                            ...blockFormat.headingFormat?.levels,
+                            [level]: {
+                              ...blockFormat.headingFormat?.levels?.[level],
+                              addSpaceBeforeExceptFirst: e.target.checked,
+                              // 如果启用了除第一个外空行，则禁用所有标题空行
+                              addSpaceBeforeAll: e.target.checked ? false : blockFormat.headingFormat?.levels?.[level]?.addSpaceBeforeAll
+                            }
+                          }
+                        } 
+                      } 
+                    });
+                  }}
+                  className="form-checkbox h-4 w-4 text-blue-600" 
+                />
+                <span className="ml-2 text-sm text-gray-700">除第一个此级标题外向上空一行</span>
+              </label>
+              <p className="text-xs text-gray-500 ml-6">
+                启用后，文档中除第一个此级标题外，其他同级标题上方会自动添加一个空行
+              </p>
+            </div>
+            
+            {/* 所有标题上面空一行 */}
+            <div>
+              <label className="flex items-center">
+                <input 
+                  type="checkbox" 
+                  checked={
+                    blockFormat.headingFormat?.levels?.[blockFormat.currentHeadingLevel || 'h1']?.addSpaceBeforeAll || false
+                  } 
+                  onChange={(e) => {
+                    const level = blockFormat.currentHeadingLevel || 'h1';
+                    onUpdate({ 
+                      format: { 
+                        ...blockFormat, 
+                        headingFormat: { 
+                          ...blockFormat.headingFormat,
+                          levels: {
+                            ...blockFormat.headingFormat?.levels,
+                            [level]: {
+                              ...blockFormat.headingFormat?.levels?.[level],
+                              addSpaceBeforeAll: e.target.checked,
+                              // 如果启用了所有标题空行，则禁用除第一个外空行
+                              addSpaceBeforeExceptFirst: e.target.checked ? false : blockFormat.headingFormat?.levels?.[level]?.addSpaceBeforeExceptFirst
+                            }
+                          }
+                        } 
+                      } 
+                    });
+                  }}
+                  className="form-checkbox h-4 w-4 text-blue-600" 
+                />
+                <span className="ml-2 text-sm text-gray-700">所有此级标题上面空一行</span>
+              </label>
+              <p className="text-xs text-gray-500 ml-6">
+                启用后，文档中所有此级标题（包括第一个）上方都会自动添加一个空行
+              </p>
+            </div>
           </div>
         </div>
       )}

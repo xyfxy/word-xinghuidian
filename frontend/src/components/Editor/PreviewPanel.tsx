@@ -93,24 +93,9 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
         return htmlHeadingRegex.test(content);
     };
 
-    // 计算是否是第一个包含标题的内容块
-    const getFirstHeadingIndex = () => {
-        for (let i = 0; i < template.content.length; i++) {
-            const block = template.content[i];
-            if (block.type === 'text' || block.type === 'ai-generated') {
-                const content = typeof block.content === 'string' ? block.content : '';
-                if (hasHeading(content)) {
-                    return i;
-                }
-            }
-        }
-        return -1;
-    };
-
-    const firstHeadingIndex = getFirstHeadingIndex();
 
     // 渲染内容块
-    const renderContentBlock = (block: ContentBlock, index: number) => {
+    const renderContentBlock = (block: ContentBlock) => {
         const blockStyle: React.CSSProperties = {
             marginBottom: '16px',
             position: 'relative',
@@ -369,30 +354,39 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
             }
             
 
-            // 处理内容中的标题，为除第一个外的标题添加空行
+            // 处理内容中的标题，为标题添加空行（支持分级设置）
             let processedContent = content;
-            if (block.format?.enableHeadingFormat && 
-                block.format?.headingFormat?.addSpaceBeforeExceptFirst &&
-                hasHeading(content)) {
+            if (block.format?.enableHeadingFormat && hasHeading(content)) {
+                const headingFormat = block.format.headingFormat;
                 
-                // 找出内容中的所有标题
-                const headingMatches = content.match(/<h[1-6](\s|>)/gi);
-                const headingCount = headingMatches ? headingMatches.length : 0;
+                // 记录每个级别是否已经出现过第一个标题
+                const firstHeadingByLevel: { [key: string]: boolean } = {};
                 
-                // 如果是第一个包含标题的块，只在第二个及之后的标题前添加空行
-                if (index === firstHeadingIndex && headingCount > 1) {
-                    let isFirstHeading = true;
-                    processedContent = content.replace(/<h([1-6])(\s|>)/gi, (match) => {
-                        if (isFirstHeading) {
-                            isFirstHeading = false;
-                            return match; // 第一个标题不添加空行
+                processedContent = content.replace(/<h([1-6])(\s|>)/gi, (match, level) => {
+                    const levelKey = `h${level}` as 'h1' | 'h2' | 'h3';
+                    const levelFormat = headingFormat?.levels?.[levelKey];
+                    
+                    // 检查是否启用了"所有标题上空行"
+                    if (levelFormat?.addSpaceBeforeAll) {
+                        // 所有该级别标题都添加空行
+                        return `<br>${match}`;
+                    }
+                    
+                    // 检查是否启用了"除第一个外空行"（仅检查当前级别的设置）
+                    const shouldAddSpaceExceptFirst = levelFormat?.addSpaceBeforeExceptFirst;
+                    
+                    if (shouldAddSpaceExceptFirst) {
+                        // 如果是该级别的第一个标题，不添加空行
+                        if (!firstHeadingByLevel[levelKey]) {
+                            firstHeadingByLevel[levelKey] = true;
+                            return match;
                         }
-                        return `<br>${match}`; // 其他标题前添加一个空行
-                    });
-                } else if (index !== firstHeadingIndex) {
-                    // 如果不是第一个包含标题的块，在所有标题前添加空行
-                    processedContent = content.replace(/<h([1-6])(\s|>)/gi, '<br><h$1$2');
-                }
+                        // 其他同级标题前添加空行
+                        return `<br>${match}`;
+                    }
+                    
+                    return match;
+                });
             }
 
             return (
@@ -543,30 +537,39 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
             }
             
 
-            // 处理内容中的标题，为除第一个外的标题添加空行
+            // 处理内容中的标题，为标题添加空行（支持分级设置）
             let processedContent = content;
-            if (block.format?.enableHeadingFormat && 
-                block.format?.headingFormat?.addSpaceBeforeExceptFirst &&
-                hasHeading(content)) {
+            if (block.format?.enableHeadingFormat && hasHeading(content)) {
+                const headingFormat = block.format.headingFormat;
                 
-                // 找出内容中的所有标题
-                const headingMatches = content.match(/<h[1-6](\s|>)/gi);
-                const headingCount = headingMatches ? headingMatches.length : 0;
+                // 记录每个级别是否已经出现过第一个标题
+                const firstHeadingByLevel: { [key: string]: boolean } = {};
                 
-                // 如果是第一个包含标题的块，只在第二个及之后的标题前添加空行
-                if (index === firstHeadingIndex && headingCount > 1) {
-                    let isFirstHeading = true;
-                    processedContent = content.replace(/<h([1-6])(\s|>)/gi, (match) => {
-                        if (isFirstHeading) {
-                            isFirstHeading = false;
-                            return match; // 第一个标题不添加空行
+                processedContent = content.replace(/<h([1-6])(\s|>)/gi, (match, level) => {
+                    const levelKey = `h${level}` as 'h1' | 'h2' | 'h3';
+                    const levelFormat = headingFormat?.levels?.[levelKey];
+                    
+                    // 检查是否启用了"所有标题上空行"
+                    if (levelFormat?.addSpaceBeforeAll) {
+                        // 所有该级别标题都添加空行
+                        return `<br>${match}`;
+                    }
+                    
+                    // 检查是否启用了"除第一个外空行"（仅检查当前级别的设置）
+                    const shouldAddSpaceExceptFirst = levelFormat?.addSpaceBeforeExceptFirst;
+                    
+                    if (shouldAddSpaceExceptFirst) {
+                        // 如果是该级别的第一个标题，不添加空行
+                        if (!firstHeadingByLevel[levelKey]) {
+                            firstHeadingByLevel[levelKey] = true;
+                            return match;
                         }
-                        return `<br>${match}`; // 其他标题前添加一个空行
-                    });
-                } else if (index !== firstHeadingIndex) {
-                    // 如果不是第一个包含标题的块，在所有标题前添加空行
-                    processedContent = content.replace(/<h([1-6])(\s|>)/gi, '<br><h$1$2');
-                }
+                        // 其他同级标题前添加空行
+                        return `<br>${match}`;
+                    }
+                    
+                    return match;
+                });
             }
 
             return (
@@ -859,7 +862,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
         <div className="flex-1 bg-white overflow-y-auto"> {/* 移除padding，背景改为白色 */}
             <div className="w-full"> {/* 移除max-w-none和flex justify-center */}
                 <div style={pageStyle} className="word-page word-preview">
-                    {template.content.map((block, index) => renderContentBlock(block, index))}
+                    {template.content.map((block) => renderContentBlock(block))}
                 </div>
             </div>
         </div>
