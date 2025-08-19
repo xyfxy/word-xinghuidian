@@ -255,27 +255,37 @@ export const convertHTMLToDocxParagraphs = (
         } 
       };
 
-  // 标题格式设置
-  let headingFontSettings = finalFontSettings;
-  let headingParagraphSettings = finalParagraphSettings;
+  // 标题格式设置 - 支持分级标题格式
+  const getHeadingSettings = (level: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6') => {
+    let headingFontSettings = finalFontSettings;
+    let headingParagraphSettings = finalParagraphSettings;
 
-  if (blockFormat?.enableHeadingFormat && blockFormat?.headingFormat) {
-    // 标题字体设置（优先使用标题设置，否则使用正文设置）
-    headingFontSettings = {
-      ...finalFontSettings,
-      ...blockFormat.headingFormat.font
-    };
+    if (blockFormat?.enableHeadingFormat && blockFormat?.headingFormat) {
+      const levelKey = level as 'h1' | 'h2' | 'h3';
+      const levelFormat = blockFormat.headingFormat.levels?.[levelKey];
+      
+      // 标题字体设置（优先使用分级设置，然后是统一标题设置，最后是正文设置）
+      headingFontSettings = {
+        ...finalFontSettings,
+        ...(blockFormat.headingFormat.font || {}),
+        ...(levelFormat?.font || {})
+      };
 
-    // 标题段落设置
-    headingParagraphSettings = {
-      ...finalParagraphSettings,
-      ...blockFormat.headingFormat.paragraph,
-      indent: {
-        ...finalParagraphSettings.indent,
-        ...blockFormat.headingFormat.paragraph?.indent
-      }
-    };
-  }
+      // 标题段落设置
+      headingParagraphSettings = {
+        ...finalParagraphSettings,
+        ...(blockFormat.headingFormat.paragraph || {}),
+        ...(levelFormat?.paragraph || {}),
+        indent: {
+          ...finalParagraphSettings.indent,
+          ...(blockFormat.headingFormat.paragraph?.indent || {}),
+          ...(levelFormat?.paragraph?.indent || {})
+        }
+      };
+    }
+    
+    return { headingFontSettings, headingParagraphSettings };
+  };
 
   if (!htmlContent) return [];
   
@@ -299,8 +309,9 @@ export const convertHTMLToDocxParagraphs = (
        case 'h4':
        case 'h5':
        case 'h6':
-         // 标题处理 - 使用标题专用格式设置
+         // 标题处理 - 使用分级标题格式设置
          const headingLevel = parseInt(tagName.charAt(1)) as 1 | 2 | 3 | 4 | 5 | 6;
+         const { headingFontSettings, headingParagraphSettings } = getHeadingSettings(tagName as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6');
          const headingRuns = parseHTMLNode(element, {}, headingFontSettings);
          
          if (headingRuns.length > 0) {

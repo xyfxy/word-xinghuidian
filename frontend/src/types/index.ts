@@ -157,11 +157,25 @@ export interface ContentBlock {
   maxTokens?: number; // 最大token数
 }
 
-// 标题格式设置
+// 单个标题级别的格式设置
+export interface HeadingLevelFormat {
+  font?: Partial<FontSettings>;
+  paragraph?: DeepPartial<ParagraphSettings>;
+}
+
+// 标题格式设置（支持多级标题）
 export interface HeadingFormatSettings {
+  // 旧版兼容：统一的标题格式
   font?: Partial<FontSettings>;
   paragraph?: DeepPartial<ParagraphSettings>;
   addSpaceBeforeExceptFirst?: boolean; // 除第一个标题外向上空一行
+  
+  // 新版：分级标题格式
+  levels?: {
+    h1?: HeadingLevelFormat;
+    h2?: HeadingLevelFormat;
+    h3?: HeadingLevelFormat;
+  };
 }
 
 // 块级格式
@@ -174,6 +188,7 @@ export interface BlockFormat {
   // 标题格式分离相关设置
   enableHeadingFormat?: boolean; // 是否启用标题格式分离
   headingFormat?: HeadingFormatSettings; // 标题的专用格式设置
+  currentHeadingLevel?: 'h1' | 'h2' | 'h3'; // 当前编辑的标题级别
 }
 
 // AI生成请求

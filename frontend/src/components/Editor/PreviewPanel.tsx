@@ -278,64 +278,92 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
                 const headingFormat = block.format.headingFormat;
                 const blockId = `block-${block.id}`;
                 
-                // 获取标题字体设置（优先使用标题设置，否则使用正文设置或全局设置）
-                const headingFontFamily = headingFormat.font?.family || 
-                    (shouldUseGlobal ? template.format.font.family : (block.format.font?.family || template.format.font.family));
-                const headingFontSize = headingFormat.font?.size || 
-                    (shouldUseGlobal ? template.format.font.size : (block.format.font?.size || template.format.font.size));
-                const headingColor = headingFormat.font?.color || 
-                    (shouldUseGlobal ? template.format.font.color : (block.format.font?.color || template.format.font.color));
-                const headingBold = headingFormat.font?.bold !== undefined ? headingFormat.font.bold : 
-                    (shouldUseGlobal ? template.format.font.bold : (block.format.font?.bold || template.format.font.bold));
-                const headingItalic = headingFormat.font?.italic !== undefined ? headingFormat.font.italic : 
-                    (shouldUseGlobal ? template.format.font.italic : (block.format.font?.italic || template.format.font.italic));
-                const headingUnderline = headingFormat.font?.underline !== undefined ? headingFormat.font.underline : 
-                    (shouldUseGlobal ? template.format.font.underline : (block.format.font?.underline || template.format.font.underline));
-
-                // 获取标题段落设置
-                const headingAlignment = headingFormat.paragraph?.alignment || 
-                    (shouldUseGlobal ? template.format.paragraph.alignment : (block.format.paragraph?.alignment || template.format.paragraph.alignment));
-                const headingLineHeight = headingFormat.paragraph?.lineHeight || 
-                    (shouldUseGlobal ? template.format.paragraph.lineHeight : (block.format.paragraph?.lineHeight || template.format.paragraph.lineHeight));
-                
-                // 获取标题缩进设置
-                const headingIndentFirst = headingFormat.paragraph?.indent?.firstLine !== undefined 
-                    ? convertUnit(
-                        headingFormat.paragraph.indent.firstLine,
-                        headingFormat.paragraph.indent.firstLineUnit || 'pt',
-                        headingFontSize
-                      )
-                    : (shouldUseGlobal 
-                        ? convertUnit(template.format.paragraph.indent.firstLine, template.format.paragraph.indent.firstLineUnit, currentFontSize)
-                        : (block.format.paragraph?.indent?.firstLine 
-                            ? convertUnit(block.format.paragraph.indent.firstLine, block.format.paragraph.indent.firstLineUnit || 'pt', currentFontSize)
-                            : '0px'));
+                // 生成分级标题样式的辅助函数
+                const generateLevelStyle = (level: 'h1' | 'h2' | 'h3') => {
+                    // 获取当前级别的格式设置（优先使用分级格式，然后是统一标题格式，最后是正文/全局格式）
+                    const levelFormat = headingFormat.levels?.[level];
+                    
+                    const fontFamily = levelFormat?.font?.family || 
+                        headingFormat.font?.family || 
+                        (shouldUseGlobal ? template.format.font.family : (block.format.font?.family || template.format.font.family));
+                    const fontSize = levelFormat?.font?.size || 
+                        headingFormat.font?.size || 
+                        (shouldUseGlobal ? template.format.font.size : (block.format.font?.size || template.format.font.size));
+                    const color = levelFormat?.font?.color || 
+                        headingFormat.font?.color || 
+                        (shouldUseGlobal ? template.format.font.color : (block.format.font?.color || template.format.font.color));
+                    const bold = levelFormat?.font?.bold !== undefined ? levelFormat.font.bold : 
+                        (headingFormat.font?.bold !== undefined ? headingFormat.font.bold : 
+                        (shouldUseGlobal ? template.format.font.bold : (block.format.font?.bold || template.format.font.bold)));
+                    const italic = levelFormat?.font?.italic !== undefined ? levelFormat.font.italic : 
+                        (headingFormat.font?.italic !== undefined ? headingFormat.font.italic : 
+                        (shouldUseGlobal ? template.format.font.italic : (block.format.font?.italic || template.format.font.italic)));
+                    const underline = levelFormat?.font?.underline !== undefined ? levelFormat.font.underline : 
+                        (headingFormat.font?.underline !== undefined ? headingFormat.font.underline : 
+                        (shouldUseGlobal ? template.format.font.underline : (block.format.font?.underline || template.format.font.underline)));
+                    
+                    const alignment = levelFormat?.paragraph?.alignment || 
+                        headingFormat.paragraph?.alignment || 
+                        (shouldUseGlobal ? template.format.paragraph.alignment : (block.format.paragraph?.alignment || template.format.paragraph.alignment));
+                    const lineHeight = levelFormat?.paragraph?.lineHeight || 
+                        headingFormat.paragraph?.lineHeight || 
+                        (shouldUseGlobal ? template.format.paragraph.lineHeight : (block.format.paragraph?.lineHeight || template.format.paragraph.lineHeight));
+                    
+                    const indentFirst = levelFormat?.paragraph?.indent?.firstLine !== undefined 
+                        ? convertUnit(
+                            levelFormat.paragraph.indent.firstLine,
+                            levelFormat.paragraph.indent.firstLineUnit || 'pt',
+                            fontSize
+                          )
+                        : (headingFormat.paragraph?.indent?.firstLine !== undefined 
+                            ? convertUnit(
+                                headingFormat.paragraph.indent.firstLine,
+                                headingFormat.paragraph.indent.firstLineUnit || 'pt',
+                                fontSize
+                              )
+                            : '0px');
                             
-                const headingIndentLeft = headingFormat.paragraph?.indent?.left !== undefined 
-                    ? convertUnit(
-                        headingFormat.paragraph.indent.left,
-                        headingFormat.paragraph.indent.leftUnit || 'pt',
-                        headingFontSize
-                      )
-                    : '0px';
+                    const indentLeft = levelFormat?.paragraph?.indent?.left !== undefined 
+                        ? convertUnit(
+                            levelFormat.paragraph.indent.left,
+                            levelFormat.paragraph.indent.leftUnit || 'pt',
+                            fontSize
+                          )
+                        : (headingFormat.paragraph?.indent?.left !== undefined 
+                            ? convertUnit(
+                                headingFormat.paragraph.indent.left,
+                                headingFormat.paragraph.indent.leftUnit || 'pt',
+                                fontSize
+                              )
+                            : '0px');
 
-                headingStyles = `
-                    <style>
-                        .${blockId} h1, .${blockId} h2, .${blockId} h3, .${blockId} h4, .${blockId} h5, .${blockId} h6 {
-                            font-family: ${getFontFamilyWithFallback(headingFontFamily)} !important;
-                            font-size: ${headingFontSize}pt !important;
-                            color: ${headingColor} !important;
-                            font-weight: ${headingBold ? 'bold' : 'normal'} !important;
-                            font-style: ${headingItalic ? 'italic' : 'normal'} !important;
-                            text-decoration: ${headingUnderline ? 'underline' : 'none'} !important;
-                            text-align: ${headingAlignment} !important;
-                            line-height: ${headingLineHeight} !important;
-                            text-indent: ${headingIndentFirst} !important;
-                            padding-left: ${headingIndentLeft} !important;
+                    return `
+                        .${blockId} ${level} {
+                            font-family: ${getFontFamilyWithFallback(fontFamily)} !important;
+                            font-size: ${fontSize}pt !important;
+                            color: ${color} !important;
+                            font-weight: ${bold ? 'bold' : 'normal'} !important;
+                            font-style: ${italic ? 'italic' : 'normal'} !important;
+                            text-decoration: ${underline ? 'underline' : 'none'} !important;
+                            text-align: ${alignment} !important;
+                            line-height: ${lineHeight} !important;
+                            text-indent: ${indentFirst} !important;
+                            padding-left: ${indentLeft} !important;
                             margin: 0 !important;
                             padding-top: 0 !important;
                             padding-bottom: 0 !important;
-                        }
+                        }`;
+                };
+
+                const levelStyles = [
+                    generateLevelStyle('h1'),
+                    generateLevelStyle('h2'),
+                    generateLevelStyle('h3')
+                ].join('\n');
+
+                headingStyles = `
+                    <style>
+                        ${levelStyles}
                     </style>
                 `;
             }
@@ -424,64 +452,92 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
                 const headingFormat = block.format.headingFormat;
                 const blockId = `block-${block.id}`;
                 
-                // 获取标题字体设置（优先使用标题设置，否则使用正文设置或全局设置）
-                const headingFontFamily = headingFormat.font?.family || 
-                    (shouldUseGlobal ? template.format.font.family : (block.format.font?.family || template.format.font.family));
-                const headingFontSize = headingFormat.font?.size || 
-                    (shouldUseGlobal ? template.format.font.size : (block.format.font?.size || template.format.font.size));
-                const headingColor = headingFormat.font?.color || 
-                    (shouldUseGlobal ? template.format.font.color : (block.format.font?.color || template.format.font.color));
-                const headingBold = headingFormat.font?.bold !== undefined ? headingFormat.font.bold : 
-                    (shouldUseGlobal ? template.format.font.bold : (block.format.font?.bold || template.format.font.bold));
-                const headingItalic = headingFormat.font?.italic !== undefined ? headingFormat.font.italic : 
-                    (shouldUseGlobal ? template.format.font.italic : (block.format.font?.italic || template.format.font.italic));
-                const headingUnderline = headingFormat.font?.underline !== undefined ? headingFormat.font.underline : 
-                    (shouldUseGlobal ? template.format.font.underline : (block.format.font?.underline || template.format.font.underline));
-
-                // 获取标题段落设置
-                const headingAlignment = headingFormat.paragraph?.alignment || 
-                    (shouldUseGlobal ? template.format.paragraph.alignment : (block.format.paragraph?.alignment || template.format.paragraph.alignment));
-                const headingLineHeight = headingFormat.paragraph?.lineHeight || 
-                    (shouldUseGlobal ? template.format.paragraph.lineHeight : (block.format.paragraph?.lineHeight || template.format.paragraph.lineHeight));
-                
-                // 获取标题缩进设置
-                const headingIndentFirst = headingFormat.paragraph?.indent?.firstLine !== undefined 
-                    ? convertUnit(
-                        headingFormat.paragraph.indent.firstLine,
-                        headingFormat.paragraph.indent.firstLineUnit || 'pt',
-                        headingFontSize
-                      )
-                    : (shouldUseGlobal 
-                        ? convertUnit(template.format.paragraph.indent.firstLine, template.format.paragraph.indent.firstLineUnit, currentFontSize)
-                        : (block.format.paragraph?.indent?.firstLine 
-                            ? convertUnit(block.format.paragraph.indent.firstLine, block.format.paragraph.indent.firstLineUnit || 'pt', currentFontSize)
-                            : '0px'));
+                // 生成分级标题样式的辅助函数
+                const generateLevelStyle = (level: 'h1' | 'h2' | 'h3') => {
+                    // 获取当前级别的格式设置（优先使用分级格式，然后是统一标题格式，最后是正文/全局格式）
+                    const levelFormat = headingFormat.levels?.[level];
+                    
+                    const fontFamily = levelFormat?.font?.family || 
+                        headingFormat.font?.family || 
+                        (shouldUseGlobal ? template.format.font.family : (block.format.font?.family || template.format.font.family));
+                    const fontSize = levelFormat?.font?.size || 
+                        headingFormat.font?.size || 
+                        (shouldUseGlobal ? template.format.font.size : (block.format.font?.size || template.format.font.size));
+                    const color = levelFormat?.font?.color || 
+                        headingFormat.font?.color || 
+                        (shouldUseGlobal ? template.format.font.color : (block.format.font?.color || template.format.font.color));
+                    const bold = levelFormat?.font?.bold !== undefined ? levelFormat.font.bold : 
+                        (headingFormat.font?.bold !== undefined ? headingFormat.font.bold : 
+                        (shouldUseGlobal ? template.format.font.bold : (block.format.font?.bold || template.format.font.bold)));
+                    const italic = levelFormat?.font?.italic !== undefined ? levelFormat.font.italic : 
+                        (headingFormat.font?.italic !== undefined ? headingFormat.font.italic : 
+                        (shouldUseGlobal ? template.format.font.italic : (block.format.font?.italic || template.format.font.italic)));
+                    const underline = levelFormat?.font?.underline !== undefined ? levelFormat.font.underline : 
+                        (headingFormat.font?.underline !== undefined ? headingFormat.font.underline : 
+                        (shouldUseGlobal ? template.format.font.underline : (block.format.font?.underline || template.format.font.underline)));
+                    
+                    const alignment = levelFormat?.paragraph?.alignment || 
+                        headingFormat.paragraph?.alignment || 
+                        (shouldUseGlobal ? template.format.paragraph.alignment : (block.format.paragraph?.alignment || template.format.paragraph.alignment));
+                    const lineHeight = levelFormat?.paragraph?.lineHeight || 
+                        headingFormat.paragraph?.lineHeight || 
+                        (shouldUseGlobal ? template.format.paragraph.lineHeight : (block.format.paragraph?.lineHeight || template.format.paragraph.lineHeight));
+                    
+                    const indentFirst = levelFormat?.paragraph?.indent?.firstLine !== undefined 
+                        ? convertUnit(
+                            levelFormat.paragraph.indent.firstLine,
+                            levelFormat.paragraph.indent.firstLineUnit || 'pt',
+                            fontSize
+                          )
+                        : (headingFormat.paragraph?.indent?.firstLine !== undefined 
+                            ? convertUnit(
+                                headingFormat.paragraph.indent.firstLine,
+                                headingFormat.paragraph.indent.firstLineUnit || 'pt',
+                                fontSize
+                              )
+                            : '0px');
                             
-                const headingIndentLeft = headingFormat.paragraph?.indent?.left !== undefined 
-                    ? convertUnit(
-                        headingFormat.paragraph.indent.left,
-                        headingFormat.paragraph.indent.leftUnit || 'pt',
-                        headingFontSize
-                      )
-                    : '0px';
+                    const indentLeft = levelFormat?.paragraph?.indent?.left !== undefined 
+                        ? convertUnit(
+                            levelFormat.paragraph.indent.left,
+                            levelFormat.paragraph.indent.leftUnit || 'pt',
+                            fontSize
+                          )
+                        : (headingFormat.paragraph?.indent?.left !== undefined 
+                            ? convertUnit(
+                                headingFormat.paragraph.indent.left,
+                                headingFormat.paragraph.indent.leftUnit || 'pt',
+                                fontSize
+                              )
+                            : '0px');
 
-                headingStyles = `
-                    <style>
-                        .${blockId} h1, .${blockId} h2, .${blockId} h3, .${blockId} h4, .${blockId} h5, .${blockId} h6 {
-                            font-family: ${getFontFamilyWithFallback(headingFontFamily)} !important;
-                            font-size: ${headingFontSize}pt !important;
-                            color: ${headingColor} !important;
-                            font-weight: ${headingBold ? 'bold' : 'normal'} !important;
-                            font-style: ${headingItalic ? 'italic' : 'normal'} !important;
-                            text-decoration: ${headingUnderline ? 'underline' : 'none'} !important;
-                            text-align: ${headingAlignment} !important;
-                            line-height: ${headingLineHeight} !important;
-                            text-indent: ${headingIndentFirst} !important;
-                            padding-left: ${headingIndentLeft} !important;
+                    return `
+                        .${blockId} ${level} {
+                            font-family: ${getFontFamilyWithFallback(fontFamily)} !important;
+                            font-size: ${fontSize}pt !important;
+                            color: ${color} !important;
+                            font-weight: ${bold ? 'bold' : 'normal'} !important;
+                            font-style: ${italic ? 'italic' : 'normal'} !important;
+                            text-decoration: ${underline ? 'underline' : 'none'} !important;
+                            text-align: ${alignment} !important;
+                            line-height: ${lineHeight} !important;
+                            text-indent: ${indentFirst} !important;
+                            padding-left: ${indentLeft} !important;
                             margin: 0 !important;
                             padding-top: 0 !important;
                             padding-bottom: 0 !important;
-                        }
+                        }`;
+                };
+
+                const levelStyles = [
+                    generateLevelStyle('h1'),
+                    generateLevelStyle('h2'),
+                    generateLevelStyle('h3')
+                ].join('\n');
+
+                headingStyles = `
+                    <style>
+                        ${levelStyles}
                     </style>
                 `;
             }

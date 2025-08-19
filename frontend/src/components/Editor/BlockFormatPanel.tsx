@@ -162,24 +162,91 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
         <div className="border-l-4 border-blue-200 pl-4 mb-4 space-y-3">
           <p className="text-xs font-medium text-blue-600">标题专用格式</p>
           
-          {/* 标题字体设置 */}
+          {/* 标题级别选择 */}
+          <div className="flex flex-wrap gap-2 mb-3">
+            <button
+              onClick={() => onUpdate({ 
+                format: { 
+                  ...blockFormat, 
+                  currentHeadingLevel: 'h1'
+                }
+              })}
+              className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                (blockFormat.currentHeadingLevel || 'h1') === 'h1' 
+                  ? 'bg-blue-500 text-white' 
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              一级标题
+            </button>
+            <button
+              onClick={() => onUpdate({ 
+                format: { 
+                  ...blockFormat, 
+                  currentHeadingLevel: 'h2'
+                }
+              })}
+              className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                blockFormat.currentHeadingLevel === 'h2' 
+                  ? 'bg-blue-500 text-white' 
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              二级标题
+            </button>
+            <button
+              onClick={() => onUpdate({ 
+                format: { 
+                  ...blockFormat, 
+                  currentHeadingLevel: 'h3'
+                }
+              })}
+              className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                blockFormat.currentHeadingLevel === 'h3' 
+                  ? 'bg-blue-500 text-white' 
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              三级标题
+            </button>
+          </div>
+          
+          {/* 当前级别标题字体设置 */}
           <div className="space-y-3">
-            <p className="text-xs font-medium text-gray-600">标题字体</p>
+            <p className="text-xs font-medium text-gray-600">
+              {blockFormat.currentHeadingLevel === 'h2' ? '二级' : 
+               blockFormat.currentHeadingLevel === 'h3' ? '三级' : '一级'}标题字体
+            </p>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label htmlFor={`heading-font-family-${block.id}`} className="label-text">字体</label>
                 <select
                   id={`heading-font-family-${block.id}`}
-                  value={blockFormat.headingFormat?.font?.family || globalFormat.font.family}
-                  onChange={(e) => onUpdate({ 
-                    format: { 
-                      ...blockFormat, 
-                      headingFormat: { 
-                        ...blockFormat.headingFormat, 
-                        font: { ...(blockFormat.headingFormat?.font || {}), family: e.target.value } 
+                  value={
+                    blockFormat.headingFormat?.levels?.[blockFormat.currentHeadingLevel || 'h1']?.font?.family ||
+                    globalFormat.font.family
+                  }
+                  onChange={(e) => {
+                    const level = blockFormat.currentHeadingLevel || 'h1';
+                    onUpdate({ 
+                      format: { 
+                        ...blockFormat, 
+                        headingFormat: { 
+                          ...blockFormat.headingFormat,
+                          levels: {
+                            ...blockFormat.headingFormat?.levels,
+                            [level]: {
+                              ...blockFormat.headingFormat?.levels?.[level],
+                              font: { 
+                                ...(blockFormat.headingFormat?.levels?.[level]?.font || {}), 
+                                family: e.target.value 
+                              }
+                            }
+                          }
+                        } 
                       } 
-                    } 
-                  })}
+                    });
+                  }}
                   className="input-field"
                 >
                   {FONT_FAMILIES.map(font => <option key={font} value={font}>{font}</option>)}
@@ -189,19 +256,33 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
                 <label htmlFor={`heading-font-size-name-${block.id}`} className="label-text">字号</label>
                 <select
                   id={`heading-font-size-name-${block.id}`}
-                  value={blockFormat.headingFormat?.font?.size ?? ''}
-                  onChange={(e) => handleNumberChange(e.target.value, (num) => onUpdate({ 
-                    format: { 
-                      ...blockFormat, 
-                      headingFormat: { 
-                        ...blockFormat.headingFormat, 
-                        font: { ...(blockFormat.headingFormat?.font || {}), size: num } 
+                  value={
+                    blockFormat.headingFormat?.levels?.[blockFormat.currentHeadingLevel || 'h1']?.font?.size ?? ''
+                  }
+                  onChange={(e) => handleNumberChange(e.target.value, (num) => {
+                    const level = blockFormat.currentHeadingLevel || 'h1';
+                    onUpdate({ 
+                      format: { 
+                        ...blockFormat, 
+                        headingFormat: { 
+                          ...blockFormat.headingFormat,
+                          levels: {
+                            ...blockFormat.headingFormat?.levels,
+                            [level]: {
+                              ...blockFormat.headingFormat?.levels?.[level],
+                              font: { 
+                                ...(blockFormat.headingFormat?.levels?.[level]?.font || {}), 
+                                size: num 
+                              }
+                            }
+                          }
+                        } 
                       } 
-                    } 
-                  }))}
+                    });
+                  })}
                   className="input-field"
                 >
-                  <option value="" disabled={getSizeName(blockFormat.headingFormat?.font?.size) !== ''}>选择字号</option>
+                  <option value="" disabled={getSizeName(blockFormat.headingFormat?.levels?.[blockFormat.currentHeadingLevel || 'h1']?.font?.size) !== ''}>选择字号</option>
                   {Object.entries(FONT_SIZES).map(([name, value]) => (
                     <option key={name} value={value}>{name} ({value}pt)</option>
                   ))}
@@ -213,16 +294,30 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
                   type="number"
                   id={`heading-font-size-${block.id}`}
                   placeholder={String(globalFormat.font.size)}
-                  value={blockFormat.headingFormat?.font?.size ?? ''}
-                  onChange={(e) => handleNumberChange(e.target.value, (num) => onUpdate({ 
-                    format: { 
-                      ...blockFormat, 
-                      headingFormat: { 
-                        ...blockFormat.headingFormat, 
-                        font: { ...(blockFormat.headingFormat?.font || {}), size: num } 
+                  value={
+                    blockFormat.headingFormat?.levels?.[blockFormat.currentHeadingLevel || 'h1']?.font?.size ?? ''
+                  }
+                  onChange={(e) => handleNumberChange(e.target.value, (num) => {
+                    const level = blockFormat.currentHeadingLevel || 'h1';
+                    onUpdate({ 
+                      format: { 
+                        ...blockFormat, 
+                        headingFormat: { 
+                          ...blockFormat.headingFormat,
+                          levels: {
+                            ...blockFormat.headingFormat?.levels,
+                            [level]: {
+                              ...blockFormat.headingFormat?.levels?.[level],
+                              font: { 
+                                ...(blockFormat.headingFormat?.levels?.[level]?.font || {}), 
+                                size: num 
+                              }
+                            }
+                          }
+                        } 
                       } 
-                    } 
-                  }))}
+                    });
+                  })}
                   className="input-field"
                 />
               </div>
@@ -231,16 +326,31 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
                 <input
                   type="color"
                   id={`heading-color-${block.id}`}
-                  value={blockFormat.headingFormat?.font?.color || globalFormat.font.color}
-                  onChange={(e) => onUpdate({ 
-                    format: { 
-                      ...blockFormat, 
-                      headingFormat: { 
-                        ...blockFormat.headingFormat, 
-                        font: { ...(blockFormat.headingFormat?.font || {}), color: e.target.value } 
+                  value={
+                    blockFormat.headingFormat?.levels?.[blockFormat.currentHeadingLevel || 'h1']?.font?.color ||
+                    globalFormat.font.color
+                  }
+                  onChange={(e) => {
+                    const level = blockFormat.currentHeadingLevel || 'h1';
+                    onUpdate({ 
+                      format: { 
+                        ...blockFormat, 
+                        headingFormat: { 
+                          ...blockFormat.headingFormat,
+                          levels: {
+                            ...blockFormat.headingFormat?.levels,
+                            [level]: {
+                              ...blockFormat.headingFormat?.levels?.[level],
+                              font: { 
+                                ...(blockFormat.headingFormat?.levels?.[level]?.font || {}), 
+                                color: e.target.value 
+                              }
+                            }
+                          }
+                        } 
                       } 
-                    } 
-                  })}
+                    });
+                  }}
                   className="input-field h-10"
                 />
               </div>
@@ -249,16 +359,30 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
               <label className="flex items-center">
                 <input 
                   type="checkbox" 
-                  checked={blockFormat.headingFormat?.font?.bold || false} 
-                  onChange={(e) => onUpdate({ 
-                    format: { 
-                      ...blockFormat, 
-                      headingFormat: { 
-                        ...blockFormat.headingFormat, 
-                        font: { ...(blockFormat.headingFormat?.font || {}), bold: e.target.checked } 
+                  checked={
+                    blockFormat.headingFormat?.levels?.[blockFormat.currentHeadingLevel || 'h1']?.font?.bold || false
+                  } 
+                  onChange={(e) => {
+                    const level = blockFormat.currentHeadingLevel || 'h1';
+                    onUpdate({ 
+                      format: { 
+                        ...blockFormat, 
+                        headingFormat: { 
+                          ...blockFormat.headingFormat,
+                          levels: {
+                            ...blockFormat.headingFormat?.levels,
+                            [level]: {
+                              ...blockFormat.headingFormat?.levels?.[level],
+                              font: { 
+                                ...(blockFormat.headingFormat?.levels?.[level]?.font || {}), 
+                                bold: e.target.checked 
+                              }
+                            }
+                          }
+                        } 
                       } 
-                    } 
-                  })}
+                    });
+                  }}
                   className="form-checkbox" 
                 />
                 <span className="ml-2">加粗</span>
@@ -266,16 +390,30 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
               <label className="flex items-center">
                 <input 
                   type="checkbox" 
-                  checked={blockFormat.headingFormat?.font?.italic || false} 
-                  onChange={(e) => onUpdate({ 
-                    format: { 
-                      ...blockFormat, 
-                      headingFormat: { 
-                        ...blockFormat.headingFormat, 
-                        font: { ...(blockFormat.headingFormat?.font || {}), italic: e.target.checked } 
+                  checked={
+                    blockFormat.headingFormat?.levels?.[blockFormat.currentHeadingLevel || 'h1']?.font?.italic || false
+                  } 
+                  onChange={(e) => {
+                    const level = blockFormat.currentHeadingLevel || 'h1';
+                    onUpdate({ 
+                      format: { 
+                        ...blockFormat, 
+                        headingFormat: { 
+                          ...blockFormat.headingFormat,
+                          levels: {
+                            ...blockFormat.headingFormat?.levels,
+                            [level]: {
+                              ...blockFormat.headingFormat?.levels?.[level],
+                              font: { 
+                                ...(blockFormat.headingFormat?.levels?.[level]?.font || {}), 
+                                italic: e.target.checked 
+                              }
+                            }
+                          }
+                        } 
                       } 
-                    } 
-                  })}
+                    });
+                  }}
                   className="form-checkbox" 
                 />
                 <span className="ml-2">斜体</span>
@@ -283,16 +421,30 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
               <label className="flex items-center">
                 <input 
                   type="checkbox" 
-                  checked={blockFormat.headingFormat?.font?.underline || false} 
-                  onChange={(e) => onUpdate({ 
-                    format: { 
-                      ...blockFormat, 
-                      headingFormat: { 
-                        ...blockFormat.headingFormat, 
-                        font: { ...(blockFormat.headingFormat?.font || {}), underline: e.target.checked } 
+                  checked={
+                    blockFormat.headingFormat?.levels?.[blockFormat.currentHeadingLevel || 'h1']?.font?.underline || false
+                  } 
+                  onChange={(e) => {
+                    const level = blockFormat.currentHeadingLevel || 'h1';
+                    onUpdate({ 
+                      format: { 
+                        ...blockFormat, 
+                        headingFormat: { 
+                          ...blockFormat.headingFormat,
+                          levels: {
+                            ...blockFormat.headingFormat?.levels,
+                            [level]: {
+                              ...blockFormat.headingFormat?.levels?.[level],
+                              font: { 
+                                ...(blockFormat.headingFormat?.levels?.[level]?.font || {}), 
+                                underline: e.target.checked 
+                              }
+                            }
+                          }
+                        } 
                       } 
-                    } 
-                  })}
+                    });
+                  }}
                   className="form-checkbox" 
                 />
                 <span className="ml-2">下划线</span>
@@ -308,16 +460,31 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
                 <label htmlFor={`heading-alignment-${block.id}`} className="label-text">对齐方式</label>
                 <select 
                   id={`heading-alignment-${block.id}`} 
-                  value={blockFormat.headingFormat?.paragraph?.alignment || globalFormat.paragraph.alignment} 
-                  onChange={(e) => onUpdate({ 
-                    format: { 
-                      ...blockFormat, 
-                      headingFormat: { 
-                        ...blockFormat.headingFormat, 
-                        paragraph: { ...(blockFormat.headingFormat?.paragraph || {}), alignment: e.target.value as any } 
+                  value={
+                    blockFormat.headingFormat?.levels?.[blockFormat.currentHeadingLevel || 'h1']?.paragraph?.alignment ||
+                    globalFormat.paragraph.alignment
+                  } 
+                  onChange={(e) => {
+                    const level = blockFormat.currentHeadingLevel || 'h1';
+                    onUpdate({ 
+                      format: { 
+                        ...blockFormat, 
+                        headingFormat: { 
+                          ...blockFormat.headingFormat,
+                          levels: {
+                            ...blockFormat.headingFormat?.levels,
+                            [level]: {
+                              ...blockFormat.headingFormat?.levels?.[level],
+                              paragraph: { 
+                                ...(blockFormat.headingFormat?.levels?.[level]?.paragraph || {}), 
+                                alignment: e.target.value as any 
+                              }
+                            }
+                          }
+                        } 
                       } 
-                    } 
-                  })}
+                    });
+                  }}
                   className="input-field"
                 >
                   <option value="left">左对齐</option>
@@ -333,16 +500,30 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
                   step="0.1"
                   id={`heading-line-height-${block.id}`} 
                   placeholder={String(globalFormat.paragraph.lineHeight)} 
-                  value={blockFormat.headingFormat?.paragraph?.lineHeight ?? ''} 
-                  onChange={(e) => handleNumberChange(e.target.value, (num) => onUpdate({ 
-                    format: { 
-                      ...blockFormat, 
-                      headingFormat: { 
-                        ...blockFormat.headingFormat, 
-                        paragraph: { ...(blockFormat.headingFormat?.paragraph || {}), lineHeight: num } 
+                  value={
+                    blockFormat.headingFormat?.levels?.[blockFormat.currentHeadingLevel || 'h1']?.paragraph?.lineHeight ?? ''
+                  } 
+                  onChange={(e) => handleNumberChange(e.target.value, (num) => {
+                    const level = blockFormat.currentHeadingLevel || 'h1';
+                    onUpdate({ 
+                      format: { 
+                        ...blockFormat, 
+                        headingFormat: { 
+                          ...blockFormat.headingFormat,
+                          levels: {
+                            ...blockFormat.headingFormat?.levels,
+                            [level]: {
+                              ...blockFormat.headingFormat?.levels?.[level],
+                              paragraph: { 
+                                ...(blockFormat.headingFormat?.levels?.[level]?.paragraph || {}), 
+                                lineHeight: num 
+                              }
+                            }
+                          }
+                        } 
                       } 
-                    } 
-                  }))}
+                    });
+                  })}
                   className="input-field" 
                 />
               </div>
@@ -357,41 +538,63 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
                   type="number" 
                   id={`heading-indent-first-${block.id}`} 
                   placeholder={String(globalFormat.paragraph.indent.firstLine)} 
-                  value={blockFormat.headingFormat?.paragraph?.indent?.firstLine ?? ''} 
-                  onChange={(e) => handleNumberChange(e.target.value, (num) => onUpdate({ 
-                    format: { 
-                      ...blockFormat, 
-                      headingFormat: { 
-                        ...blockFormat.headingFormat, 
-                        paragraph: { 
-                          ...(blockFormat.headingFormat?.paragraph || {}), 
-                          indent: { 
-                            ...(blockFormat.headingFormat?.paragraph?.indent || {}), 
-                            firstLine: num 
-                          } 
+                  value={
+                    blockFormat.headingFormat?.levels?.[blockFormat.currentHeadingLevel || 'h1']?.paragraph?.indent?.firstLine ?? ''
+                  } 
+                  onChange={(e) => handleNumberChange(e.target.value, (num) => {
+                    const level = blockFormat.currentHeadingLevel || 'h1';
+                    onUpdate({ 
+                      format: { 
+                        ...blockFormat, 
+                        headingFormat: { 
+                          ...blockFormat.headingFormat,
+                          levels: {
+                            ...blockFormat.headingFormat?.levels,
+                            [level]: {
+                              ...blockFormat.headingFormat?.levels?.[level],
+                              paragraph: { 
+                                ...(blockFormat.headingFormat?.levels?.[level]?.paragraph || {}), 
+                                indent: { 
+                                  ...(blockFormat.headingFormat?.levels?.[level]?.paragraph?.indent || {}), 
+                                  firstLine: num 
+                                } 
+                              }
+                            }
+                          }
                         } 
                       } 
-                    } 
-                  }))}
+                    });
+                  })}
                   className="input-field" 
                 />
                 <select 
-                  value={blockFormat.headingFormat?.paragraph?.indent?.firstLineUnit || 'pt'} 
-                  onChange={(e) => onUpdate({ 
-                    format: { 
-                      ...blockFormat, 
-                      headingFormat: { 
-                        ...blockFormat.headingFormat, 
-                        paragraph: { 
-                          ...(blockFormat.headingFormat?.paragraph || {}), 
-                          indent: { 
-                            ...(blockFormat.headingFormat?.paragraph?.indent || {}), 
-                            firstLineUnit: e.target.value as any 
-                          } 
+                  value={
+                    blockFormat.headingFormat?.levels?.[blockFormat.currentHeadingLevel || 'h1']?.paragraph?.indent?.firstLineUnit || 'pt'
+                  } 
+                  onChange={(e) => {
+                    const level = blockFormat.currentHeadingLevel || 'h1';
+                    onUpdate({ 
+                      format: { 
+                        ...blockFormat, 
+                        headingFormat: { 
+                          ...blockFormat.headingFormat,
+                          levels: {
+                            ...blockFormat.headingFormat?.levels,
+                            [level]: {
+                              ...blockFormat.headingFormat?.levels?.[level],
+                              paragraph: { 
+                                ...(blockFormat.headingFormat?.levels?.[level]?.paragraph || {}), 
+                                indent: { 
+                                  ...(blockFormat.headingFormat?.levels?.[level]?.paragraph?.indent || {}), 
+                                  firstLineUnit: e.target.value as any 
+                                } 
+                              }
+                            }
+                          }
                         } 
                       } 
-                    } 
-                  })}
+                    });
+                  }}
                   className="input-field"
                 >
                   <option value="pt">pt</option>
@@ -406,41 +609,63 @@ const BlockFormatPanel: React.FC<BlockFormatPanelProps> = ({ block, onUpdate }) 
                   type="number" 
                   id={`heading-indent-left-${block.id}`} 
                   placeholder={String(globalFormat.paragraph.indent.left)} 
-                  value={blockFormat.headingFormat?.paragraph?.indent?.left ?? ''} 
-                  onChange={(e) => handleNumberChange(e.target.value, (num) => onUpdate({ 
-                    format: { 
-                      ...blockFormat, 
-                      headingFormat: { 
-                        ...blockFormat.headingFormat, 
-                        paragraph: { 
-                          ...(blockFormat.headingFormat?.paragraph || {}), 
-                          indent: { 
-                            ...(blockFormat.headingFormat?.paragraph?.indent || {}), 
-                            left: num 
-                          } 
+                  value={
+                    blockFormat.headingFormat?.levels?.[blockFormat.currentHeadingLevel || 'h1']?.paragraph?.indent?.left ?? ''
+                  } 
+                  onChange={(e) => handleNumberChange(e.target.value, (num) => {
+                    const level = blockFormat.currentHeadingLevel || 'h1';
+                    onUpdate({ 
+                      format: { 
+                        ...blockFormat, 
+                        headingFormat: { 
+                          ...blockFormat.headingFormat,
+                          levels: {
+                            ...blockFormat.headingFormat?.levels,
+                            [level]: {
+                              ...blockFormat.headingFormat?.levels?.[level],
+                              paragraph: { 
+                                ...(blockFormat.headingFormat?.levels?.[level]?.paragraph || {}), 
+                                indent: { 
+                                  ...(blockFormat.headingFormat?.levels?.[level]?.paragraph?.indent || {}), 
+                                  left: num 
+                                } 
+                              }
+                            }
+                          }
                         } 
                       } 
-                    } 
-                  }))}
+                    });
+                  })}
                   className="input-field" 
                 />
                 <select 
-                  value={blockFormat.headingFormat?.paragraph?.indent?.leftUnit || 'pt'} 
-                  onChange={(e) => onUpdate({ 
-                    format: { 
-                      ...blockFormat, 
-                      headingFormat: { 
-                        ...blockFormat.headingFormat, 
-                        paragraph: { 
-                          ...(blockFormat.headingFormat?.paragraph || {}), 
-                          indent: { 
-                            ...(blockFormat.headingFormat?.paragraph?.indent || {}), 
-                            leftUnit: e.target.value as any 
-                          } 
+                  value={
+                    blockFormat.headingFormat?.levels?.[blockFormat.currentHeadingLevel || 'h1']?.paragraph?.indent?.leftUnit || 'pt'
+                  } 
+                  onChange={(e) => {
+                    const level = blockFormat.currentHeadingLevel || 'h1';
+                    onUpdate({ 
+                      format: { 
+                        ...blockFormat, 
+                        headingFormat: { 
+                          ...blockFormat.headingFormat,
+                          levels: {
+                            ...blockFormat.headingFormat?.levels,
+                            [level]: {
+                              ...blockFormat.headingFormat?.levels?.[level],
+                              paragraph: { 
+                                ...(blockFormat.headingFormat?.levels?.[level]?.paragraph || {}), 
+                                indent: { 
+                                  ...(blockFormat.headingFormat?.levels?.[level]?.paragraph?.indent || {}), 
+                                  leftUnit: e.target.value as any 
+                                } 
+                              }
+                            }
+                          }
                         } 
                       } 
-                    } 
-                  })}
+                    });
+                  }}
                   className="input-field"
                 >
                   <option value="pt">pt</option>
