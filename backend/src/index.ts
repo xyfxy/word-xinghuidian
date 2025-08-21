@@ -16,6 +16,10 @@ import templateRoutes from './routes/templates';
 import documentRoutes from './routes/documents';
 import wordImportRoutes from './routes/wordImport';
 import imageRoutes from './routes/images';
+import dingTalkRoutes from './routes/dingtalk';
+
+// 导入中间件
+import { dingTalkAuthMiddleware, optionalDingTalkAuth } from './middleware/dingTalkAuth';
 
 // 导入错误处理工具
 import { errorLogger } from './utils/asyncHandler';
@@ -59,6 +63,18 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // 静态文件服务
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// 钉钉认证路由（不需要认证）
+app.use('/api/dingtalk', dingTalkRoutes);
+
+// 应用钉钉认证中间件到其他API路由（可选）
+if (process.env.ENABLE_DINGTALK_AUTH === 'true') {
+  app.use('/api/ai-gpt', dingTalkAuthMiddleware);
+  app.use('/api/templates', dingTalkAuthMiddleware);
+  app.use('/api/documents', dingTalkAuthMiddleware);
+  app.use('/api/word-import', dingTalkAuthMiddleware);
+  app.use('/api/images', dingTalkAuthMiddleware);
+}
 
 // API路由
 app.use('/api/ai-gpt', aiGptRoutes);

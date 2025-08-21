@@ -8,8 +8,13 @@ import HomePage from './pages/HomePage'
 import UseTemplatePage from './pages/UseTemplatePage'
 import ImportWordPage from './pages/ImportWordPage'
 import { ModelsPage } from './pages/ModelsPage'
+import DingTalkGuard from './components/DingTalkAuth/DingTalkGuard'
+import DingTalkAuth from './components/DingTalkAuth/DingTalkAuth'
 
 function App() {
+  // 从环境变量读取是否启用钉钉访问控制
+  const enableDingTalkAuth = import.meta.env.VITE_ENABLE_DINGTALK_AUTH === 'true'
+
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Toaster 
@@ -34,16 +39,20 @@ function App() {
           },
         }}
       />
-      <Layout>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/editor" element={<EditorPage />} />
-          <Route path="/templates" element={<TemplatePage />} />
-          <Route path="/use-template" element={<UseTemplatePage />} />
-          <Route path="/import-word" element={<ImportWordPage />} />
-          <Route path="/models" element={<ModelsPage />} />
-        </Routes>
-      </Layout>
+      <DingTalkGuard enabled={enableDingTalkAuth}>
+        <DingTalkAuth enabled={enableDingTalkAuth}>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/editor" element={<EditorPage />} />
+              <Route path="/templates" element={<TemplatePage />} />
+              <Route path="/use-template" element={<UseTemplatePage />} />
+              <Route path="/import-word" element={<ImportWordPage />} />
+              <Route path="/models" element={<ModelsPage />} />
+            </Routes>
+          </Layout>
+        </DingTalkAuth>
+      </DingTalkGuard>
     </Router>
   )
 }
