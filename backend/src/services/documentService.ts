@@ -421,31 +421,38 @@ class DocumentService {
       const dataBuffer = await fs.readFile(filePath);
       const zip = new PizZip(dataBuffer);
       
-      let extractedText = '';
       const slideTexts: string[] = [];
       
-      // 遍历所有幻灯片
-      const slidePattern = /ppt\/slides\/slide\d+\.xml/;
-      Object.keys(zip.files).forEach(fileName => {
-        if (slidePattern.test(fileName)) {
-          try {
-            const slideXml = zip.file(fileName)?.asText();
-            if (slideXml) {
-              const slideText = this.extractTextFromSlideXml(slideXml);
-              if (slideText.trim()) {
-                slideTexts.push(slideText);
-              }
+      // 遍历所有幻灯片，按顺序处理
+      const slideFiles = Object.keys(zip.files)
+        .filter(fileName => /ppt\/slides\/slide\d+\.xml/.test(fileName))
+        .sort((a, b) => {
+          const numA = parseInt(a.match(/slide(\d+)\.xml/)?.[1] || '0', 10);
+          const numB = parseInt(b.match(/slide(\d+)\.xml/)?.[1] || '0', 10);
+          return numA - numB;
+        });
+      
+      slideFiles.forEach((fileName, index) => {
+        try {
+          const slideXml = zip.file(fileName)?.asText();
+          if (slideXml) {
+            const slideText = this.extractTextFromSlideXml(slideXml);
+            if (slideText.trim()) {
+              slideTexts.push(`第${index + 1}页：\n${slideText}`);
             }
-          } catch (error) {
-            console.warn(`解析幻灯片 ${fileName} 失败:`, error);
           }
+        } catch (error) {
+          console.warn(`解析幻灯片 ${fileName} 失败:`, error);
         }
       });
       
-      // 合并所有幻灯片文本
-      extractedText = slideTexts.join('\n\n--- 下一页 ---\n\n');
+      // 合并所有幻灯片文本，使用简洁的分隔符
+      const extractedText = slideTexts.join('\n\n');
       
-      return extractedText.trim();
+      // 最终清理：移除多余空行，保持结构清晰
+      return extractedText
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
     } catch (error) {
       console.error('提取PPT文档文本失败:', error);
       throw new Error('提取PPT文档文本失败，请检查文件格式');
@@ -457,25 +464,36 @@ class DocumentService {
     try {
       const texts: string[] = [];
       
-      // 使用正则表达式提取所有文本内容
+      // 使用正则表达式提取所有文本内容，只要<a:t>标签内的文字
       const textRegex = /<a:t[^>]*>(.*?)<\/a:t>/g;
       let match;
       
       while ((match = textRegex.exec(slideXml)) !== null) {
         const text = match[1];
         if (text && text.trim()) {
-          // 解码XML实体
-          const decodedText = text
+          // 解码XML实体并清理
+          let decodedText = text
             .replace(/&lt;/g, '<')
             .replace(/&gt;/g, '>')
             .replace(/&amp;/g, '&')
             .replace(/&quot;/g, '"')
-            .replace(/&#39;/g, "'");
-          texts.push(decodedText.trim());
+            .replace(/&#39;/g, "'")
+            .replace(/&apos;/g, "'")
+            .trim();
+          
+          // 过滤掉纯数字、特殊字符和空内容
+          if (decodedText && 
+              decodedText.length > 0 && 
+              !/^[\d\s\-_=+*\/\\|<>(){}[\].,;:!?@#$%^&]*$/.test(decodedText) &&
+              !/^[a-zA-Z]{1,2}$/.test(decodedText)) { // 过滤掉单独的字母
+            texts.push(decodedText);
+          }
         }
       }
       
-      return texts.join(' ');
+      // 去重并用换行符连接，保持文本结构
+      const uniqueTexts = [...new Set(texts)];
+      return uniqueTexts.join('\n');
     } catch (error) {
       console.warn('解析幻灯片XML失败:', error);
       return '';
