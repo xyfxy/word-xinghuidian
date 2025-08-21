@@ -18,7 +18,7 @@ const DingTalkGuard: React.FC<DingTalkGuardProps> = ({ children, enabled = true 
       return;
     }
 
-    // 检测是否在钉钉环境中
+    // 立即检测环境，不延迟
     const checkDingTalkEnvironment = () => {
       const ua = navigator.userAgent.toLowerCase();
       
@@ -34,19 +34,17 @@ const DingTalkGuard: React.FC<DingTalkGuardProps> = ({ children, enabled = true 
       return isDingTalkUA || isDebugMode;
     };
 
-    // 延迟检测，确保环境加载完成
-    setTimeout(() => {
-      const result = checkDingTalkEnvironment();
-      setIsDingTalk(result);
-      setIsLoading(false);
-      
-      // 记录检测结果
-      console.log('钉钉环境检测:', {
-        userAgent: navigator.userAgent,
-        isDingTalk: result,
-        debugMode: window.location.search.includes('debug=dingtalk')
-      });
-    }, 100);
+    // 立即执行检测
+    const result = checkDingTalkEnvironment();
+    setIsDingTalk(result);
+    setIsLoading(false);
+    
+    // 记录检测结果
+    console.log('钉钉环境检测:', {
+      userAgent: navigator.userAgent,
+      isDingTalk: result,
+      debugMode: window.location.search.includes('debug=dingtalk')
+    });
   }, [enabled]);
 
   // 加载中状态

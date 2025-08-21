@@ -9,7 +9,7 @@ import UseTemplatePage from './pages/UseTemplatePage'
 import ImportWordPage from './pages/ImportWordPage'
 import { ModelsPage } from './pages/ModelsPage'
 import DingTalkGuard from './components/DingTalkAuth/DingTalkGuard'
-import DingTalkAuth from './components/DingTalkAuth/DingTalkAuth'
+import DingTalkAuth from './components/DingTalkAuth/DingTalkAuthOptimized'
 
 function App() {
   // 从环境变量读取是否启用钉钉访问控制
