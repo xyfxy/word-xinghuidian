@@ -436,7 +436,9 @@ class DocumentService {
         try {
           const slideXml = zip.file(fileName)?.asText();
           if (slideXml) {
-            const slideText = this.extractTextFromSlideXml(slideXml);
+            // 先清理XML，移除所有非<a:t>标签内容
+            const cleanedXml = this.cleanPPTXml(slideXml);
+            const slideText = this.extractTextFromCleanedXml(cleanedXml);
             if (slideText.trim()) {
               slideTexts.push(`第${index + 1}页：\n${slideText}`);
             }
@@ -459,34 +461,48 @@ class DocumentService {
     }
   }
 
-  // 从幻灯片XML中提取文本
-  private extractTextFromSlideXml(slideXml: string): string {
+  // 清理PPT的XML，只保留文本内容
+  private cleanPPTXml(xml: string): string {
+    // 移除所有非<a:t>标签的内容，但保留<a:t>标签中的文本
+    // 首先找到所有<a:t>标签及其内容
+    const textMatches = xml.match(/<a:t[^>]*>.*?<\/a:t>/g) || [];
+    return textMatches.join('\n');
+  }
+
+  // 从清理后的XML中提取文本
+  private extractTextFromCleanedXml(cleanedXml: string): string {
     try {
       const texts: string[] = [];
       
-      // 使用正则表达式提取所有文本内容，只要<a:t>标签内的文字
+      // 现在只处理<a:t>标签的内容
       const textRegex = /<a:t[^>]*>(.*?)<\/a:t>/g;
       let match;
       
-      while ((match = textRegex.exec(slideXml)) !== null) {
-        const text = match[1];
+      while ((match = textRegex.exec(cleanedXml)) !== null) {
+        let text = match[1];
+        
+        // 移除所有XML标签（处理嵌套的情况）
+        text = text.replace(/<[^>]+>/g, '');
+        
         if (text && text.trim()) {
-          // 解码XML实体并清理
-          let decodedText = text
+          // 解码XML实体
+          text = text
             .replace(/&lt;/g, '<')
             .replace(/&gt;/g, '>')
             .replace(/&amp;/g, '&')
             .replace(/&quot;/g, '"')
             .replace(/&#39;/g, "'")
             .replace(/&apos;/g, "'")
+            .replace(/&nbsp;/g, ' ')
             .trim();
           
-          // 过滤掉纯数字、特殊字符和空内容
-          if (decodedText && 
-              decodedText.length > 0 && 
-              !/^[\d\s\-_=+*\/\\|<>(){}[\].,;:!?@#$%^&]*$/.test(decodedText) &&
-              !/^[a-zA-Z]{1,2}$/.test(decodedText)) { // 过滤掉单独的字母
-            texts.push(decodedText);
+          // 清理和过滤
+          if (text && 
+              text.length > 0 && 
+              !/^\d+$/.test(text) && // 不是纯数字
+              !/^[a-zA-Z]$/.test(text) && // 不是单个字母
+              !/^[\s\-_=+*\/\\|(){}[\].,;:!?@#$%^&'"]+$/.test(text)) { // 不是纯符号
+            texts.push(text);
           }
         }
       }
@@ -495,7 +511,7 @@ class DocumentService {
       const uniqueTexts = [...new Set(texts)];
       return uniqueTexts.join('\n');
     } catch (error) {
-      console.warn('解析幻灯片XML失败:', error);
+      console.warn('提取文本失败:', error);
       return '';
     }
   }
