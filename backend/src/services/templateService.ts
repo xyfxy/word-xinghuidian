@@ -9,7 +9,8 @@ class TemplateService {
   private cacheTimeout = 5 * 60 * 1000; // 5分钟缓存
 
   constructor() {
-    this.templatesDir = path.join(process.cwd(), 'data', 'templates');
+    // 使用__dirname相对路径，确保在任何运行目录下都能找到正确的路径
+    this.templatesDir = path.join(__dirname, '../../data', 'templates');
     this.ensureTemplatesDir();
   }
 

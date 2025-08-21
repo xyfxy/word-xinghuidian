@@ -21,7 +21,7 @@ function decodeFileName(filename: string): string {
 // 配置multer用于文件上传
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(process.cwd(), 'uploads'));
+    cb(null, path.join(__dirname, '../../uploads'));
   },
   filename: (req, file, cb) => {
     // 处理文件名编码

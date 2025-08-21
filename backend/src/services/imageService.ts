@@ -8,7 +8,7 @@ export class ImageService {
   private imagesDir: string;
 
   constructor() {
-    this.imagesDir = join(process.cwd(), 'data', 'images');
+    this.imagesDir = join(__dirname, '../../data', 'images');
     this.ensureImagesDir();
   }
 

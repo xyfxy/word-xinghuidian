@@ -23,7 +23,7 @@ export class ModelService {
   private iv: Buffer;
 
   constructor() {
-    this.dataDir = join(process.cwd(), 'data', 'models');
+    this.dataDir = join(__dirname, '../../data', 'models');
     
     // 从环境变量获取密钥，如果没有则使用默认值666888
     const secret = process.env.MODEL_ENCRYPTION_KEY || '666888';
