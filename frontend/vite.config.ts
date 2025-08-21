@@ -4,6 +4,7 @@ import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  envDir: '../', // 指定环境变量文件目录为上级目录
   plugins: [react()],
   resolve: {
     alias: {

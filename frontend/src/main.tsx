@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import { initDebugConsole } from './utils/debugConsole'
+import './utils/dingTalkDebug'
 
 // 初始化调试控制台
 initDebugConsole()

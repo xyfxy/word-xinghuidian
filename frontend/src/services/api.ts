@@ -33,7 +33,21 @@ const api = axios.create({
 // 请求拦截器
 api.interceptors.request.use(
   (config) => {
-    // 可以在这里添加认证token等
+    // 添加钉钉认证头信息
+    try {
+      // 从 dingTalkService 获取认证头
+      const dingTalkUser = sessionStorage.getItem('dingTalkUser');
+      if (dingTalkUser) {
+        const userData = JSON.parse(dingTalkUser);
+        if (userData.userInfo && userData.userInfo.userId) {
+          config.headers['X-DingTalk-UserId'] = userData.userInfo.userId;
+          config.headers['X-DingTalk-Auth'] = 'true';
+        }
+      }
+    } catch (error) {
+      console.warn('获取钉钉认证信息失败:', error);
+    }
+    
     return config;
   },
   (error) => {

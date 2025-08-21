@@ -159,13 +159,26 @@ export class DingTalkService {
         }
       });
 
+      console.log('钉钉获取用户ID响应:', userIdResponse.data);
       if (userIdResponse.data.errcode !== 0) {
         throw new Error(`获取用户ID失败: ${userIdResponse.data.errmsg}`);
       }
 
-      const userId = userIdResponse.data.userid;
+      // 直接使用基本用户信息，不再调用详情接口
+      const basicUserInfo = userIdResponse.data;
+      
+      return {
+        userId: basicUserInfo.userid,
+        name: basicUserInfo.name,
+        avatar: '', // 基本信息中没有头像
+        department: [], // 基本信息中没有部门
+        mobile: '', // 基本信息中没有手机
+        email: '' // 基本信息中没有邮箱
+      };
 
-      // 2. 通过用户ID获取用户详细信息
+      // 注释掉需要权限的详细信息获取
+      /*
+      // 2. 通过用户ID获取用户详细信息（需要qyapi_get_member权限）
       const userDetailResponse = await axios.get('https://oapi.dingtalk.com/user/get', {
         params: {
           access_token: accessToken,
@@ -173,6 +186,7 @@ export class DingTalkService {
         }
       });
 
+      console.log('钉钉获取用户详情响应:', userDetailResponse.data);
       if (userDetailResponse.data.errcode !== 0) {
         throw new Error(`获取用户详情失败: ${userDetailResponse.data.errmsg}`);
       }
@@ -187,6 +201,7 @@ export class DingTalkService {
         mobile: userDetail.mobile,
         email: userDetail.email
       };
+      */
     } catch (error: any) {
       console.error('获取用户信息异常:', error.message);
       throw error;
