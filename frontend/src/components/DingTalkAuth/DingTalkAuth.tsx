@@ -84,7 +84,7 @@ const DingTalkAuth: React.FC<DingTalkAuthProps> = ({
 
       // 4. 获取免登授权码
       const authCode = await new Promise<string>((resolve, reject) => {
-        dd.runtime.permission.requestAuthCode({
+        (dd.runtime.permission.requestAuthCode as any)({
           corpId: config.corpId,
           onSuccess: (result: any) => {
             console.log('获取免登授权码成功');

@@ -44,7 +44,7 @@ const AccessDenied: React.FC = () => {
               <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-semibold">
                 3
               </span>
-              <p className="text-sm text-gray-600">找到并点击"Word星辉点"应用</p>
+              <p className="text-sm text-gray-600">找到并点击本应用</p>
             </div>
           </div>
           

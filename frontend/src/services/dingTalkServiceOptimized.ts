@@ -110,7 +110,9 @@ class DingTalkService {
       if (response.data.success) {
         this.userInfo = response.data.data;
         // 缓存用户信息
-        this.cacheUserInfo(this.userInfo);
+        if (this.userInfo) {
+          this.cacheUserInfo(this.userInfo);
+        }
         return this.userInfo;
       } else {
         console.error('获取用户信息失败:', response.data.message);
@@ -214,7 +216,7 @@ class DingTalkService {
    * 预加载钉钉JSAPI（提前加载，减少等待时间）
    */
   preloadDingTalkJS(): void {
-    if (typeof dd === 'undefined') {
+    if (typeof (window as any).dd === 'undefined') {
       const script = document.createElement('script');
       script.src = '//g.alicdn.com/dingding/dingtalk-jsapi/2.15.4/dingtalk.open.js';
       script.async = true;

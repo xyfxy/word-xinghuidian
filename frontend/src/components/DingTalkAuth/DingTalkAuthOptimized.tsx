@@ -109,7 +109,7 @@ const DingTalkAuth: React.FC<DingTalkAuthProps> = ({
           reject(new Error('获取授权码超时'));
         }, 5000);
 
-        dd.runtime.permission.requestAuthCode({
+        (dd.runtime.permission.requestAuthCode as any)({
           corpId: config.corpId,
           onSuccess: (result: any) => {
             clearTimeout(authTimeout);

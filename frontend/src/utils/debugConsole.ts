@@ -31,11 +31,10 @@ export function initDebugConsole() {
       });
 
       // 添加自定义面板显示钉钉信息
-      if (typeof dd !== 'undefined') {
-        vConsole.addPlugin({
+      if (typeof (window as any).dd !== 'undefined') {
+        const ddPlugin: any = {
           id: 'dingtalk',
           name: '钉钉',
-          appendTo: 'default',
           render: () => {
             return `
               <div>
@@ -46,6 +45,7 @@ export function initDebugConsole() {
           },
           init: () => {
             // 获取钉钉运行时信息
+            const dd = (window as any).dd;
             if (typeof dd !== 'undefined' && dd.runtime) {
               dd.runtime.info({
                 onSuccess: (info: any) => {
@@ -65,7 +65,8 @@ export function initDebugConsole() {
               });
             }
           }
-        });
+        };
+        vConsole.addPlugin(ddPlugin);
       }
 
       // 全局错误捕获
@@ -88,7 +89,8 @@ export function initDebugConsole() {
       });
 
       // 钉钉JSAPI错误监听
-      if (typeof dd !== 'undefined') {
+      if (typeof (window as any).dd !== 'undefined') {
+        const dd = (window as any).dd;
         dd.error((error: any) => {
           console.error('❌ 钉钉JSAPI错误:', error);
         });
