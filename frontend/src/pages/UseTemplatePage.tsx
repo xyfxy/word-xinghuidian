@@ -13,6 +13,7 @@ import PreviewPanel from '../components/Editor/PreviewPanel'
 import ImageProcessorModal from '../components/ImageProcessor/ImageProcessorModal'
 import AIExecutionOrderModal from '../components/AIExecutionOrderModal'
 import documentService from '../services/documentService'
+import { useImageProcessorStore } from '../stores/imageProcessorStore'
 
 export default function UseTemplatePage() {
   const navigate = useNavigate()
@@ -35,11 +36,29 @@ export default function UseTemplatePage() {
   const [showGenerateOptions, setShowGenerateOptions] = useState(false)
   const [showExecutionOrderModal, setShowExecutionOrderModal] = useState(false)
   const generateOptionsRef = useRef<HTMLDivElement>(null)
+  
+  // 图片处理缓存
+  const { getCachedAnalysisText, updateLastUsedTime, clearCache } = useImageProcessorStore()
   // 已删除未使用的 getSettingsForBlock
 
   useEffect(() => {
     loadTemplates()
   }, [])
+
+  // 只在真正离开应用时清除图片处理缓存
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      clearCache()
+      console.log('页面刷新/关闭时清除图片处理缓存')
+    }
+    
+    // 只监听页面刷新/关闭，不监听路由切换
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [clearCache])
   
   // 点击外部关闭生成选项菜单
   useEffect(() => {
@@ -80,6 +99,10 @@ export default function UseTemplatePage() {
 
   const handleTemplateSelect = async (template: any) => {
     try {
+      // 切换模板时清除之前的图片处理缓存
+      clearCache()
+      console.log('切换模板，已清除之前的图片处理缓存')
+      
       // 获取完整模板数据
       const fullTemplate = await templateService.getTemplate(template.id)
       setSelectedTemplate(fullTemplate)
@@ -98,6 +121,11 @@ export default function UseTemplatePage() {
         initialExpanded[block.id] = true
       })
       setExpandedBlocks(initialExpanded)
+      
+      // 更新URL参数以保持状态
+      const newSearchParams = new URLSearchParams(searchParams)
+      newSearchParams.set('templateId', template.id)
+      navigate(`/use-template?${newSearchParams.toString()}`, { replace: true })
     } catch (error) {
       console.error('加载模板详情失败:', error)
       toast.error('加载模板详情失败')
@@ -142,6 +170,14 @@ export default function UseTemplatePage() {
             processedPrompt = processedPrompt.replace(ref, refBlock.content)
           }
         })
+      }
+      
+      // 获取缓存的图片分析结果并添加到提示词中
+      const cachedImageAnalysis = getCachedAnalysisText()
+      if (cachedImageAnalysis.trim()) {
+        processedPrompt = `${processedPrompt}\n\n【参考的图片分析内容】：\n${cachedImageAnalysis}`
+        updateLastUsedTime() // 更新缓存使用时间
+        console.log('使用缓存的图片分析结果于大纲生成')
       }
 
       let response
@@ -739,6 +775,44 @@ export default function UseTemplatePage() {
     }
   };
 
+  // 处理插入大纲到AI提示词
+  const handleInsertToPrompt = (targetBlockId: string, outlineContent: string) => {
+    setContentBlocks(prev => 
+      prev.map(block => {
+        if (block.id === targetBlockId && block.type === 'ai-generated') {
+          const currentPrompt = block.aiPrompt || '';
+          
+          // 分离基础提示词和文档内容
+          const parts = currentPrompt.split('\n===== 文档内容 ====');
+          const basePrompt = parts[0] || '';
+          const documentsSection = parts[1] || '';
+          
+          // 在基础提示词末尾添加大纲，另起一行
+          const newBasePrompt = basePrompt.trim() ? `${basePrompt.trim()}\n\n${outlineContent}` : outlineContent;
+          
+          // 重新组合完整提示词
+          const newPrompt = documentsSection 
+            ? `${newBasePrompt}\n===== 文档内容 ====${documentsSection}`
+            : newBasePrompt;
+            
+          return {
+            ...block,
+            aiPrompt: newPrompt
+          };
+        }
+        return block;
+      })
+    );
+  };
+
+  // 获取可用的AI内容块列表
+  const availableAIBlocks = contentBlocks
+    .filter(block => block.type === 'ai-generated')
+    .map(block => ({
+      id: block.id,
+      title: block.title
+    }));
+
   // 判断是否所有块都已展开
   const allBlocksExpanded = Object.values(expandedBlocks).every(v => v)
 
@@ -749,7 +823,13 @@ export default function UseTemplatePage() {
         <div className="bg-white border-b px-6 py-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => setSelectedTemplate(null)}
+              onClick={() => {
+                // 返回模板列表时清除缓存和URL参数
+                clearCache()
+                navigate('/use-template', { replace: true })
+                setSelectedTemplate(null)
+                console.log('返回模板列表，已清除缓存')
+              }}
               className="p-2 hover:bg-gray-100 rounded-md transition-colors"
               title="返回模板列表"
             >
@@ -1047,6 +1127,8 @@ export default function UseTemplatePage() {
         isOpen={showImageProcessor}
         onClose={() => setShowImageProcessor(false)}
         onInsertImages={handleInsertImages}
+        onInsertToPrompt={handleInsertToPrompt}
+        availableAIBlocks={availableAIBlocks}
       />
       
       {/* AI执行顺序配置弹窗 */}
@@ -1201,74 +1283,7 @@ const AIGeneratorBlockInput: React.FC<AIGeneratorBlockInputProps> = ({
 
     return (
       <div className="space-y-3">
-        {/* AI生成内容编辑器 */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1">
-            <SimpleRichTextEditor
-              value={block.content as string}
-              onChange={(content) => updateBlockContent(block.id, content)}
-              placeholder="AI生成的内容将显示在这里..."
-              minHeight={120}
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={() => handleAIGenerate(block.id)}
-              disabled={isGenerating || (!block.aiPrompt?.trim() && uploadedFiles.length === 0)}
-              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[100px]"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader className="w-4 h-4 animate-spin" />
-                  生成中
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  生成
-                </>
-              )}
-            </button>
-            {isGenerating && (
-              <div className="text-xs text-center text-gray-500">
-                已用时: {elapsedTime}s
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 提示词输入 */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-gray-700">
-              提示词 <span className="text-gray-500">(可点击内容块旁的复制按钮获取引用)</span>
-            </label>
-            {(block.modelId || block.aiSettings) && (
-              <span className="text-xs px-2 py-1 bg-blue-100 text-blue-600 rounded">
-                {block.modelId === 'maxkb' ? 'MaxKB' : 
-                 block.modelId ? '自定义模型' :
-                 block.aiSettings?.provider === 'maxkb' ? 'MaxKB' : '千问'}
-              </span>
-            )}
-          </div>
-          <textarea
-            value={block.aiPrompt?.split('\n===== 文档内容 ====')[0] || ''}
-            onChange={(e) => {
-              const basePrompt = e.target.value
-              const documentsSection = block.aiPrompt?.split('\n===== 文档内容 ====')[1] || ''
-              const newPrompt = documentsSection 
-                ? basePrompt + '\n===== 文档内容 ====' + documentsSection
-                : basePrompt
-              updateBlockPrompt(block.id, newPrompt)
-            }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono"
-            rows={3}
-            placeholder="输入AI提示词..."
-            disabled={isExtracting}
-          />
-        </div>
-
-        {/* 文档上传区域 */}
+        {/* 文档上传区域 - 移到顶部 */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm font-medium text-gray-700">
@@ -1362,6 +1377,84 @@ const AIGeneratorBlockInput: React.FC<AIGeneratorBlockInputProps> = ({
             )}
           </div>
         )}
+
+        {/* 提示词输入 */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-gray-700">
+              提示词 <span className="text-gray-500">(可点击内容块旁的复制按钮获取引用)</span>
+              {block.aiPrompt?.includes('大纲：') && (
+                <span className="ml-2 text-xs px-2 py-1 bg-green-100 text-green-600 rounded">
+                  包含图片大纲
+                </span>
+              )}
+            </label>
+            {(block.modelId || block.aiSettings) && (
+              <span className="text-xs px-2 py-1 bg-blue-100 text-blue-600 rounded">
+                {block.modelId === 'maxkb' ? 'MaxKB' : 
+                 block.modelId ? '自定义模型' :
+                 block.aiSettings?.provider === 'maxkb' ? 'MaxKB' : '千问'}
+              </span>
+            )}
+          </div>
+          <textarea
+            value={(() => {
+              if (!block.aiPrompt) return '';
+              // 分离基础提示词、文档内容和大纲内容
+              const parts = block.aiPrompt.split('\n===== 文档内容 ====');
+              const baseAndOutline = parts[0] || '';
+              return baseAndOutline;
+            })()} 
+            onChange={(e) => {
+              const newBasePrompt = e.target.value;
+              const documentsSection = block.aiPrompt?.split('\n===== 文档内容 ====')[1] || '';
+              const newPrompt = documentsSection 
+                ? newBasePrompt + '\n===== 文档内容 ====' + documentsSection
+                : newBasePrompt;
+              updateBlockPrompt(block.id, newPrompt);
+            }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono"
+            rows={6}
+            placeholder="输入AI提示词...\n\n大纲内容将在最后显示"
+            disabled={isExtracting}
+          />
+        </div>
+
+        {/* AI生成内容编辑器 - 移到底部 */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1">
+            <SimpleRichTextEditor
+              value={block.content as string}
+              onChange={(content) => updateBlockContent(block.id, content)}
+              placeholder="AI生成的内容将显示在这里..."
+              minHeight={120}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => handleAIGenerate(block.id)}
+              disabled={isGenerating || (!block.aiPrompt?.trim() && uploadedFiles.length === 0)}
+              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[100px]"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader className="w-4 h-4 animate-spin" />
+                  生成中
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  生成
+                </>
+              )}
+            </button>
+            {isGenerating && (
+              <div className="text-xs text-center text-gray-500">
+                已用时: {elapsedTime}s
+              </div>
+            )}
+          </div>
+        </div>
 
         {isExtracting && (
           <div className="flex items-center justify-center py-2">

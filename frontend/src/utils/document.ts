@@ -293,6 +293,49 @@ const createParagraphs = (
   return convertHTMLToDocxParagraphs(block.content, defaultFormat, block.format);
 };
 
+// 检查内容块是否有实际内容
+const hasActualContent = (block: ContentBlock): boolean => {
+  // 文本类内容块
+  if (block.type === 'text' || block.type === 'ai-generated') {
+    if (typeof block.content === 'string') {
+      // 剥离HTML标签后检查是否有实际文本
+      const div = document.createElement('div');
+      div.innerHTML = block.content;
+      const text = (div.textContent || div.innerText || '').trim();
+      return text.length > 0;
+    }
+    return false;
+  }
+  
+  // 双栏文本
+  if (block.type === 'two-column' && typeof block.content === 'object' && 'left' in block.content) {
+    const content = block.content as { left: string, right: string };
+    return content.left.trim().length > 0 || content.right.trim().length > 0;
+  }
+  
+  // 图片
+  if (block.type === 'image' && typeof block.content === 'object' && 'src' in block.content) {
+    const imageContent = block.content as ImageContent;
+    return !!imageContent.src;
+  }
+  
+  // 表格
+  if (block.type === 'table' && typeof block.content === 'object' && 'rows' in block.content) {
+    const tableContent = block.content as TableContent;
+    // 检查是否有任何单元格有内容
+    return tableContent.rows.some(row => 
+      row.some(cell => cell.content.trim().length > 0)
+    );
+  }
+  
+  // 换页符总是返回true（后续会特殊处理）
+  if (block.type === 'page-break') {
+    return true;
+  }
+  
+  return false;
+};
+
 // 导出Word文档
 export const exportToWord = async (template: DocumentTemplate): Promise<void> => {
   try {
@@ -303,7 +346,7 @@ export const exportToWord = async (template: DocumentTemplate): Promise<void> =>
     const pageWidthPt = template.format.page.width || 595;
     const pageHeightPt = template.format.page.height || 842;
 
-    const docxElements = sortedContent.flatMap((block) => {
+    const docxElements = sortedContent.flatMap((block, index) => {
       // 处理图片块
       if (block.type === 'image' && typeof block.content === 'object' && 'src' in block.content) {
         const imageContent = block.content as ImageContent;
@@ -390,6 +433,26 @@ export const exportToWord = async (template: DocumentTemplate): Promise<void> =>
       if (block.type === 'page-break' && typeof block.content === 'object' && 'type' in block.content) {
         const pageBreakContent = block.content as PageBreakContent;
         
+        // 检查后续是否有实际内容
+        let hasContentAfter = false;
+        for (let i = index + 1; i < sortedContent.length; i++) {
+          const nextBlock = sortedContent[i];
+          // 跳过后续的换页符
+          if (nextBlock.type === 'page-break') {
+            continue;
+          }
+          // 检查是否有实际内容
+          if (hasActualContent(nextBlock)) {
+            hasContentAfter = true;
+            break;
+          }
+        }
+        
+        // 如果后面没有实际内容，不插入换页符
+        if (!hasContentAfter) {
+          return [];
+        }
+        
         // 创建换页段落
         const pageBreakParagraph = new Paragraph({
           children: [new PageBreak()],
@@ -397,8 +460,8 @@ export const exportToWord = async (template: DocumentTemplate): Promise<void> =>
 
         const elements = [pageBreakParagraph];
 
-        // 如果需要添加空白页
-        if (pageBreakContent.settings.addBlankPage) {
+        // 如果需要添加空白页（仅当后面有内容时）
+        if (pageBreakContent.settings.addBlankPage && hasContentAfter) {
           elements.push(new Paragraph({
             children: [new PageBreak()],
           }));

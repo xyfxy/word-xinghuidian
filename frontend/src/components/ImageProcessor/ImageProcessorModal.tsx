@@ -1,16 +1,20 @@
 import React, { useState, useRef } from 'react';
-import { X, Upload, Sparkles, ArrowDown, Image as ImageIcon, Copy, CopyCheck } from 'lucide-react';
+import { X, Upload, Sparkles, ArrowDown, Image as ImageIcon, Copy, CopyCheck, Trash2, Edit3, Save, XCircle, ChevronDown } from 'lucide-react';
 import { imageService } from '../../services/imageService';
 import { modelService } from '../../services/modelService';
 import { AIModelListItem, ImageAnalysisResult } from '../../types/model';
 import { toast } from '../../utils/toast';
 import { formatMaxKbContent } from '../../utils/markdown';
 import { copyToClipboard } from '../../utils/clipboard';
+import { useImageProcessorStore } from '../../stores/imageProcessorStore';
+import { compressBase64Image, getBase64Size } from '../../utils/imageCompress';
 
 interface ImageProcessorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onInsertImages: (images: { base64: string; filename: string }[]) => void;
+  onInsertToPrompt?: (targetBlockId: string, outlineContent: string) => void;
+  availableAIBlocks?: Array<{ id: string; title: string }>;
 }
 
 interface ProcessedImage {
@@ -21,12 +25,17 @@ interface ProcessedImage {
   analysis?: ImageAnalysisResult;
   formattedAnalysis?: string;
   isAnalyzing?: boolean;
+  isCachedResult?: boolean; // 标记是否为缓存恢复的结果
+  isEditing?: boolean; // 是否正在编辑
+  editingContent?: string; // 编辑中的内容
 }
 
 export default function ImageProcessorModal({
   isOpen,
   onClose,
-  onInsertImages
+  onInsertImages,
+  onInsertToPrompt,
+  availableAIBlocks = []
 }: ImageProcessorModalProps) {
   const [images, setImages] = useState<ProcessedImage[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>('');
@@ -37,13 +46,55 @@ export default function ImageProcessorModal({
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [editingImageId, setEditingImageId] = useState<string | null>(null);
+  const [showPromptInsertMenu, setShowPromptInsertMenu] = useState(false);
+  const [selectedAIBlockId, setSelectedAIBlockId] = useState<string>('');
+  
+  // 图片处理缓存
+  const { 
+    currentCache, 
+    setCache, 
+    getCache, 
+    clearCache, 
+    isCacheValid, 
+    updateLastUsedTime 
+  } = useImageProcessorStore();
 
-  // 加载多模态模型
+  // 加载多模态模型和缓存数据
   React.useEffect(() => {
     if (isOpen) {
       loadMultimodalModels();
+      loadCachedData();
     }
   }, [isOpen]);
+
+  // 加载缓存数据 - 显示缓存的分析结果
+  const loadCachedData = () => {
+    const cache = getCache();
+    if (cache && isCacheValid()) {
+      // 恢复设置
+      setSelectedModel(cache.modelId);
+      setAnalysisPrompt(cache.prompt);
+      updateLastUsedTime();
+      
+      // 从缓存恢复压缩后的图片和分析结果
+      const cachedImagesWithAnalysis = cache.images.filter(img => img.analysis?.description);
+      if (cachedImagesWithAnalysis.length > 0) {
+        const restoredImages: ProcessedImage[] = cachedImagesWithAnalysis.map(img => ({
+          id: img.id,
+          file: new File([], img.filename), // 占位符文件
+          base64: img.compressedBase64, // 使用压缩后的图片数据
+          preview: img.compressedBase64, // 使用压缩后的图片作为预览
+          analysis: img.analysis,
+          formattedAnalysis: img.formattedAnalysis,
+          isCachedResult: true // 标记这是缓存结果
+        }));
+        
+        setImages(restoredImages);
+        // 静默恢复，不显示提示信息
+      }
+    }
+  };
 
   const loadMultimodalModels = async () => {
     setIsLoadingModels(true);
@@ -141,7 +192,18 @@ export default function ImageProcessorModal({
         });
       }
 
-      setImages(prev => [...prev, ...newImages]);
+      setImages(prev => {
+        const allImages = [...prev, ...newImages];
+        
+        // 如果是第一次上传图片，并且之前有缓存，询问是否清除
+        if (prev.length === 0 && currentCache && currentCache.images.length > 0) {
+          // 清除旧缓存，因为用户上传了新图片
+          clearCache();
+          console.log('检测到新图片上传，已清除旧缓存');
+        }
+        
+        return allImages;
+      });
       toast.success(`成功添加 ${newImages.length} 张图片`);
     } catch (error) {
       console.error('处理图片失败:', error);
@@ -156,7 +218,28 @@ export default function ImageProcessorModal({
 
   // 删除图片
   const removeImage = (imageId: string) => {
-    setImages(prev => prev.filter(img => img.id !== imageId));
+    setImages(prev => {
+      const updatedImages = prev.filter(img => img.id !== imageId);
+      
+      // 如果删除后没有图片了，清除缓存
+      if (updatedImages.length === 0) {
+        clearCache();
+        toast.info('已清除缓存数据');
+      } else {
+        // 更新缓存中的图片列表
+        const cache = getCache();
+        if (cache) {
+          const updatedCache = {
+            ...cache,
+            images: cache.images.filter(img => img.id !== imageId),
+            lastUsedAt: Date.now()
+          };
+          setCache(updatedCache);
+        }
+      }
+      
+      return updatedImages;
+    });
   };
 
   // 分析图片
@@ -203,7 +286,62 @@ export default function ImageProcessorModal({
         }));
         
         setImages(updatedImages);
-        toast.success('图片分析完成');
+        
+        // 压缩图片并保存分析结果到缓存
+        try {
+          console.log('开始压缩图片并保存缓存...');
+          const compressedImages = await Promise.all(
+            updatedImages.map(async (img) => {
+              let compressedBase64 = img.base64;
+              
+              try {
+                // 检查原图大小
+                const originalSizeKB = getBase64Size(img.base64);
+                console.log(`原图 ${img.file.name} 大小: ${originalSizeKB.toFixed(1)}KB`);
+                
+                if (originalSizeKB > 100) { // 如果大于100KB才压缩
+                  compressedBase64 = await compressBase64Image(img.base64, {
+                    maxWidth: 300,
+                    maxHeight: 300,
+                    quality: 0.7,
+                    maxSizeKB: 150
+                  });
+                  
+                  const compressedSizeKB = getBase64Size(compressedBase64);
+                  console.log(`压缩后 ${img.file.name} 大小: ${compressedSizeKB.toFixed(1)}KB`);
+                }
+              } catch (compressError) {
+                console.warn(`图片 ${img.file.name} 压缩失败:`, compressError);
+                // 压缩失败时使用原图
+              }
+              
+              return {
+                id: img.id,
+                filename: img.file.name,
+                compressedBase64,
+                analysis: img.analysis,
+                formattedAnalysis: img.formattedAnalysis,
+                processedAt: Date.now()
+              };
+            })
+          );
+
+          const cacheData = {
+            modelId: selectedModel,
+            prompt: analysisPrompt,
+            images: compressedImages,
+            createdAt: Date.now(),
+            lastUsedAt: Date.now()
+          };
+
+          setCache(cacheData);
+          console.log('压缩缓存保存成功');
+        } catch (error) {
+          console.warn('压缩或缓存保存失败:', error);
+          toast.warning('缓存保存失败，但分析结果正常');
+        }
+        
+        toast.success('图片分析完成并已缓存');
       } else {
         toast.error(response.error || '图片分析失败');
       }
@@ -222,13 +360,31 @@ export default function ImageProcessorModal({
       return;
     }
 
-    const imageData = images.map(img => ({
+    // 插入所有有图片数据的图片（包括缓存的压缩图片）
+    const validImages = images.filter(img => img.base64);
+    
+    if (validImages.length === 0) {
+      toast.error('没有可插入的图片数据');
+      return;
+    }
+
+    const imageData = validImages.map(img => ({
       base64: img.base64,
       filename: img.file.name
     }));
     
     onInsertImages(imageData);
-    toast.success(`成功插入 ${imageData.length} 张图片`);
+    const cacheCount = validImages.filter(img => img.isCachedResult).length;
+    const freshCount = validImages.length - cacheCount;
+    
+    if (cacheCount > 0 && freshCount > 0) {
+      toast.success(`成功插入 ${validImages.length} 张图片（${freshCount} 张新图片，${cacheCount} 张缓存图片）`);
+    } else if (cacheCount > 0) {
+      toast.success(`成功插入 ${cacheCount} 张缓存图片`);
+    } else {
+      toast.success(`成功插入 ${freshCount} 张图片`);
+    }
+    
     handleClose();
   };
 
@@ -269,14 +425,168 @@ export default function ImageProcessorModal({
     }
   };
 
-  // 关闭弹窗
+  // 开始编辑大纲
+  const startEditing = (imageId: string, content: string) => {
+    setImages(prev => 
+      prev.map(img => 
+        img.id === imageId 
+          ? { ...img, isEditing: true, editingContent: content }
+          : img
+      )
+    );
+    setEditingImageId(imageId);
+  };
+
+  // 取消编辑
+  const cancelEditing = (imageId: string) => {
+    setImages(prev => 
+      prev.map(img => 
+        img.id === imageId 
+          ? { ...img, isEditing: false, editingContent: undefined }
+          : img
+      )
+    );
+    setEditingImageId(null);
+  };
+
+  // 保存编辑
+  const saveEditing = async (imageId: string) => {
+    const image = images.find(img => img.id === imageId);
+    if (!image || !image.editingContent) return;
+
+    try {
+      // 格式化编辑后的内容
+      const formattedContent = await formatMaxKbContent(image.editingContent);
+      
+      // 更新图片分析结果
+      setImages(prev => 
+        prev.map(img => 
+          img.id === imageId 
+            ? { 
+                ...img, 
+                analysis: { 
+                  ...img.analysis!, 
+                  description: image.editingContent! 
+                },
+                formattedAnalysis: formattedContent,
+                isEditing: false, 
+                editingContent: undefined 
+              }
+            : img
+        )
+      );
+
+      // 更新缓存
+      const cache = getCache();
+      if (cache) {
+        const updatedCache = {
+          ...cache,
+          images: cache.images.map(img => 
+            img.id === imageId 
+              ? { 
+                  ...img, 
+                  analysis: { 
+                    ...img.analysis!, 
+                    description: image.editingContent! 
+                  },
+                  formattedAnalysis: formattedContent 
+                }
+              : img
+          ),
+          lastUsedAt: Date.now()
+        };
+        setCache(updatedCache);
+      }
+
+      setEditingImageId(null);
+      toast.success('大纲已保存');
+    } catch (error) {
+      console.error('保存编辑失败:', error);
+      toast.error('保存失败');
+    }
+  };
+
+  // 更新编辑内容
+  const updateEditingContent = (imageId: string, content: string) => {
+    setImages(prev => 
+      prev.map(img => 
+        img.id === imageId 
+          ? { ...img, editingContent: content }
+          : img
+      )
+    );
+  };
+
+  // 插入大纲到AI提示词
+  const handleInsertToPrompt = () => {
+    if (!selectedAIBlockId || !onInsertToPrompt) {
+      toast.error('请选择目标AI内容块');
+      return;
+    }
+
+    // 收集所有分析结果
+    const allAnalysis = images
+      .filter(img => img.analysis?.description)
+      .map((img) => {
+        const actualIndex = images.indexOf(img);
+        return `${actualIndex + 1}. ${img.analysis!.description}`;
+      })
+      .join('\n');
+    
+    if (!allAnalysis) {
+      toast.error('没有可插入的分析结果');
+      return;
+    }
+
+    const outlineContent = `大纲：\n${allAnalysis}`;
+    onInsertToPrompt(selectedAIBlockId, outlineContent);
+    
+    const targetBlock = availableAIBlocks.find(block => block.id === selectedAIBlockId);
+    toast.success(`已将大纲插入到「${targetBlock?.title}」的提示词中`);
+    
+    setShowPromptInsertMenu(false);
+    setSelectedAIBlockId('');
+    handleClose();
+  };
+
+  // 关闭弹窗 - 智能缓存管理
   const handleClose = () => {
+    // 如果有正在编辑的内容，提醒用户
+    if (editingImageId !== null) {
+      const confirmClose = confirm('您有未保存的编辑内容，确定要关闭吗？');
+      if (!confirmClose) {
+        return;
+      }
+    }
+    
+    // 如果当前有图片但没有分析结果，清除缓存
+    const hasAnalysis = images.some(img => img.analysis?.description);
+    if (images.length > 0 && !hasAnalysis) {
+      clearCache();
+      console.log('关闭时清除缓存：没有分析结果');
+    }
+    
+    // 清理状态
+    setCopiedIndex(null);
+    setCopiedAll(false);
+    setEditingImageId(null);
+    setShowPromptInsertMenu(false);
+    setSelectedAIBlockId('');
+    onClose();
+  };
+
+  // 清除所有数据和缓存
+  const handleClearAll = () => {
     setImages([]);
     setSelectedModel('');
     setAnalysisPrompt('多模态提取要点，保持原顺序，禁止扩写，输出讨论大纲。');
     setCopiedIndex(null);
     setCopiedAll(false);
-    onClose();
+    setEditingImageId(null);
+    setShowPromptInsertMenu(false);
+    setSelectedAIBlockId('');
+    clearCache();
+    toast.success('已清除所有数据和缓存');
   };
 
   if (!isOpen) return null;
@@ -299,6 +609,29 @@ export default function ImageProcessorModal({
             </button>
           </div>
           <p className="text-gray-600 mt-2">上传图片，使用多模态AI进行分析，然后按顺序插入到模板中</p>
+          {currentCache && isCacheValid() && currentCache.images.length > 0 && (
+            <div className="mt-3 flex items-center justify-between bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg px-4 py-2">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+                  <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-green-800">智能缓存已启用</div>
+                  <div className="text-xs text-green-600">已保存 {currentCache.images.length} 张图片的分析结果</div>
+                </div>
+              </div>
+              <button
+                onClick={handleClearAll}
+                className="text-xs text-gray-500 hover:text-red-600 flex items-center gap-1 transition-colors hover:bg-red-50 px-2 py-1 rounded"
+                title="清除缓存数据"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>清除缓存</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 内容区域 */}
@@ -332,12 +665,21 @@ export default function ImageProcessorModal({
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {images.map((image, index) => (
                     <div key={image.id} className="relative group">
-                      <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                      <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden relative">
                         <img
                           src={image.preview}
                           alt={`预览图 ${index + 1}`}
                           className="w-full h-full object-cover"
                         />
+                        {/* 缓存结果标识 */}
+                        {image.isCachedResult && (
+                          <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow-sm">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            缓存
+                          </div>
+                        )}
                       </div>
                       <button
                         onClick={() => removeImage(image.id)}
@@ -452,28 +794,80 @@ export default function ImageProcessorModal({
                                 <span className="text-xs px-2 py-1 bg-green-100 text-green-600 rounded">
                                   已分析
                                 </span>
-                              </div>
-                              <button
-                                onClick={() => copyAnalysis(index, image.analysis!.description || '')}
-                                className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
-                                title="复制分析结果"
-                              >
-                                {copiedIndex === index ? (
-                                  <CopyCheck className="w-4 h-4 text-green-600" />
-                                ) : (
-                                  <Copy className="w-4 h-4" />
+                                {image.isEditing && (
+                                  <span className="text-xs px-2 py-1 bg-blue-100 text-blue-600 rounded">
+                                    编辑中
+                                  </span>
                                 )}
-                              </button>
-                            </div>
-                            {image.formattedAnalysis ? (
-                              <div 
-                                className="text-sm text-gray-700 bg-gray-50 p-3 rounded border prose prose-sm max-w-none"
-                                dangerouslySetInnerHTML={{ __html: image.formattedAnalysis }}
-                              />
-                            ) : (
-                              <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded border">
-                                {image.analysis?.description || '无分析结果'}
                               </div>
+                              <div className="flex items-center gap-1">
+                                {image.isEditing ? (
+                                  <>
+                                    <button
+                                      onClick={() => saveEditing(image.id)}
+                                      className="p-1 text-green-600 hover:text-green-700 hover:bg-green-50 rounded transition-colors"
+                                      title="保存编辑"
+                                    >
+                                      <Save className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => cancelEditing(image.id)}
+                                      className="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                      title="取消编辑"
+                                    >
+                                      <XCircle className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={() => startEditing(image.id, image.analysis!.description || '')}
+                                      className="p-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                                      title="编辑大纲"
+                                      disabled={editingImageId !== null && editingImageId !== image.id}
+                                    >
+                                      <Edit3 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => copyAnalysis(index, image.analysis!.description || '')}
+                                      className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                                      title="复制分析结果"
+                                    >
+                                      {copiedIndex === index ? (
+                                        <CopyCheck className="w-4 h-4 text-green-600" />
+                                      ) : (
+                                        <Copy className="w-4 h-4" />
+                                      )}
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            {image.isEditing ? (
+                              <div className="space-y-3">
+                                <textarea
+                                  value={image.editingContent || ''}
+                                  onChange={(e) => updateEditingContent(image.id, e.target.value)}
+                                  rows={8}
+                                  className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-y"
+                                  style={{ minHeight: '120px', maxHeight: '400px' }}
+                                  placeholder="编辑大纲内容..."
+                                />
+                                <div className="text-xs text-gray-500">
+                                  支持 Markdown 格式，使用 # 表示标题，- 表示列表项。拖动右下角可调整输入框大小。
+                                </div>
+                              </div>
+                            ) : (
+                              image.formattedAnalysis ? (
+                                <div 
+                                  className="text-sm text-gray-700 bg-gray-50 p-3 rounded border prose prose-sm max-w-none"
+                                  dangerouslySetInnerHTML={{ __html: image.formattedAnalysis }}
+                                />
+                              ) : (
+                                <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded border">
+                                  {image.analysis?.description || '无分析结果'}
+                                </div>
+                              )
                             )}
                           </div>
                         </div>
@@ -491,7 +885,13 @@ export default function ImageProcessorModal({
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-600">
               {images.length > 0 && (
-                <span>已上传 {images.length} 张图片，已分析 {images.filter(img => img.analysis).length} 张</span>
+                <span>
+                  共 {images.length} 张图片，
+                  已分析 {images.filter(img => img.analysis).length} 张
+                  {images.some(img => img.isCachedResult) && (
+                    <span className="text-green-600 font-medium">（含 {images.filter(img => img.isCachedResult).length} 张智能缓存）</span>
+                  )}
+                </span>
               )}
             </div>
             <div className="flex gap-3">
@@ -518,6 +918,64 @@ export default function ImageProcessorModal({
                     <ArrowDown className="w-4 h-4" />
                     按顺序插入到模板
                   </button>
+                  {/* 插入到AI提示词按钮 */}
+                  {onInsertToPrompt && availableAIBlocks.length > 0 && images.some(img => img.analysis) && (
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowPromptInsertMenu(!showPromptInsertMenu)}
+                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2 transition-colors"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        插入到AI提示词
+                        <ChevronDown className={`w-4 h-4 transition-transform ${showPromptInsertMenu ? 'rotate-180' : ''}`} />
+                      </button>
+                      
+                      {showPromptInsertMenu && (
+                        <div className="absolute bottom-full right-0 mb-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                          <div className="p-4">
+                            <div className="mb-3">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                选择目标AI内容块
+                              </label>
+                              <select
+                                value={selectedAIBlockId}
+                                onChange={(e) => setSelectedAIBlockId(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                              >
+                                <option value="">请选择AI内容块...</option>
+                                {availableAIBlocks.map(block => (
+                                  <option key={block.id} value={block.id}>
+                                    {block.title}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="text-xs text-gray-500 mb-3">
+                              大纲将以“大纲：[<wbr/>分析结果]”的格式添加到所选AI块的提示词末尾
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  setShowPromptInsertMenu(false)
+                                  setSelectedAIBlockId('')
+                                }}
+                                className="flex-1 px-3 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 text-sm transition-colors"
+                              >
+                                取消
+                              </button>
+                              <button
+                                onClick={handleInsertToPrompt}
+                                disabled={!selectedAIBlockId}
+                                className="flex-1 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm transition-colors"
+                              >
+                                确认插入
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
             </div>

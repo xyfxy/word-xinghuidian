@@ -10,6 +10,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
 
   const isActive = (path: string) => location.pathname === path;
+  
+  // 构建使用模板的链接，保持当前的templateId参数
+  const getUseTemplateLink = () => {
+    if (location.pathname === '/use-template' && location.search) {
+      return `/use-template${location.search}`;
+    }
+    return '/use-template';
+  };
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
@@ -61,7 +69,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   模板管理
                 </Link>
                 <Link
-                  to="/use-template"
+                  to={getUseTemplateLink()}
                   className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
                     isActive('/use-template')
                       ? 'border-primary-500 text-gray-900'
