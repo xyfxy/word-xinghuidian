@@ -63,9 +63,12 @@ class DocumentService {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
       'application/msword', // .doc
       'text/plain', // .txt
+      'application/pdf', // .pdf
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation', // .pptx
+      'application/vnd.ms-powerpoint', // .ppt
     ];
     
-    const allowedExtensions = ['.docx', '.doc', '.txt'];
+    const allowedExtensions = ['.docx', '.doc', '.txt', '.pdf', '.pptx', '.ppt'];
     const fileExtension = file.name.toLowerCase().match(/\.[^.]+$/)?.[0];
     
     return allowedTypes.includes(file.type) || 

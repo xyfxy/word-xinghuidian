@@ -1337,14 +1337,14 @@ const AIGeneratorBlockInput: React.FC<AIGeneratorBlockInputProps> = ({
                 disabled={isExtracting || uploadedFiles.length >= 10}
                 className="text-sm text-gray-600 hover:text-gray-800 disabled:opacity-50"
               >
-                点击上传文档（支持 .docx, .doc, .txt）
+                点击上传文档（支持 .docx, .doc, .txt, .pdf, .pptx, .ppt）
               </button>
             </div>
           </div>
           <input
             ref={fileInputRef}
             type="file"
-            accept=".doc,.docx,.txt"
+            accept=".doc,.docx,.txt,.pdf,.pptx,.ppt"
             onChange={handleFileUpload}
             multiple
             className="hidden"

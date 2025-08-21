@@ -915,14 +915,14 @@ const AIGeneratorBlock: React.FC<{
                                 选择文档
                             </button>
                             <p className="text-xs text-gray-500 mt-2">
-                                支持 .docx, .doc, .txt 格式，单个文件最大10MB
+                                支持 .docx, .doc, .txt, .pdf, .pptx, .ppt 格式，单个文件最大10MB
                             </p>
                         </div>
                     </div>
                     <input
                         ref={fileInputRef}
                         type="file"
-                        accept=".doc,.docx,.txt"
+                        accept=".doc,.docx,.txt,.pdf,.pptx,.ppt"
                         onChange={handleFileUpload}
                         multiple
                         className="hidden"

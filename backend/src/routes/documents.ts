@@ -58,20 +58,23 @@ const extractUpload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB限制
   },
   fileFilter: (req, file, cb) => {
-    // 允许Word文档和txt文件
+    // 允许Word文档、txt文件、PDF和PPT文件
     const allowedMimes = [
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/msword',
-      'text/plain'
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+      'application/msword', // .doc
+      'text/plain', // .txt
+      'application/pdf', // .pdf
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation', // .pptx
+      'application/vnd.ms-powerpoint' // .ppt
     ];
     
-    const allowedExtensions = ['.docx', '.doc', '.txt'];
+    const allowedExtensions = ['.docx', '.doc', '.txt', '.pdf', '.pptx', '.ppt'];
     const fileExt = path.extname(file.originalname).toLowerCase();
     
     if (allowedMimes.includes(file.mimetype) || allowedExtensions.includes(fileExt)) {
       cb(null, true);
     } else {
-      cb(new Error('只支持Word文档(.doc, .docx)和文本文件(.txt)格式') as any);
+      cb(new Error('只支持Word文档(.doc, .docx)、文本文件(.txt)、PDF文件(.pdf)和PowerPoint文件(.ppt, .pptx)格式') as any);
     }
   },
 });
@@ -252,6 +255,12 @@ router.post('/extract-text', extractUpload.single('document'), async (req: Reque
     } else if (fileExt === '.docx' || fileExt === '.doc') {
       // 处理Word文档
       extractedText = await documentService.extractTextFromWord(req.file.path);
+    } else if (fileExt === '.pdf') {
+      // 处理PDF文档
+      extractedText = await documentService.extractTextFromPDF(req.file.path);
+    } else if (fileExt === '.pptx' || fileExt === '.ppt') {
+      // 处理PowerPoint文档
+      extractedText = await documentService.extractTextFromPPT(req.file.path);
     } else {
       throw new Error('不支持的文件格式');
     }
@@ -318,6 +327,12 @@ router.post('/extract-texts', extractUpload.array('documents', 10), async (req: 
         } else if (fileExt === '.docx' || fileExt === '.doc') {
           // 处理Word文档
           extractedText = await documentService.extractTextFromWord(file.path);
+        } else if (fileExt === '.pdf') {
+          // 处理PDF文档
+          extractedText = await documentService.extractTextFromPDF(file.path);
+        } else if (fileExt === '.pptx' || fileExt === '.ppt') {
+          // 处理PowerPoint文档
+          extractedText = await documentService.extractTextFromPPT(file.path);
         } else {
           extractedText = `[不支持的文件格式: ${fileExt}]`;
         }
@@ -406,6 +421,9 @@ router.get('/formats', (req: Request, res: Response) => {
         { extension: '.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', name: 'Word 2007+ 文档' },
         { extension: '.doc', mimeType: 'application/msword', name: 'Word 97-2003 文档' },
         { extension: '.txt', mimeType: 'text/plain', name: '文本文件' },
+        { extension: '.pdf', mimeType: 'application/pdf', name: 'PDF 文档' },
+        { extension: '.pptx', mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', name: 'PowerPoint 2007+ 演示文档' },
+        { extension: '.ppt', mimeType: 'application/vnd.ms-powerpoint', name: 'PowerPoint 97-2003 演示文档' },
       ],
     },
   });

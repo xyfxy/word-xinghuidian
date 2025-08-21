@@ -2,6 +2,9 @@ import fs from 'fs/promises';
 import path from 'path';
 import { DocumentTemplate, ContentBlock, DocumentFormat } from '../types';
 import mammoth from 'mammoth';
+import pdfParse from 'pdf-parse';
+import PizZip from 'pizzip';
+import xml2js from 'xml2js';
 
 class DocumentService {
   // 导入Word文档
@@ -383,6 +386,100 @@ class DocumentService {
         orientation: 'portrait',
       },
     };
+  }
+
+  // 从PDF文档提取纯文本
+  async extractTextFromPDF(filePath: string): Promise<string> {
+    try {
+      const dataBuffer = await fs.readFile(filePath);
+      const pdfData = await pdfParse(dataBuffer);
+      
+      let text = pdfData.text;
+      
+      // 清理和格式化文本
+      text = text
+        // 清理多余的空白字符
+        .replace(/\s+/g, ' ')
+        // 恢复段落分隔
+        .replace(/\.\s/g, '.\n')
+        // 处理页码和页眉页脚（通常是单独的数字或短文本）
+        .replace(/^\d+$/gm, '')
+        // 清理多余的空行
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+      
+      return text;
+    } catch (error) {
+      console.error('提取PDF文档文本失败:', error);
+      throw new Error('提取PDF文档文本失败，请检查文件格式');
+    }
+  }
+
+  // 从PPT文档提取纯文本
+  async extractTextFromPPT(filePath: string): Promise<string> {
+    try {
+      const dataBuffer = await fs.readFile(filePath);
+      const zip = new PizZip(dataBuffer);
+      
+      let extractedText = '';
+      const slideTexts: string[] = [];
+      
+      // 遍历所有幻灯片
+      const slidePattern = /ppt\/slides\/slide\d+\.xml/;
+      Object.keys(zip.files).forEach(fileName => {
+        if (slidePattern.test(fileName)) {
+          try {
+            const slideXml = zip.file(fileName)?.asText();
+            if (slideXml) {
+              const slideText = this.extractTextFromSlideXml(slideXml);
+              if (slideText.trim()) {
+                slideTexts.push(slideText);
+              }
+            }
+          } catch (error) {
+            console.warn(`解析幻灯片 ${fileName} 失败:`, error);
+          }
+        }
+      });
+      
+      // 合并所有幻灯片文本
+      extractedText = slideTexts.join('\n\n--- 下一页 ---\n\n');
+      
+      return extractedText.trim();
+    } catch (error) {
+      console.error('提取PPT文档文本失败:', error);
+      throw new Error('提取PPT文档文本失败，请检查文件格式');
+    }
+  }
+
+  // 从幻灯片XML中提取文本
+  private extractTextFromSlideXml(slideXml: string): string {
+    try {
+      const texts: string[] = [];
+      
+      // 使用正则表达式提取所有文本内容
+      const textRegex = /<a:t[^>]*>(.*?)<\/a:t>/g;
+      let match;
+      
+      while ((match = textRegex.exec(slideXml)) !== null) {
+        const text = match[1];
+        if (text && text.trim()) {
+          // 解码XML实体
+          const decodedText = text
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'");
+          texts.push(decodedText.trim());
+        }
+      }
+      
+      return texts.join(' ');
+    } catch (error) {
+      console.warn('解析幻灯片XML失败:', error);
+      return '';
+    }
   }
 
   // 从Word文档提取纯文本
