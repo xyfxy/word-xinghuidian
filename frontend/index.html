@@ -8,6 +8,24 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- 钉钉H5微应用远程调试脚本 -->
+  <!-- 生产环境请移除此脚本 -->
+  <script>
+    // 只在开发环境或带有调试参数时加载
+    if (window.location.hostname === 'localhost' || 
+        window.location.search.includes('dingtalk-debug=true')) {
+      var script = document.createElement('script');
+      script.src = 'https://g.alicdn.com/code/npm/@ali/dingtalk-h5-remote-debug/0.3.3/index.js';
+      script.onload = function() {
+        if (window.initDingtalkH5RemoteDebug) {
+          window.initDingtalkH5RemoteDebug();
+          console.log('钉钉远程调试已启用');
+        }
+      };
+      document.head.appendChild(script);
+    }
+  </script>
 </head>
 <body>
   <div id="root"></div>
