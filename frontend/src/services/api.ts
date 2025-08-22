@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { AIGenerateResponse, DocumentTemplate } from '../types';
 import { ParsedDocument, RecognitionRule, ContentBlockGroup } from '../types/wordImport';
+import { getApiBaseUrl } from '../utils/config';
 
 export interface TemplateListItem {
   id: string;
@@ -23,7 +24,7 @@ interface MaxKbRequest {
 
 // 创建axios实例
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: getApiBaseUrl(),
   timeout: 300000, // 5分钟超时
   headers: {
     'Content-Type': 'application/json',

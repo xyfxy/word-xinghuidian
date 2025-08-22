@@ -26,6 +26,10 @@
       document.head.appendChild(script);
     }
   </script>
+  
+  <!-- 运行时配置（用于Docker部署时动态配置） -->
+  <!-- 开发环境会被.env文件配置覆盖 -->
+  <script src="/config.js"></script>
 </head>
 <body>
   <div id="root"></div>

@@ -17,6 +17,9 @@ build/
 .env.test.local
 .env.production.local
 
+# 运行时配置文件（动态生成）
+frontend/public/config.js
+
 # 日志文件
 logs/
 *.log

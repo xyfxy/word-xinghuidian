@@ -32,9 +32,11 @@ app.use(helmet());
 
 // CORS配置
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-domain.com'] // 生产环境域名
-    : ['http://localhost:3000'], // 开发环境
+  origin: process.env.CORS_ORIGIN 
+    ? process.env.CORS_ORIGIN.split(',').map(o => o.trim()) // 从环境变量读取，支持多个域名
+    : (process.env.NODE_ENV === 'production' 
+        ? ['http://localhost:3000'] // 生产环境默认
+        : ['http://localhost:3000']), // 开发环境
   credentials: true,
 }));
 

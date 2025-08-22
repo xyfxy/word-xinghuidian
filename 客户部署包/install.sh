@@ -88,6 +88,18 @@ NODE_ENV=production
 
 # CORS 配置
 CORS_ORIGIN=http://localhost:3000
+
+# ========== 钉钉认证配置（可选）==========
+# 是否启用钉钉认证（限制只能从钉钉访问）
+VITE_ENABLE_DINGTALK_AUTH=false
+ENABLE_DINGTALK_AUTH=false
+
+# 钉钉企业应用配置（启用认证时必填）
+# DINGTALK_CORP_ID=your_corp_id
+# DINGTALK_AGENT_ID=your_agent_id
+# DINGTALK_APP_KEY=your_app_key
+# DINGTALK_APP_SECRET=your_app_secret
+# DINGTALK_VERIFY_USER=false
 EOF
 
 # 8. 创建数据目录
@@ -151,5 +163,6 @@ echo "   停止服务: cd $PROJECT_DIR && docker-compose down"
 echo "   更新应用: cd $PROJECT_DIR && ./update.sh"
 echo ""
 echo "🔧 如需启用AI功能，请编辑 $PROJECT_DIR/.env 文件，取消注释并配置 QIANWEN_API_KEY"
+echo "🔐 如需启用钉钉认证，请编辑 $PROJECT_DIR/.env 文件，设置 VITE_ENABLE_DINGTALK_AUTH=true"
 echo ""
 echo "✨ 安装完成，请在浏览器访问前端地址开始使用！"

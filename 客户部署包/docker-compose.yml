@@ -36,6 +36,10 @@ services:
     container_name: word-xinghuidian-frontend
     depends_on:
       - backend
+    environment:
+      # 钉钉认证配置（从.env文件读取）
+      - VITE_ENABLE_DINGTALK_AUTH=${VITE_ENABLE_DINGTALK_AUTH:-false}
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-/api}
     ports:
       - "3000:80"
     restart: unless-stopped
