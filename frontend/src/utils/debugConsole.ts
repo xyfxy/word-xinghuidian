@@ -31,43 +31,26 @@ export function initDebugConsole() {
       });
 
       // 添加自定义面板显示钉钉信息
-      if (typeof (window as any).dd !== 'undefined') {
-        const ddPlugin: any = {
-          id: 'dingtalk',
-          name: '钉钉',
-          render: () => {
-            return `
-              <div>
-                <h4>钉钉环境信息</h4>
-                <div id="dingtalk-info">加载中...</div>
-              </div>
-            `;
-          },
-          init: () => {
-            // 获取钉钉运行时信息
-            const dd = (window as any).dd;
-            if (typeof dd !== 'undefined' && dd.runtime) {
-              dd.runtime.info({
-                onSuccess: (info: any) => {
-                  const el = document.getElementById('dingtalk-info');
-                  if (el) {
-                    el.innerHTML = `
-                      <pre>${JSON.stringify(info, null, 2)}</pre>
-                    `;
-                  }
-                },
-                onFail: (err: any) => {
-                  const el = document.getElementById('dingtalk-info');
-                  if (el) {
-                    el.innerHTML = `错误: ${JSON.stringify(err)}`;
-                  }
-                }
-              });
-            }
-          }
-        };
-        vConsole.addPlugin(ddPlugin);
-      }
+      // 注意：由于VConsole插件API的限制，暂时注释掉自定义插件
+      // if (typeof (window as any).dd !== 'undefined') {
+      //   try {
+      //     // VConsole 3.x版本的插件需要特定的类结构
+      //     // 这里简化处理，只在控制台输出钉钉信息
+      //     const dd = (window as any).dd;
+      //     if (dd.runtime) {
+      //       dd.runtime.info({
+      //         onSuccess: (info: any) => {
+      //           console.log('📱 钉钉环境信息:', info);
+      //         },
+      //         onFail: (err: any) => {
+      //           console.error('获取钉钉信息失败:', err);
+      //         }
+      //       });
+      //     }
+      //   } catch (e) {
+      //     console.warn('钉钉插件初始化失败:', e);
+      //   }
+      // }
 
       // 全局错误捕获
       window.addEventListener('error', (event) => {
