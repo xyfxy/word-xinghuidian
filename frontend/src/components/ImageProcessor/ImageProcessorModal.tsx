@@ -242,7 +242,7 @@ export default function ImageProcessorModal({
   };
 
   // 拖拽开始
-  const handleDragStart = (e: React.DragEvent, image: ProcessedImage, index: number) => {
+  const handleDragStart = (e: React.DragEvent, image: ProcessedImage) => {
     setDraggedImage(image);
     e.dataTransfer.effectAllowed = 'move';
   };
@@ -757,7 +757,7 @@ export default function ImageProcessorModal({
                       key={image.id} 
                       className={`relative group ${dragOverIndex === index ? 'ring-2 ring-blue-400' : ''}`}
                       draggable
-                      onDragStart={(e) => handleDragStart(e, image, index)}
+                      onDragStart={(e) => handleDragStart(e, image)}
                       onDragOver={(e) => handleDragOver(e, index)}
                       onDragLeave={handleDragLeave}
                       onDrop={(e) => handleDrop(e, index)}
