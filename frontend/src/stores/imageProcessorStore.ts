@@ -109,8 +109,7 @@ export const useImageProcessorStore = create<ImageProcessorState>()(
         return cache.images
           .filter(img => img.analysis?.description)
           .map((img) => {
-            const actualIndex = cache.images.indexOf(img)
-            return `图片${actualIndex + 1}：${img.analysis!.description}`
+            return `${img.filename}：${img.analysis!.description}`
           })
           .join('\n\n')
       },

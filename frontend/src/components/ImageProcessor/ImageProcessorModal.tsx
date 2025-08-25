@@ -28,7 +28,15 @@ interface ProcessedImage {
   isCachedResult?: boolean; // 标记是否为缓存恢复的结果
   isEditing?: boolean; // 是否正在编辑
   editingContent?: string; // 编辑中的内容
+  order?: number; // 排序顺序
 }
+
+// 工具函数：去除文件扩展名
+const getFileNameWithoutExtension = (filename: string): string => {
+  const lastDotIndex = filename.lastIndexOf('.');
+  if (lastDotIndex === -1) return filename;
+  return filename.substring(0, lastDotIndex);
+};
 
 export default function ImageProcessorModal({
   isOpen,
@@ -49,6 +57,8 @@ export default function ImageProcessorModal({
   const [editingImageId, setEditingImageId] = useState<string | null>(null);
   const [showPromptInsertMenu, setShowPromptInsertMenu] = useState(false);
   const [selectedAIBlockId, setSelectedAIBlockId] = useState<string>('');
+  const [draggedImage, setDraggedImage] = useState<ProcessedImage | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   
   // 图片处理缓存
   const { 
@@ -147,11 +157,12 @@ export default function ImageProcessorModal({
 
   // 处理文件选择
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    if (files.length === 0) return;
+    // FileList 保持用户选择的顺序，直接使用而不是转换为数组
+    const fileList = event.target.files;
+    if (!fileList || fileList.length === 0) return;
 
     // 限制图片数量
-    if (images.length + files.length > 10) {
+    if (images.length + fileList.length > 10) {
       toast.error('一次最多只能处理10张图片');
       return;
     }
@@ -159,8 +170,12 @@ export default function ImageProcessorModal({
     try {
       const newImages: ProcessedImage[] = [];
       
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      // 使用 FileList 的索引来保持用户选择的顺序
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        
+        // 打印调试信息，确认文件顺序
+        console.log(`处理文件 ${i + 1}/${fileList.length}: ${file.name}`);
         
         // 验证文件类型
         if (!file.type.startsWith('image/')) {
@@ -184,6 +199,7 @@ export default function ImageProcessorModal({
           continue;
         }
 
+        // 使用时间戳+索引确保唯一ID，索引保持选择顺序
         newImages.push({
           id: `img_${Date.now()}_${i}`,
           file,
@@ -204,7 +220,16 @@ export default function ImageProcessorModal({
         
         return allImages;
       });
-      toast.success(`成功添加 ${newImages.length} 张图片`);
+      
+      // 显示成功消息
+      if (newImages.length > 3) {
+        // 如果图片较多，只显示数量
+        toast.success(`成功添加 ${newImages.length} 张图片，已按选择顺序排列`);
+      } else {
+        // 如果图片较少，显示具体文件名和顺序
+        const fileNames = newImages.map(img => img.file.name).join('、');
+        toast.success(`成功添加 ${newImages.length} 张图片：${fileNames}`);
+      }
     } catch (error) {
       console.error('处理图片失败:', error);
       toast.error('处理图片失败');
@@ -214,6 +239,71 @@ export default function ImageProcessorModal({
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  // 拖拽开始
+  const handleDragStart = (e: React.DragEvent, image: ProcessedImage, index: number) => {
+    setDraggedImage(image);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  // 拖拽经过
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  };
+
+  // 拖拽离开
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  // 拖拽放下
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (!draggedImage) return;
+
+    const draggedIndex = images.findIndex(img => img.id === draggedImage.id);
+    if (draggedIndex === dropIndex) {
+      setDraggedImage(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const newImages = [...images];
+    // 移除拖拽的图片
+    newImages.splice(draggedIndex, 1);
+    // 在新位置插入
+    newImages.splice(dropIndex, 0, draggedImage);
+    
+    setImages(newImages);
+    setDraggedImage(null);
+    setDragOverIndex(null);
+    
+    toast.success('图片顺序已调整');
+  };
+
+  // 拖拽结束
+  const handleDragEnd = () => {
+    setDraggedImage(null);
+    setDragOverIndex(null);
+  };
+
+  // 移动图片顺序
+  const moveImage = (imageId: string, direction: 'up' | 'down') => {
+    const currentIndex = images.findIndex(img => img.id === imageId);
+    if (currentIndex === -1) return;
+
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex < 0 || newIndex >= images.length) return;
+
+    const newImages = [...images];
+    const [movedImage] = newImages.splice(currentIndex, 1);
+    newImages.splice(newIndex, 0, movedImage);
+    
+    setImages(newImages);
+    toast.success(`图片已${direction === 'up' ? '上移' : '下移'}`);
   };
 
   // 删除图片
@@ -389,8 +479,8 @@ export default function ImageProcessorModal({
   };
 
   // 复制单个分析结果
-  const copyAnalysis = async (index: number, text: string) => {
-    const formattedText = `图片${index + 1}：${text}`;
+  const copyAnalysis = async (image: ProcessedImage, index: number, text: string) => {
+    const formattedText = `${getFileNameWithoutExtension(image.file.name)}：${text}`;
     const success = await copyToClipboard(formattedText);
     if (success) {
       setCopiedIndex(index);
@@ -406,8 +496,7 @@ export default function ImageProcessorModal({
     const allAnalysis = images
       .filter(img => img.analysis?.description)
       .map((img) => {
-        const actualIndex = images.indexOf(img);
-        return `图片${actualIndex + 1}：${img.analysis!.description}`;
+        return `${getFileNameWithoutExtension(img.file.name)}：${img.analysis!.description}`;
       })
       .join('\n\n');
     
@@ -524,14 +613,13 @@ export default function ImageProcessorModal({
       return;
     }
 
-    // 收集所有分析结果
+    // 收集所有分析结果（使用文件名，去除扩展名）
     const allAnalysis = images
       .filter(img => img.analysis?.description)
       .map((img) => {
-        const actualIndex = images.indexOf(img);
-        return `${actualIndex + 1}. ${img.analysis!.description}`;
+        return `${getFileNameWithoutExtension(img.file.name)}：${img.analysis!.description}`;
       })
-      .join('\n');
+      .join('\n\n');
     
     if (!allAnalysis) {
       toast.error('没有可插入的分析结果');
@@ -649,7 +737,8 @@ export default function ImageProcessorModal({
               />
               <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">上传图片</h3>
-              <p className="text-gray-600 mb-4">支持 JPG、PNG、GIF、WebP 格式，单个文件最大 5MB，最多 10 张</p>
+              <p className="text-gray-600 mb-2">支持 JPG、PNG、GIF、WebP 格式，单个文件最大 5MB，最多 10 张</p>
+              <p className="text-sm text-blue-600 mb-4">💡 提示：上传后可通过拖拽或按钮调整图片顺序</p>
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
@@ -664,8 +753,17 @@ export default function ImageProcessorModal({
                 <h3 className="text-lg font-medium text-gray-900">已上传的图片 ({images.length}/10)</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {images.map((image, index) => (
-                    <div key={image.id} className="relative group">
-                      <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden relative">
+                    <div 
+                      key={image.id} 
+                      className={`relative group ${dragOverIndex === index ? 'ring-2 ring-blue-400' : ''}`}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, image, index)}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, index)}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden relative cursor-move">
                         <img
                           src={image.preview}
                           alt={`预览图 ${index + 1}`}
@@ -673,28 +771,64 @@ export default function ImageProcessorModal({
                         />
                         {/* 缓存结果标识 */}
                         {image.isCachedResult && (
-                          <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow-sm">
+                          <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow-sm z-10">
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             缓存
                           </div>
                         )}
+                        {/* 分析完成标识 */}
+                        {image.analysis && !image.isCachedResult && (
+                          <div className="absolute top-2 left-2 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs z-10">
+                            ✓
+                          </div>
+                        )}
                       </div>
-                      <button
-                        onClick={() => removeImage(image.id)}
-                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                      <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
-                        {index + 1}
+                      
+                      {/* 操作按钮组 */}
+                      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        {/* 上移按钮 */}
+                        {index > 0 && (
+                          <button
+                            onClick={() => moveImage(image.id, 'up')}
+                            className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-blue-600"
+                            title="上移"
+                          >
+                            ↑
+                          </button>
+                        )}
+                        {/* 下移按钮 */}
+                        {index < images.length - 1 && (
+                          <button
+                            onClick={() => moveImage(image.id, 'down')}
+                            className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-blue-600"
+                            title="下移"
+                          >
+                            ↓
+                          </button>
+                        )}
+                        {/* 删除按钮 */}
+                        <button
+                          onClick={() => removeImage(image.id)}
+                          className="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
+                          title="删除"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
                       </div>
-                      {image.analysis && (
-                        <div className="absolute top-2 left-2 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
-                          ✓
-                        </div>
-                      )}
+                      
+                      {/* 图片序号 - 移到右下角避免遮挡 */}
+                      <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded font-bold">
+                        #{index + 1}
+                      </div>
+                      
+                      {/* 图片文件名 */}
+                      <div className="mt-2 px-1">
+                        <p className="text-xs text-gray-600 truncate" title={image.file.name}>
+                          {getFileNameWithoutExtension(image.file.name)}
+                        </p>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -790,7 +924,12 @@ export default function ImageProcessorModal({
                           <div className="flex-1">
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-gray-900">图片 {index + 1}</span>
+                                <span className="text-sm font-medium text-gray-900" title={image.file.name}>
+                                  {(() => {
+                                    const nameWithoutExt = getFileNameWithoutExtension(image.file.name);
+                                    return nameWithoutExt.length > 20 ? nameWithoutExt.substring(0, 20) + '...' : nameWithoutExt;
+                                  })()}
+                                </span>
                                 <span className="text-xs px-2 py-1 bg-green-100 text-green-600 rounded">
                                   已分析
                                 </span>
@@ -829,7 +968,7 @@ export default function ImageProcessorModal({
                                       <Edit3 className="w-4 h-4" />
                                     </button>
                                     <button
-                                      onClick={() => copyAnalysis(index, image.analysis!.description || '')}
+                                      onClick={() => copyAnalysis(image, index, image.analysis!.description || '')}
                                       className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
                                       title="复制分析结果"
                                     >
