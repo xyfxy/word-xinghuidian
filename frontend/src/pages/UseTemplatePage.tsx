@@ -286,7 +286,7 @@ export default function UseTemplatePage() {
   type GenerateStrategy = 'serial' | 'parallel' | 'smart' | 'batch' | 'custom'
   
   // 处理自定义执行组
-  const handleCustomExecution = async (groups: any[]) => {
+  const handleCustomExecution = async (groups: any[], excludedIds?: string[]) => {
     const totalBlocks = groups.reduce((sum, g) => sum + g.blockIds.length, 0)
     
     if (totalBlocks === 0) {
@@ -294,7 +294,11 @@ export default function UseTemplatePage() {
       return
     }
     
-    toast.info(`开始按自定义顺序生成 ${totalBlocks} 个AI内容块...`)
+    const excludedCount = excludedIds?.length || 0
+    const message = excludedCount > 0 
+      ? `开始按自定义顺序生成 ${totalBlocks} 个AI内容块（已排除 ${excludedCount} 个）...`
+      : `开始按自定义顺序生成 ${totalBlocks} 个AI内容块...`
+    toast.info(message)
     
     let successCount = 0
     let failCount = 0

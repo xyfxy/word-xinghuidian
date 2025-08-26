@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { X, Sparkles, Play, Layers, Zap, Clock, Info } from 'lucide-react'
+import { X, Sparkles, Play, Layers, Zap, Clock, Info, Ban } from 'lucide-react'
 import { ContentBlock } from '../types'
 
 interface ExecutionGroup {
@@ -13,7 +13,7 @@ interface AIExecutionOrderModalProps {
   isOpen: boolean
   onClose: () => void
   contentBlocks: ContentBlock[]
-  onExecute: (groups: ExecutionGroup[]) => void
+  onExecute: (groups: ExecutionGroup[], excludedIds: string[]) => void
 }
 
 export default function AIExecutionOrderModal({
@@ -23,9 +23,11 @@ export default function AIExecutionOrderModal({
   onExecute
 }: AIExecutionOrderModalProps) {
   const [executionGroups, setExecutionGroups] = useState<ExecutionGroup[]>([])
+  const [excludedBlocks, setExcludedBlocks] = useState<string[]>([]) // 被排除的内容块
   const [draggedBlockId, setDraggedBlockId] = useState<string | null>(null)
   const [draggedFromGroup, setDraggedFromGroup] = useState<string | null>(null)
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null)
+  const [dragOverExcluded, setDragOverExcluded] = useState(false)
 
   // 获取AI内容块
   const aiBlocks = contentBlocks.filter(b => b.type === 'ai-generated' && b.aiPrompt)
@@ -42,6 +44,7 @@ export default function AIExecutionOrderModal({
           blockIds: aiBlocks.map(b => b.id)
         }
       ])
+      setExcludedBlocks([]) // 重置排除列表
     }
   }, [isOpen])
 
@@ -63,27 +66,62 @@ export default function AIExecutionOrderModal({
     e.preventDefault()
     if (!draggedBlockId || !draggedFromGroup) return
 
+    // 如果从排除区域拖出
+    if (draggedFromGroup === 'excluded') {
+      setExcludedBlocks(prev => prev.filter(id => id !== draggedBlockId))
+    } else {
+      setExecutionGroups(prev => {
+        const newGroups = [...prev]
+        
+        // 从源组移除
+        const sourceGroup = newGroups.find(g => g.id === draggedFromGroup)
+        if (sourceGroup) {
+          sourceGroup.blockIds = sourceGroup.blockIds.filter(id => id !== draggedBlockId)
+        }
+        
+        return newGroups
+      })
+    }
+
+    // 添加到目标组
     setExecutionGroups(prev => {
       const newGroups = [...prev]
-      
-      // 从源组移除
-      const sourceGroup = newGroups.find(g => g.id === draggedFromGroup)
-      if (sourceGroup) {
-        sourceGroup.blockIds = sourceGroup.blockIds.filter(id => id !== draggedBlockId)
-      }
-      
-      // 添加到目标组
       const targetGroup = newGroups.find(g => g.id === targetGroupId)
       if (targetGroup && !targetGroup.blockIds.includes(draggedBlockId)) {
         targetGroup.blockIds.push(draggedBlockId)
       }
-      
       return newGroups
     })
 
     setDraggedBlockId(null)
     setDraggedFromGroup(null)
     setDragOverGroup(null)
+  }
+
+  const handleDropToExcluded = (e: React.DragEvent) => {
+    e.preventDefault()
+    if (!draggedBlockId || !draggedFromGroup) return
+
+    // 从源组移除
+    if (draggedFromGroup !== 'excluded' && draggedFromGroup !== 'unassigned') {
+      setExecutionGroups(prev => {
+        const newGroups = [...prev]
+        const sourceGroup = newGroups.find(g => g.id === draggedFromGroup)
+        if (sourceGroup) {
+          sourceGroup.blockIds = sourceGroup.blockIds.filter(id => id !== draggedBlockId)
+        }
+        return newGroups
+      })
+    }
+
+    // 添加到排除列表
+    if (!excludedBlocks.includes(draggedBlockId)) {
+      setExcludedBlocks(prev => [...prev, draggedBlockId])
+    }
+
+    setDraggedBlockId(null)
+    setDraggedFromGroup(null)
+    setDragOverExcluded(false)
   }
 
   const addNewGroup = () => {
@@ -131,11 +169,11 @@ export default function AIExecutionOrderModal({
   const handleExecute = () => {
     // 过滤掉空组
     const validGroups = executionGroups.filter(g => g.blockIds.length > 0)
-    if (validGroups.length === 0) {
-      alert('请至少配置一个包含内容块的执行组')
+    if (validGroups.length === 0 && excludedBlocks.length === 0) {
+      alert('请至少配置一个包含内容块的执行组，或选择要排除的内容块')
       return
     }
-    onExecute(validGroups)
+    onExecute(validGroups, excludedBlocks)
     onClose()
   }
 
@@ -146,7 +184,7 @@ export default function AIExecutionOrderModal({
 
   const getUnassignedBlocks = () => {
     const assignedIds = executionGroups.flatMap(g => g.blockIds)
-    return aiBlocks.filter(b => !assignedIds.includes(b.id))
+    return aiBlocks.filter(b => !assignedIds.includes(b.id) && !excludedBlocks.includes(b.id))
   }
 
   if (!isOpen) return null
@@ -175,6 +213,7 @@ export default function AIExecutionOrderModal({
             <div className="text-sm text-blue-800">
               <p>将内容块拖拽到不同的执行组中，每个组可以选择串行或并行执行。</p>
               <p>执行时会按组的顺序依次执行，组内按照配置的方式执行。</p>
+              <p className="text-red-700 font-medium mt-1">拖拽内容块到"排除区域"可以跳过该块的生成。</p>
             </div>
           </div>
         </div>
@@ -201,6 +240,50 @@ export default function AIExecutionOrderModal({
                 </div>
               </div>
             )}
+
+            {/* 排除的内容块 */}
+            <div 
+              className={`border rounded-lg p-4 transition-colors ${
+                dragOverExcluded ? 'border-red-400 bg-red-50' : 'border-red-200 bg-red-50/50'
+              }`}
+              onDragOver={(e) => {
+                e.preventDefault()
+                setDragOverExcluded(true)
+              }}
+              onDragLeave={() => setDragOverExcluded(false)}
+              onDrop={handleDropToExcluded}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <Ban className="w-5 h-5 text-red-600" />
+                <h3 className="font-medium text-red-900">排除的内容块（不会生成）</h3>
+                {excludedBlocks.length > 0 && (
+                  <span className="text-sm text-red-600 ml-auto">
+                    {excludedBlocks.length} 个内容块已排除
+                  </span>
+                )}
+              </div>
+              <div className="min-h-[60px] bg-red-50 rounded-md p-3 border border-red-100">
+                {excludedBlocks.length === 0 ? (
+                  <p className="text-red-400 text-sm text-center py-3">
+                    拖拽内容块到这里以排除生成
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {excludedBlocks.map(blockId => (
+                      <div
+                        key={blockId}
+                        draggable
+                        onDragStart={() => handleDragStart(blockId, 'excluded')}
+                        className="px-3 py-2 bg-white border border-red-300 rounded-md cursor-move hover:shadow-md transition-shadow flex items-center gap-2"
+                      >
+                        <Ban className="w-4 h-4 text-red-500" />
+                        <span className="text-sm line-through text-gray-600">{getBlockTitle(blockId)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* 执行组列表 */}
             {executionGroups.map((group, index) => (
