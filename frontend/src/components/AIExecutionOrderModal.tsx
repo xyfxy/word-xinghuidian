@@ -36,17 +36,17 @@ export default function AIExecutionOrderModal({
   // 初始化执行组
   useEffect(() => {
     if (isOpen && aiBlocks.length > 0) {
-      // 默认创建一个空的并行组，让用户自己添加内容块
+      // 默认创建一个并行组，包含所有AI块（和之前一样）
       setExecutionGroups([
         {
           id: 'group-1',
           name: '组 1',
           type: 'parallel',
-          blockIds: []
+          blockIds: aiBlocks.map(b => b.id)
         }
       ])
-      // 默认所有AI块都在排除区域，用户可以拖入执行组
-      setExcludedBlocks(aiBlocks.map(b => b.id))
+      // 默认没有排除的内容块
+      setExcludedBlocks([])
     }
   }, [isOpen])
 
@@ -216,7 +216,7 @@ export default function AIExecutionOrderModal({
           <div className="flex items-start gap-2">
             <Info className="w-5 h-5 text-blue-600 mt-0.5" />
             <div className="text-sm text-blue-800">
-              <p>将待分配的内容块拖入执行组，串行组内顺序决定执行先后。</p>
+              <p>拖拽调整执行顺序，串行组内顺序决定执行先后。</p>
             </div>
           </div>
         </div>
@@ -238,17 +238,17 @@ export default function AIExecutionOrderModal({
             >
               <div className="flex items-center gap-3 mb-3">
                 <Layers className="w-5 h-5 text-gray-600" />
-                <h3 className="font-medium text-gray-900">待分配的AI内容块</h3>
+                <h3 className="font-medium text-gray-900">不执行的内容块（拖到这里排除）</h3>
                 {excludedBlocks.length > 0 && (
                   <span className="text-sm text-gray-600 ml-auto">
-                    {excludedBlocks.length} 个内容块待分配（拖入执行组来生成）
+                    {excludedBlocks.length} 个内容块已排除
                   </span>
                 )}
               </div>
               <div className="min-h-[60px] bg-white rounded-md p-3 border border-gray-200">
                 {excludedBlocks.length === 0 ? (
                   <p className="text-gray-400 text-sm text-center py-3">
-                    所有内容块都已分配到执行组
+                    拖拽内容块到这里可以排除执行
                   </p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
