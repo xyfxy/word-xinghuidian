@@ -29,6 +29,7 @@ export default function AIExecutionOrderModal({
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null)
   const [dragOverExcluded, setDragOverExcluded] = useState(false)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null) // 拖拽到的位置索引
+  const [lastDragOverIndex, setLastDragOverIndex] = useState<number | null>(null) // 上次的拖拽位置，避免重复更新
 
   // 获取AI内容块
   const aiBlocks = contentBlocks.filter(b => b.type === 'ai-generated' && b.aiPrompt)
@@ -53,6 +54,9 @@ export default function AIExecutionOrderModal({
   const handleDragStart = (blockId: string, fromGroupId: string) => {
     setDraggedBlockId(blockId)
     setDraggedFromGroup(fromGroupId)
+    // 重置拖拽位置状态
+    setDragOverIndex(null)
+    setLastDragOverIndex(null)
   }
 
   const handleDragOver = (e: React.DragEvent, groupId: string) => {
@@ -104,6 +108,7 @@ export default function AIExecutionOrderModal({
     setDraggedFromGroup(null)
     setDragOverGroup(null)
     setDragOverIndex(null)
+    setLastDragOverIndex(null)
   }
 
   const handleDropToExcluded = (e: React.DragEvent) => {
@@ -130,6 +135,8 @@ export default function AIExecutionOrderModal({
     setDraggedBlockId(null)
     setDraggedFromGroup(null)
     setDragOverExcluded(false)
+    setDragOverIndex(null)
+    setLastDragOverIndex(null)
   }
 
   const addNewGroup = () => {
@@ -385,14 +392,20 @@ export default function AIExecutionOrderModal({
                             onDragOver={(e) => {
                               e.preventDefault()
                               e.stopPropagation()
-                              if (group.type === 'serial') {
+                              if (group.type === 'serial' && draggedBlockId !== blockId) {
                                 // 计算应该插入的位置（当前块的前面还是后面）
                                 const rect = e.currentTarget.getBoundingClientRect()
                                 const y = e.clientY - rect.top
                                 const height = rect.height
                                 const insertBefore = y < height / 2
-                                setDragOverIndex(insertBefore ? blockIndex : blockIndex + 1)
-                                setDragOverGroup(group.id)
+                                const newIndex = insertBefore ? blockIndex : blockIndex + 1
+                                
+                                // 只有当位置真正改变时才更新，避免闪烁
+                                if (newIndex !== lastDragOverIndex) {
+                                  setDragOverIndex(newIndex)
+                                  setLastDragOverIndex(newIndex)
+                                  setDragOverGroup(group.id)
+                                }
                               }
                             }}
                             onDrop={(e) => {
@@ -486,17 +499,26 @@ export default function AIExecutionOrderModal({
                           onDragOver={(e) => {
                             e.preventDefault()
                             e.stopPropagation()
-                            setDragOverIndex(group.blockIds.length)
-                            setDragOverGroup(group.id)
+                            const newIndex = group.blockIds.length
+                            if (newIndex !== lastDragOverIndex) {
+                              setDragOverIndex(newIndex)
+                              setLastDragOverIndex(newIndex)
+                              setDragOverGroup(group.id)
+                            }
                           }}
                           onDrop={(e) => {
                             e.preventDefault()
                             e.stopPropagation()
                             handleDrop(e, group.id, group.blockIds.length)
                           }}
-                          onDragLeave={() => {
-                            if (dragOverIndex === group.blockIds.length) {
+                          onDragLeave={(e) => {
+                            // 只有当离开整个容器时才重置
+                            const rect = e.currentTarget.getBoundingClientRect()
+                            const x = e.clientX
+                            const y = e.clientY
+                            if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
                               setDragOverIndex(null)
+                              setLastDragOverIndex(null)
                             }
                           }}
                         >
