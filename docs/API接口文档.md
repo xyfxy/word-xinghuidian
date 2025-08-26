@@ -1,8 +1,8 @@
-# Word星辉点 API接口文档
+# Word新汇点 API接口文档
 
 ## 1. 概述
 
-Word星辉点提供RESTful API接口，支持文档管理、AI内容生成、模板管理等功能。
+Word新汇点提供RESTful API接口，支持文档管理、AI内容生成、模板管理等功能。
 
 ### 1.1 基础信息
 - **基础URL**: `http://localhost:3003/api` (开发环境)

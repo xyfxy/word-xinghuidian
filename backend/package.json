@@ -1,7 +1,7 @@
 {
   "name": "word-xinghuidian-backend",
   "version": "1.6.4",
-  "description": "Word星辉点后端服务",
+  "description": "Word新汇点后端服务",
   "main": "dist/index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only --exit-child --clear --debounce 1000 --ignore-watch node_modules src/index.ts",

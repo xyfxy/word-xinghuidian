@@ -363,25 +363,32 @@ export const exportToWord = async (template: DocumentTemplate): Promise<void> =>
           if (imageContent.alignment === 'right') alignment = AlignmentType.RIGHT;
           if (imageContent.alignment === 'auto') alignment = AlignmentType.CENTER;
 
-          // 处理自适应宽度
-          let exportWidth = imageContent.width || 200;
-          let exportHeight = imageContent.height || 150;
+          // 处理图片尺寸
+          let exportWidth: number;
+          let exportHeight: number;
 
           if (imageContent.alignment === 'auto') {
-            // 页面内容区宽度 = 页面宽度 - 左右边距
-            const pageWidth = pageWidthPt;
-            const marginLeft = template.format.page.margins.left || 72;
-            const marginRight = template.format.page.margins.right || 72;
-            const contentWidth = pageWidth - marginLeft - marginRight;
-            // maxWidth优先
-            exportWidth = imageContent.maxWidth ? Math.min(imageContent.maxWidth, contentWidth) : contentWidth;
-            // 高度等比缩放（如果原始宽高有值）
-            if (imageContent.width && imageContent.height) {
-              const ratio = exportWidth / imageContent.width;
-              exportHeight = Math.round(imageContent.height * ratio);
-            } else {
-              exportHeight = imageContent.maxHeight || 300;
+            // 自适应模式：宽度填充文档内容区域
+            const pageWidthPt = template.format.page.width || 595; // A4宽度595pt
+            const marginLeftPt = template.format.page.margins.left || 72;
+            const marginRightPt = template.format.page.margins.right || 72;
+            const contentWidthPt = pageWidthPt - marginLeftPt - marginRightPt;
+            
+            // 将点(points)转换为像素 (1pt = 96/72 px = 1.333px)
+            // 为了在Word中显示正确，我们使用像素值
+            exportWidth = Math.round(contentWidthPt * 96 / 72);
+            
+            // 高度按比例计算，默认使用16:9比例
+            exportHeight = Math.round(exportWidth * 9 / 16);
+            
+            // 限制最大高度（像素）
+            if (exportHeight > 600) {
+              exportHeight = 600;
             }
+          } else {
+            // 固定尺寸模式（使用像素值）
+            exportWidth = imageContent.width || 200;
+            exportHeight = imageContent.height || 150;
           }
 
           // 创建图片段落

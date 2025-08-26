@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { FileText, Download, Sparkles, ChevronRight, Copy, Eye, ChevronDown, ChevronUp, Upload, X, ArrowLeft, Image as ImageIcon, File, Loader, Settings2, Layers } from 'lucide-react'
+import { FileText, Download, Sparkles, ChevronRight, Copy, Eye, ChevronDown, ChevronUp, Upload, X, ArrowLeft, Image as ImageIcon, File, Loader, Settings2, Layers, Clipboard } from 'lucide-react'
 import { templateService, aiService } from '../services/api'
 import { DocumentTemplate, ContentBlock, ImageContent } from '../types'
+import { generateId } from '../utils/document'
 import { copyToClipboard } from '../utils/clipboard'
 // 已删除未使用的 useAISettings 导入
 import { toast } from '../utils/toast'
@@ -36,6 +37,9 @@ export default function UseTemplatePage() {
   const [showGenerateOptions, setShowGenerateOptions] = useState(false)
   const [showExecutionOrderModal, setShowExecutionOrderModal] = useState(false)
   const generateOptionsRef = useRef<HTMLDivElement>(null)
+  
+  // 复制粘贴功能
+  const [copiedBlock, setCopiedBlock] = useState<ContentBlock | null>(null)
   
   // 图片处理缓存
   const { getCachedAnalysisText, updateLastUsedTime, clearCache } = useImageProcessorStore()
@@ -166,8 +170,18 @@ export default function UseTemplatePage() {
         blockRefs.forEach(ref => {
           const refBlockId = ref.replace(/\{\{|\}\}/g, '')
           const refBlock = contentBlocks.find(b => b.id === refBlockId)
-          if (refBlock && typeof refBlock.content === 'string') {
-            processedPrompt = processedPrompt.replace(ref, refBlock.content)
+          if (refBlock) {
+            let refContent = ''
+            if (typeof refBlock.content === 'string') {
+              refContent = refBlock.content
+            } else if (refBlock.type === 'two-column') {
+              // 处理双栏文本块
+              const twoColumnContent = refBlock.content as { left?: string; right?: string }
+              const leftContent = twoColumnContent.left || ''
+              const rightContent = twoColumnContent.right || ''
+              refContent = `${leftContent}\t${rightContent}` // 用制表符分隔左右内容
+            }
+            processedPrompt = processedPrompt.replace(ref, refContent)
           }
         })
       }
@@ -240,12 +254,17 @@ export default function UseTemplatePage() {
         }
       }
 
-      if (response.success && response.content) {
+      if (response.success) {
         // 对AI返回的内容进行Markdown解析，转换为HTML
-        const formattedContent = await formatMaxKbContent(response.content)
+        // 即使内容为空，也认为是成功的（AI可能故意返回空内容）
+        const formattedContent = await formatMaxKbContent(response.content || '')
         
         updateBlockContent(blockId, formattedContent)
-        toast.success('AI内容生成成功')
+        if (response.content) {
+          toast.success('AI内容生成成功')
+        } else {
+          toast.success('AI内容生成完成（返回空内容）')
+        }
       } else {
         toast.error(response.error || 'AI内容生成失败')
       }
@@ -533,6 +552,62 @@ export default function UseTemplatePage() {
     }))
   }
 
+  // 复制内容块 - 进行完整的深拷贝
+  const copyBlock = (block: ContentBlock) => {
+    // 使用JSON进行深拷贝，确保所有属性都是独立的副本
+    // 这包括content、format、aiSettings等所有嵌套对象
+    const blockCopy = JSON.parse(JSON.stringify(block))
+    
+    // 删除ID，在粘贴时生成新的ID
+    delete blockCopy.id
+    
+    setCopiedBlock(blockCopy)
+    toast.success(`已复制内容块: ${block.title}`)
+  }
+
+  // 在指定位置粘贴内容块
+  const pasteBlock = (afterIndex: number) => {
+    if (!copiedBlock) return
+
+    // 每次粘贴时都进行深拷贝，确保每个粘贴的块都是独立的
+    const newBlock: ContentBlock = JSON.parse(JSON.stringify(copiedBlock))
+    
+    // 设置新的属性
+    newBlock.id = generateId() // 使用与EditorPage相同的ID生成逻辑
+    newBlock.title = `${copiedBlock.title} (副本)`
+    newBlock.position = 0 // 暂时设置，后面会重新计算
+
+    let newContentBlocks: ContentBlock[]
+    
+    if (afterIndex === -1) {
+      // 插入到开头
+      newContentBlocks = [newBlock, ...contentBlocks]
+    } else {
+      // 插入到指定位置之后
+      newContentBlocks = [
+        ...contentBlocks.slice(0, afterIndex + 1),
+        newBlock,
+        ...contentBlocks.slice(afterIndex + 1)
+      ]
+    }
+
+    // 重新计算所有内容块的position
+    const reorderedBlocks = newContentBlocks.map((block, index) => ({
+      ...block,
+      position: index
+    }))
+
+    setContentBlocks(reorderedBlocks)
+    
+    // 展开新粘贴的内容块
+    setExpandedBlocks(prev => ({
+      ...prev,
+      [newBlock.id]: true
+    }))
+
+    toast.success(`已粘贴内容块: ${newBlock.title}`)
+  }
+
   // 处理预览面板大小调整
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -590,7 +665,9 @@ export default function UseTemplatePage() {
           updateBlockContent(block.id, {
             ...imageContent,
             src: result,
-            alt: file.name
+            alt: file.name,
+            // 默认使用自适应模式
+            alignment: 'auto'
           })
         }
       }
@@ -603,8 +680,27 @@ export default function UseTemplatePage() {
         updateBlockContent(block.id, {
           ...imageContent,
           src: url,
+          // 默认使用自适应模式
+          alignment: 'auto'
         })
       }
+    }
+
+    const handleAlignmentChange = (alignment: string) => {
+      updateBlockContent(block.id, {
+        ...imageContent,
+        alignment,
+        // 如果切换到自适应，清除固定宽高
+        ...(alignment === 'auto' ? { width: undefined, height: undefined } : {})
+      })
+    }
+
+    const handleSizeChange = (key: 'width' | 'height', value: string) => {
+      const numValue = value === '' ? undefined : parseInt(value, 10)
+      updateBlockContent(block.id, {
+        ...imageContent,
+        [key]: numValue
+      })
     }
 
     return (
@@ -633,19 +729,82 @@ export default function UseTemplatePage() {
         />
         
         {imageContent.src && (
-          <div className="relative inline-block">
-            <img
-              src={imageContent.src}
-              alt={imageContent.alt}
-              className="max-w-full h-auto max-h-64 rounded border shadow-sm"
-            />
-            <button
-              onClick={() => updateBlockContent(block.id, { ...imageContent, src: '' })}
-              className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 shadow-lg"
-            >
-              <X className="w-3 h-3" />
-            </button>
-          </div>
+          <>
+            <div className="relative inline-block">
+              <img
+                src={imageContent.src}
+                alt={imageContent.alt}
+                className="max-w-full h-auto max-h-64 rounded border shadow-sm"
+              />
+              <button
+                onClick={() => updateBlockContent(block.id, { ...imageContent, src: '' })}
+                className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 shadow-lg"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+            
+            {/* 对齐方式选择 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">对齐方式</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleAlignmentChange('left')}
+                  className={`px-3 py-1 rounded text-sm ${imageContent.alignment === 'left' ? 'bg-blue-500 text-white' : 'bg-gray-100'}`}
+                >
+                  左对齐
+                </button>
+                <button
+                  onClick={() => handleAlignmentChange('center')}
+                  className={`px-3 py-1 rounded text-sm ${imageContent.alignment === 'center' ? 'bg-blue-500 text-white' : 'bg-gray-100'}`}
+                >
+                  居中
+                </button>
+                <button
+                  onClick={() => handleAlignmentChange('right')}
+                  className={`px-3 py-1 rounded text-sm ${imageContent.alignment === 'right' ? 'bg-blue-500 text-white' : 'bg-gray-100'}`}
+                >
+                  右对齐
+                </button>
+                <button
+                  onClick={() => handleAlignmentChange('auto')}
+                  className={`px-3 py-1 rounded text-sm ${imageContent.alignment === 'auto' ? 'bg-green-500 text-white' : 'bg-gray-100'}`}
+                >
+                  自适应
+                </button>
+              </div>
+            </div>
+            
+            {/* 尺寸设置 */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  宽度 {imageContent.alignment === 'auto' ? '(自适应)' : '(px)'}
+                </label>
+                <input
+                  type="number"
+                  value={imageContent.alignment === 'auto' ? '' : (imageContent.width || '')}
+                  onChange={(e) => handleSizeChange('width', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  disabled={imageContent.alignment === 'auto'}
+                  placeholder={imageContent.alignment === 'auto' ? '自动填充' : ''}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  高度 {imageContent.alignment === 'auto' ? '(自适应)' : '(px)'}
+                </label>
+                <input
+                  type="number"
+                  value={imageContent.alignment === 'auto' ? '' : (imageContent.height || '')}
+                  onChange={(e) => handleSizeChange('height', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  disabled={imageContent.alignment === 'auto'}
+                  placeholder={imageContent.alignment === 'auto' ? '按比例' : ''}
+                />
+              </div>
+            </div>
+          </>
         )}
       </div>
     )
@@ -1012,61 +1171,117 @@ export default function UseTemplatePage() {
                 <div className="space-y-6">
                   <div className="bg-white rounded-lg shadow-lg">
                     <div className="p-6 space-y-4">
-                      {contentBlocks.map((block, index) => (
-                        <div key={block.id} className="border border-gray-200 rounded-lg overflow-hidden transition-all duration-200 hover:shadow-md">
-                          <div 
-                            className="px-4 py-3 bg-gray-50 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
-                            onClick={() => toggleBlockExpanded(block.id)}
+                      {/* 在第一个内容块之前添加粘贴按钮 */}
+                      {copiedBlock && (
+                        <div className="flex justify-center gap-2">
+                          <button
+                            onClick={() => pasteBlock(-1)}
+                            className="flex items-center gap-2 px-3 py-2 text-sm bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors"
+                            title={`在此处粘贴: ${copiedBlock.title}`}
                           >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <button
-                                  className="p-1 hover:bg-gray-200 rounded transition-colors"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    toggleBlockExpanded(block.id)
-                                  }}
-                                >
-                                  {expandedBlocks[block.id] ? (
-                                    <ChevronUp className="w-4 h-4" />
-                                  ) : (
-                                    <ChevronDown className="w-4 h-4" />
-                                  )}
-                                </button>
-                                <h3 className="font-medium text-gray-900">
-                                  {index + 1}. {block.title}
-                                </h3>
-                                <span className="text-sm px-2 py-1 rounded-full bg-gray-200 text-gray-600">
-                                  {block.type === 'text' ? '文本' : 
-                                   block.type === 'ai-generated' ? 'AI生成' :
-                                   block.type === 'two-column' ? '双栏' : 
-                                   block.type === 'image' ? '图片' :
-                                   block.type === 'page-break' ? '换页' : block.type}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-400">
-                                  ID: {block.id}
-                                </span>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    copyBlockReference(block.id)
-                                  }}
-                                  className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                                  title={`复制引用 {{${block.id}}}`}
-                                >
-                                  <Copy className="w-3 h-3" />
-                                </button>
+                            <Clipboard className="w-4 h-4" />
+                            <span>粘贴到开头</span>
+                          </button>
+                          <button
+                            onClick={() => setCopiedBlock(null)}
+                            className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                            title="取消粘贴"
+                          >
+                            <X className="w-4 h-4" />
+                            <span>取消</span>
+                          </button>
+                        </div>
+                      )}
+                      
+                      {contentBlocks.map((block, index) => (
+                        <React.Fragment key={block.id}>
+                          <div className="border border-gray-200 rounded-lg overflow-hidden transition-all duration-200 hover:shadow-md">
+                            <div 
+                              className="px-4 py-3 bg-gray-50 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
+                              onClick={() => toggleBlockExpanded(block.id)}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <button
+                                    className="p-1 hover:bg-gray-200 rounded transition-colors"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      toggleBlockExpanded(block.id)
+                                    }}
+                                  >
+                                    {expandedBlocks[block.id] ? (
+                                      <ChevronUp className="w-4 h-4" />
+                                    ) : (
+                                      <ChevronDown className="w-4 h-4" />
+                                    )}
+                                  </button>
+                                  <h3 className="font-medium text-gray-900">
+                                    {index + 1}. {block.title}
+                                  </h3>
+                                  <span className="text-sm px-2 py-1 rounded-full bg-gray-200 text-gray-600">
+                                    {block.type === 'text' ? '文本' : 
+                                     block.type === 'ai-generated' ? 'AI生成' :
+                                     block.type === 'two-column' ? '双栏' : 
+                                     block.type === 'image' ? '图片' :
+                                     block.type === 'page-break' ? '换页' : block.type}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-gray-400">
+                                    ID: {block.id}
+                                  </span>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      copyBlock(block)
+                                    }}
+                                    className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded transition-colors"
+                                    title="复制内容块"
+                                  >
+                                    复制块
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      copyBlockReference(block.id)
+                                    }}
+                                    className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                                    title={`复制引用 {{${block.id}}}`}
+                                  >
+                                    <Copy className="w-3 h-3" />
+                                  </button>
+                                </div>
                               </div>
                             </div>
+                            {expandedBlocks[block.id] && (
+                              <div className="p-4">
+                                {renderContentInput(block)}
+                              </div>
+                            )}
                           </div>
-                          {expandedBlocks[block.id] && (
-                            <div className="p-4">
-                              {renderContentInput(block)}
+                          
+                          {/* 在每个内容块之后添加粘贴按钮 */}
+                          {copiedBlock && (
+                            <div className="flex justify-center gap-2">
+                              <button
+                                onClick={() => pasteBlock(index)}
+                                className="flex items-center gap-2 px-3 py-2 text-sm bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors"
+                                title={`在 "${block.title}" 后粘贴: ${copiedBlock.title}`}
+                              >
+                                <Clipboard className="w-4 h-4" />
+                                <span>粘贴到此处</span>
+                              </button>
+                              <button
+                                onClick={() => setCopiedBlock(null)}
+                                className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                                title="取消粘贴"
+                              >
+                                <X className="w-4 h-4" />
+                                <span>取消</span>
+                              </button>
                             </div>
                           )}
-                        </div>
+                        </React.Fragment>
                       ))}
                     </div>
                   </div>

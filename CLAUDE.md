@@ -4,7 +4,7 @@
 
 ## 项目概述
 
-Word星辉点是一个智能Word编辑器，结合了手动编辑和AI内容生成功能。这是一个全栈Web应用，采用React前端和Node.js/Express后端，集成千问AI进行内容生成。
+Word新汇点是一个智能Word编辑器，结合了手动编辑和AI内容生成功能。这是一个全栈Web应用，采用React前端和Node.js/Express后端，集成千问AI进行内容生成。
 
 ## 开发命令
 
@@ -123,16 +123,17 @@ DINGTALK_VERIFY_USER=false  # 是否验证用户身份（会增加API调用）
 项目使用两种配置方式：
 
 1. **开发环境**：
+
    - 直接从根目录 `.env` 文件读取环境变量
    - 前端通过 `vite.config.ts` 中的 `envDir: '../'` 配置读取父目录的 `.env` 文件
    - 不需要 `frontend/public/config.js` 文件（已在 `.gitignore` 中忽略）
-
 2. **生产环境（Docker部署）**：
+
    - 使用 `frontend/docker-entrypoint.sh` 脚本在容器启动时动态生成 `config.js`
    - 从Docker环境变量读取配置并注入到运行时
    - 支持动态配置而无需重新构建镜像
-
 3. **配置优先级**：
+
    - 运行时配置（`window.APP_CONFIG`）> 构建时配置（`.env`）> 默认值
    - 这样确保生产环境可以覆盖构建时的配置
 
@@ -152,20 +153,49 @@ DINGTALK_VERIFY_USER=false  # 是否验证用户身份（会增加API调用）
 **Docker Hub仓库**：xieyifanxyf
 
 **镜像名称**：
+
 - 前端：`xieyifanxyf/word-xinghuidian-frontend`
 - 后端：`xieyifanxyf/word-xinghuidian-backend`
 
 **最新版本**：v1.6.2 (2025-08-22)
 
 **版本更新记录**：
+
 - v1.6.2：支持钉钉认证动态切换，修复TypeScript编译错误，优化环境变量配置
 - v1.6.1：钉钉认证功能优化
 - v1.6.0：添加钉钉H5微应用支持
 
 **部署方式**：
+
 1. 生产服务器：221.229.216.122
 2. 部署目录：`/opt/word-xinghuidian` (实际运行) 和 `/data/system-backup/客户部署包` (部署包)
 3. 访问地址：http://221.229.216.122:3000
 
+### 服务器连接信息
+
+**客户服务器（新汇点）**：
+- IP地址：8.136.217.105
+- 用户名：xhdai
+- 密码：pl,ok,99
+- SSH端口：22
+- SSH密钥（已配置）：
+  - 私钥：`C:\Users\神州\.ssh\xhdai_key`
+  - 公钥：`C:\Users\神州\.ssh\xhdai_key.pub`
+  - 公钥已添加到服务器的 authorized_keys
+- 连接方式：
+  - 使用密钥：`ssh -i "C:/Users/神州/.ssh/xhdai_key" xhdai@8.136.217.105`
+  - 使用密码：`ssh xhdai@8.136.217.105`（输入密码：pl,ok,99）
+  - 使用别名：`ssh xhdai`（已在 ~/.ssh/config 中配置）
+- **重要说明**：
+  - ✅ 用户手动连接正常（已测试成功）
+  - ❌ Claude自动连接失败（因为Claude环境被强制设置代理）
+  - 服务器不允许通过代理连接，需要直连
+  - **Mihomo代理配置**（已完成）：
+    - 配置文件：`E:\桌面\mihomo-party-windows-1.7.6-x64-portable\data\profiles\1984efb7385.yaml`
+    - 已添加规则让SSH连接绕过代理：
+      - `IP-CIDR,8.136.217.105/32,DIRECT` - 新汇点服务器直连
+      - `DST-PORT,22,DIRECT` - 所有SSH端口直连
+    - 重新加载Mihomo配置后，SSH连接将自动绕过代理
+
 **切换认证模式**：
-只需修改`.env`文件中的`VITE_ENABLE_DINGTALK_AUTH`和`ENABLE_DINGTALK_AUTH`，然后执行`docker-compose restart`即可，无需重新构建镜像。
+只需修改 `.env`文件中的 `VITE_ENABLE_DINGTALK_AUTH`和 `ENABLE_DINGTALK_AUTH`，然后执行 `docker-compose restart`即可，无需重新构建镜像。

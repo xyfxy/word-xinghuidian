@@ -21,7 +21,7 @@
     "template",
     "千问"
   ],
-  "author": "Word星辉点团队",
+  "author": "Word新汇点团队",
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"

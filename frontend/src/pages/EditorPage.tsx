@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Save, Eye, Download, Settings, Sparkles, X, ChevronUp, ChevronDown, Edit, Type, Image, FileText, Table } from 'lucide-react';
+import { Plus, Save, Eye, Download, Settings, Sparkles, X, ChevronUp, ChevronDown, Edit, Type, Image, FileText, Table, Clipboard } from 'lucide-react';
 import useEditorStore from '../stores/editorStore';
-import { createDefaultTemplate, createDefaultContentBlock, exportToWord, validateAiSettingsIndependence } from '../utils/document';
+import { createDefaultTemplate, createDefaultContentBlock, exportToWord, validateAiSettingsIndependence, generateId } from '../utils/document';
 import { formatMaxKbContent } from '../utils/markdown';
 import { aiService, templateService } from '../services/api';
 import ContentBlockEditor from '../components/Editor/ContentBlockEditor';
@@ -174,6 +174,9 @@ const EditorPage: React.FC = () => {
   const [showFormatPanel, setShowFormatPanel] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
+  
+  // 复制粘贴功能
+  const [copiedBlock, setCopiedBlock] = useState<any>(null);
 
   // 初始化默认模板
   useEffect(() => {
@@ -267,8 +270,18 @@ const EditorPage: React.FC = () => {
         blockRefs.forEach(ref => {
           const refBlockId = ref.replace(/\{\{|\}\}/g, '')
           const refBlock = currentTemplate.content.find(b => b.id === refBlockId)
-          if (refBlock && typeof refBlock.content === 'string') {
-            processedPrompt = processedPrompt.replace(ref, refBlock.content)
+          if (refBlock) {
+            let refContent = ''
+            if (typeof refBlock.content === 'string') {
+              refContent = refBlock.content
+            } else if (refBlock.type === 'two-column') {
+              // 处理双栏文本块
+              const twoColumnContent = refBlock.content as { left?: string; right?: string }
+              const leftContent = twoColumnContent.left || ''
+              const rightContent = twoColumnContent.right || ''
+              refContent = `${leftContent}\t${rightContent}` // 用制表符分隔左右内容
+            }
+            processedPrompt = processedPrompt.replace(ref, refContent)
           }
         })
       }
@@ -345,11 +358,16 @@ const EditorPage: React.FC = () => {
         }
       }
 
-      if (result.success && result.content) {
+      if (result.success) {
         // 对所有内容进行Markdown解析，以支持**加粗**、*斜体*等格式
-        const formattedContent = await formatMaxKbContent(result.content);
+        // 即使内容为空，也认为是成功的（AI可能故意返回空内容）
+        const formattedContent = await formatMaxKbContent(result.content || '');
         updateContentBlock(blockId, { content: formattedContent });
-        alert('AI内容生成成功！');
+        if (result.content) {
+          alert('AI内容生成成功！');
+        } else {
+          alert('AI内容生成完成（返回空内容）');
+        }
       } else {
         alert(result.error || 'AI内容生成失败');
       }
@@ -416,6 +434,61 @@ const EditorPage: React.FC = () => {
   // 切换预览模式
   const handleTogglePreview = () => {
     setPreviewMode(!previewMode);
+  };
+
+  // 复制内容块 - 进行完整的深拷贝
+  const copyBlock = (block: any) => {
+    // 使用JSON进行深拷贝，确保所有属性都是独立的副本
+    // 这包括content、format、aiSettings等所有嵌套对象
+    const blockCopy = JSON.parse(JSON.stringify(block));
+    
+    // 删除ID，在粘贴时生成新的ID
+    delete blockCopy.id;
+    
+    setCopiedBlock(blockCopy);
+    alert(`已复制内容块: ${block.title}`);
+  };
+
+  // 在指定位置粘贴内容块
+  const pasteBlock = (afterIndex: number) => {
+    if (!copiedBlock || !currentTemplate) return;
+
+    // 每次粘贴时都进行深拷贝，确保每个粘贴的块都是独立的
+    const newBlock = JSON.parse(JSON.stringify(copiedBlock));
+    
+    // 设置新的属性
+    newBlock.id = generateId(); // 使用与普通添加内容块相同的ID生成逻辑
+    newBlock.title = `${copiedBlock.title} (副本)`;
+    newBlock.position = 0; // 暂时设置，后面会重新计算
+
+    let newContentBlocks;
+    
+    if (afterIndex === -1) {
+      // 插入到开头
+      newContentBlocks = [newBlock, ...currentTemplate.content];
+    } else {
+      // 插入到指定位置之后
+      newContentBlocks = [
+        ...currentTemplate.content.slice(0, afterIndex + 1),
+        newBlock,
+        ...currentTemplate.content.slice(afterIndex + 1)
+      ];
+    }
+
+    // 重新计算所有内容块的position
+    const reorderedBlocks = newContentBlocks.map((block, index) => ({
+      ...block,
+      position: index
+    }));
+
+    // 更新模板
+    const updatedTemplate = {
+      ...currentTemplate,
+      content: reorderedBlocks
+    };
+    setCurrentTemplate(updatedTemplate);
+
+    alert(`已粘贴内容块: ${newBlock.title}`);
   };
 
   // 判断是否所有块都已展开
@@ -529,12 +602,34 @@ const EditorPage: React.FC = () => {
                 )}
               </div>
 
+              {/* 在第一个内容块之前添加粘贴按钮 */}
+              {copiedBlock && (
+                <div className="flex justify-center gap-2 mb-4">
+                  <button
+                    onClick={() => pasteBlock(-1)}
+                    className="flex items-center gap-2 px-3 py-2 text-sm bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors"
+                    title={`在此处粘贴: ${copiedBlock.title}`}
+                  >
+                    <Clipboard className="w-4 h-4" />
+                    <span>粘贴到开头</span>
+                  </button>
+                  <button
+                    onClick={() => setCopiedBlock(null)}
+                    className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                    title="取消粘贴"
+                  >
+                    <X className="w-4 h-4" />
+                    <span>取消</span>
+                  </button>
+                </div>
+              )}
+              
               {/* 内容块列表 */}
               {currentTemplate.content
                 .slice() // 创建一个副本以避免直接修改store中的状态
                 .sort((a, b) => a.position - b.position)
-                .map((block) => (
-                  <div key={block.id}>
+                .map((block, index) => (
+                  <React.Fragment key={block.id}>
                     {/* 悬浮式插入按钮（包括第一个） */}
                     <InsertBlockButton 
                       onAdd={handleAddContentBlock}
@@ -550,7 +645,10 @@ const EditorPage: React.FC = () => {
                         onGenerateAI={() => handleGenerateAI(block.id)}
                         isGenerating={isGenerating && selectedBlock === block.id}
                         onConvertType={(newType) => convertBlockType(block.id, newType)}
+                        onCopy={() => copyBlock(block)}
                       />
+                      
+                      {/* 删除按钮 */}
                       <button
                         onClick={() => removeContentBlock(block.id)}
                         className="absolute top-2 right-2 p-1.5 bg-white rounded-full text-gray-500 hover:bg-red-100 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -559,7 +657,29 @@ const EditorPage: React.FC = () => {
                         <X className="h-4 w-4" />
                       </button>
                     </div>
-                  </div>
+                    
+                    {/* 在每个内容块之后添加粘贴按钮 */}
+                    {copiedBlock && (
+                      <div className="flex justify-center gap-2 my-4">
+                        <button
+                          onClick={() => pasteBlock(index)}
+                          className="flex items-center gap-2 px-3 py-2 text-sm bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors"
+                          title={`在 "${block.title}" 后粘贴: ${copiedBlock.title}`}
+                        >
+                          <Clipboard className="w-4 h-4" />
+                          <span>粘贴到此处</span>
+                        </button>
+                        <button
+                          onClick={() => setCopiedBlock(null)}
+                          className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                          title="取消粘贴"
+                        >
+                          <X className="w-4 h-4" />
+                          <span>取消</span>
+                        </button>
+                      </div>
+                    )}
+                  </React.Fragment>
                 ))}
               
               {/* 在末尾添加内容块按钮 */}

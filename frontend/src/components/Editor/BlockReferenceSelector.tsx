@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { X, Copy, Link, Hash, FileText } from 'lucide-react'
-import { ContentBlock } from '../../types'
+import { X, Copy, Link, Hash, FileText, Type } from 'lucide-react'
+import { ContentBlock, TwoColumnContent } from '../../types'
 import { copyToClipboard } from '../../utils/clipboard'
 
 interface BlockReferenceSelectorProps {
@@ -21,17 +21,39 @@ const BlockReferenceSelector: React.FC<BlockReferenceSelectorProps> = ({
   const [searchTerm, setSearchTerm] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
-  // 只显示文本块和AI内容块，过滤掉当前块
+  // 显示文本块、AI内容块和双栏文本块，过滤掉当前块
   const availableBlocks = blocks.filter(block => 
     block.id !== currentBlockId && 
-    (block.type === 'text' || block.type === 'ai-generated')
+    (block.type === 'text' || block.type === 'ai-generated' || block.type === 'two-column')
   )
 
   // 根据搜索词过滤
-  const filteredBlocks = availableBlocks.filter(block =>
-    block.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    block.id.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredBlocks = availableBlocks.filter(block => {
+    const searchLower = searchTerm.toLowerCase();
+    
+    // 搜索标题和ID
+    if (block.title?.toLowerCase().includes(searchLower) ||
+        block.id.toLowerCase().includes(searchLower)) {
+      return true;
+    }
+    
+    // 搜索内容
+    if (block.type === 'text' || block.type === 'ai-generated') {
+      const content = typeof block.content === 'string' ? block.content : '';
+      return content.toLowerCase().includes(searchLower);
+    }
+    
+    // 搜索双栏文本内容
+    if (block.type === 'two-column') {
+      const twoColumnContent = block.content as TwoColumnContent;
+      const leftContent = twoColumnContent.left || '';
+      const rightContent = twoColumnContent.right || '';
+      return leftContent.toLowerCase().includes(searchLower) ||
+             rightContent.toLowerCase().includes(searchLower);
+    }
+    
+    return false;
+  })
 
   const getBlockIcon = (type: ContentBlock['type']) => {
     switch (type) {
@@ -39,6 +61,8 @@ const BlockReferenceSelector: React.FC<BlockReferenceSelectorProps> = ({
         return <FileText className="w-4 h-4 text-green-500" />
       case 'ai-generated':
         return <FileText className="w-4 h-4 text-orange-500" />
+      case 'two-column':
+        return <Type className="w-4 h-4 text-purple-500" />
       default:
         return <FileText className="w-4 h-4 text-gray-500" />
     }
@@ -50,6 +74,8 @@ const BlockReferenceSelector: React.FC<BlockReferenceSelectorProps> = ({
         return '文本'
       case 'ai-generated':
         return 'AI内容'
+      case 'two-column':
+        return '双栏文本'
       default:
         return type
     }

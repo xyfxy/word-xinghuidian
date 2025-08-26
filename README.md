@@ -1,11 +1,11 @@
-# Word星辉点 - 智能Word编辑器
+# Word新汇点 - 智能Word编辑器
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-green.svg)
 ![React](https://img.shields.io/badge/react-18.3.1-blue.svg)
 ![TypeScript](https://img.shields.io/badge/typescript-5.3.3-blue.svg)
 
-Word星辉点是一款结合手动编辑与AI智能生成的Word文档编辑器。它提供了直观的富文本编辑界面，支持模板管理，并通过模型管理系统支持多种AI模型和MaxKB知识库进行内容智能生成。
+Word新汇点是一款结合手动编辑与AI智能生成的Word文档编辑器。它提供了直观的富文本编辑界面，支持模板管理，并通过模型管理系统支持多种AI模型和MaxKB知识库进行内容智能生成。
 
 ## ✨ 主要功能
 

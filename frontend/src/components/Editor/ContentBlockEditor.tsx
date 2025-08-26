@@ -22,6 +22,7 @@ interface ContentBlockEditorProps {
     onGenerateAI: () => void;
     isGenerating: boolean;
     onConvertType?: (newType: 'text' | 'ai-generated') => void;
+    onCopy?: () => void;
 }
 
 // 已删除未使用的 deepCloneAiSettings 函数
@@ -148,25 +149,33 @@ const ImageEditor: React.FC<{
       {/* 图片设置 */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">宽度 (px)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            宽度 {imageContent.alignment === 'auto' ? '(自适应)' : '(px)'}
+          </label>
           <input
             type="number"
-            value={imageContent.width ?? ''}
+            value={imageContent.alignment === 'auto' ? '' : (imageContent.width ?? '')}
             onChange={(e) => handleNumberInput(e.target.value, (num) => handleImageChange('width', num))}
             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             min="10"
             max="1000"
+            disabled={imageContent.alignment === 'auto'}
+            placeholder={imageContent.alignment === 'auto' ? '自动填充文档宽度' : ''}
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">高度 (px)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            高度 {imageContent.alignment === 'auto' ? '(自适应)' : '(px)'}
+          </label>
           <input
             type="number"
-            value={imageContent.height ?? ''}
+            value={imageContent.alignment === 'auto' ? '' : (imageContent.height ?? '')}
             onChange={(e) => handleNumberInput(e.target.value, (num) => handleImageChange('height', num))}
             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             min="10"
             max="1000"
+            disabled={imageContent.alignment === 'auto'}
+            placeholder={imageContent.alignment === 'auto' ? '按原图比例自动计算' : ''}
           />
         </div>
       </div>
@@ -278,6 +287,53 @@ const PageBreakEditor: React.FC<{
   );
 };
 
+// 双栏文本编辑组件
+const TwoColumnEditor: React.FC<{
+  block: ContentBlock;
+  onUpdate: (updates: Partial<ContentBlock>) => void;
+}> = ({ block, onUpdate }) => {
+  const twoColumnContent = block.content as TwoColumnContent;
+
+  const handleTwoColumnChange = (part: 'left' | 'right', value: string) => {
+    onUpdate({ 
+      content: {
+        ...twoColumnContent,
+        [part]: value
+      }
+    });
+  };
+
+  return (
+    <div className="my-4 space-y-3">
+      <div className="grid grid-cols-2 gap-4">
+        {/* 左侧列 */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">左侧内容</label>
+          <textarea
+            value={twoColumnContent.left || ''}
+            onChange={(e) => handleTwoColumnChange('left', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-vertical"
+            rows={4}
+            placeholder="输入左侧内容..."
+          />
+        </div>
+
+        {/* 右侧列 */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">右侧内容</label>
+          <textarea
+            value={twoColumnContent.right || ''}
+            onChange={(e) => handleTwoColumnChange('right', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-vertical"
+            rows={4}
+            placeholder="输入右侧内容..."
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ContentBlockEditor: React.FC<ContentBlockEditorProps> = ({
     block,
     isSelected,
@@ -286,6 +342,7 @@ const ContentBlockEditor: React.FC<ContentBlockEditorProps> = ({
     onGenerateAI,
     isGenerating,
     onConvertType,
+    onCopy,
 }) => {
     const isAiBlock = block.type === 'ai-generated';
     const { expandedBlocks, setBlockExpanded } = useEditorStore();
@@ -321,16 +378,6 @@ const ContentBlockEditor: React.FC<ContentBlockEditorProps> = ({
         });
     };
     
-    const handleTwoColumnChange = (part: 'left' | 'right', value: string) => {
-        if (block.type !== 'two-column') return;
-        const currentContent = block.content as TwoColumnContent;
-        onUpdate({ 
-            content: {
-                ...currentContent,
-                [part]: value
-            }
-        });
-    };
 
     const quillModules = useMemo(() => ({
         toolbar: [
@@ -396,6 +443,22 @@ const ContentBlockEditor: React.FC<ContentBlockEditorProps> = ({
                         <span className="text-xs text-gray-400">
                             ID: {block.id}
                         </span>
+                        
+                        {/* 复制内容块按钮 */}
+                        {onCopy && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onCopy();
+                                }}
+                                className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded transition-colors"
+                                title="复制内容块"
+                            >
+                                复制块
+                            </button>
+                        )}
+                        
+                        {/* 复制引用按钮 */}
                         <button
                             onClick={async (e) => {
                                 e.stopPropagation();
@@ -504,26 +567,10 @@ const ContentBlockEditor: React.FC<ContentBlockEditorProps> = ({
                     
                     {/* 双栏文本块 */}
                     {block.type === 'two-column' && (
-                        <div className="my-4">
-                            <div className="flex justify-between items-center">
-                                <input
-                                    type="text"
-                                    value={(block.content as TwoColumnContent).left}
-                                    onChange={(e) => handleTwoColumnChange('left', e.target.value)}
-                                    className="p-1 bg-transparent border-none outline-none focus:ring-0"
-                                    style={{ width: `${(block.format.columnRatio || 0.5) * 100}%` }}
-                                    placeholder="左侧内容"
-                                />
-                                 <input
-                                    type="text"
-                                    value={(block.content as TwoColumnContent).right}
-                                    onChange={(e) => handleTwoColumnChange('right', e.target.value)}
-                                    className="p-1 bg-transparent border-none outline-none focus:ring-0 text-right"
-                                    style={{ width: `${(1 - (block.format.columnRatio || 0.5)) * 100}%` }}
-                                    placeholder="右侧内容"
-                                />
-                            </div>
-                        </div>
+                        <TwoColumnEditor 
+                            block={block}
+                            onUpdate={onUpdate}
+                        />
                     )}
 
                     {/* 表格块 */}

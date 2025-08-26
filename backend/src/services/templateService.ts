@@ -222,14 +222,43 @@ class TemplateService {
     }
   }
 
+  // 清理aiPrompt中的文档内容，只保留基础提示词
+  private cleanAiPromptForSave(templateData: any): any {
+    if (!templateData.content || !Array.isArray(templateData.content)) {
+      return templateData;
+    }
+
+    const cleanedContent = templateData.content.map((block: any) => {
+      if (block.type === 'ai-generated' && block.aiPrompt) {
+        // 分离基础提示词和文档内容
+        const parts = block.aiPrompt.split('\n===== 文档内容 ====');
+        const basePrompt = parts[0] || '';
+        
+        return {
+          ...block,
+          aiPrompt: basePrompt.trim()
+        };
+      }
+      return block;
+    });
+
+    return {
+      ...templateData,
+      content: cleanedContent
+    };
+  }
+
   // 保存新模板
   async saveTemplate(templateData: Omit<DocumentTemplate, 'id' | 'createdAt' | 'updatedAt'>): Promise<DocumentTemplate> {
     try {
       await this.ensureTemplatesDir();
       
+      // 清理aiPrompt中的文档内容
+      const cleanedTemplateData = this.cleanAiPromptForSave(templateData);
+      
       const now = new Date();
       const template: DocumentTemplate = {
-        ...templateData,
+        ...cleanedTemplateData,
         id: this.generateId(),
         createdAt: now,
         updatedAt: now,
@@ -256,9 +285,12 @@ class TemplateService {
         throw new Error('模板不存在');
       }
 
+      // 清理更新数据中的aiPrompt
+      const cleanedUpdateData = this.cleanAiPromptForSave(updateData);
+
       const updatedTemplate: DocumentTemplate = {
         ...existingTemplate,
-        ...updateData,
+        ...cleanedUpdateData,
         id, // 确保ID不被修改
         createdAt: existingTemplate.createdAt, // 保持原创建时间
         updatedAt: new Date(),

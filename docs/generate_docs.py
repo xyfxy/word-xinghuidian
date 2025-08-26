@@ -1,5 +1,5 @@
 """
-Word星辉点项目文档生成脚本
+Word新汇点项目文档生成脚本
 生成测试报告、用户手册、部署文档的Word格式文件
 """
 
@@ -69,7 +69,7 @@ def generate_test_report():
     
     # 标题页
     title = doc.add_heading('', level=0)
-    run = title.add_run('Word星辉点系统测试报告')
+    run = title.add_run('Word新汇点系统测试报告')
     set_font(run, '宋体', 22, RGBColor(0, 0, 0))
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
@@ -83,7 +83,7 @@ def generate_test_report():
     
     # 1. 测试概述
     add_heading(doc, '一、测试概述', 1)
-    add_paragraph(doc, '本测试报告记录了Word星辉点系统v1.6.2版本的完整测试过程和结果。测试范围涵盖功能测试、性能测试、兼容性测试和安全测试。')
+    add_paragraph(doc, '本测试报告记录了Word新汇点系统v1.6.2版本的完整测试过程和结果。测试范围涵盖功能测试、性能测试、兼容性测试和安全测试。')
     
     # 2. 测试环境
     add_heading(doc, '二、测试环境', 1)
@@ -119,16 +119,16 @@ def generate_test_report():
     
     test_cases = [
         ['用例编号', '测试场景', '预期结果', '实际结果', '状态'],
-        ['TC001', '用户登录', '成功登录系统', '符合预期', '通过'],
-        ['TC002', '创建新文档', '文档创建成功', '符合预期', '通过'],
-        ['TC003', 'AI生成内容', '生成内容质量良好', '符合预期', '通过'],
-        ['TC004', '导入Word文档', '格式保持完整', '符合预期', '通过'],
-        ['TC005', '导出Word文档', '文档格式正确', '符合预期', '通过'],
-        ['TC006', '应用模板', '模板应用成功', '符合预期', '通过'],
-        ['TC007', '钉钉免登', '自动登录成功', '符合预期', '通过'],
-        ['TC008', '实时保存', '内容自动保存', '符合预期', '通过'],
-        ['TC009', '协同编辑', '多人编辑正常', '部分延迟', '通过'],
-        ['TC010', '权限控制', '权限验证有效', '符合预期', '通过']
+        ['TC001', '创建文档模板', '模板创建并保存成功', '符合预期', '通过'],
+        ['TC002', '添加固定内容块', '内容块正常添加和编辑', '符合预期', '通过'],
+        ['TC003', '添加AI生成块', 'AI块配置和生成正常', '符合预期', '通过'],
+        ['TC004', '导入Word文档', '文档结构和格式保持', '符合预期', '通过'],
+        ['TC005', '导出Word文档', '生成标准Word格式', '符合预期', '通过'],
+        ['TC006', '使用现有模板', '模板加载和应用成功', '符合预期', '通过'],
+        ['TC007', '模型管理', '模型添加删除正常', '符合预期', '通过'],
+        ['TC008', '批量AI生成', '多个AI块顺序生成', '符合预期', '通过'],
+        ['TC009', '图片和表格', '插入编辑功能正常', '符合预期', '通过'],
+        ['TC010', '钉钉认证切换', '启用禁用功能正常', '符合预期', '通过']
     ]
     add_table(doc, test_cases[0], test_cases[1:])
     
@@ -183,7 +183,7 @@ def generate_test_report():
     
     # 6. 测试结论
     add_heading(doc, '六、测试结论', 1)
-    add_paragraph(doc, '经过全面测试，Word星辉点系统v1.6.2版本：')
+    add_paragraph(doc, '经过全面测试，Word新汇点系统v1.6.2版本：')
     add_paragraph(doc, '• 功能测试通过率：98.3%')
     add_paragraph(doc, '• 性能指标全部达标')
     add_paragraph(doc, '• 兼容性良好')
@@ -199,8 +199,8 @@ def generate_test_report():
     add_paragraph(doc, '4. 建议完善错误日志收集机制')
     
     # 保存文档
-    doc.save('测试报告_Word星辉点_v1.6.2.docx')
-    print('测试报告已生成：测试报告_Word星辉点_v1.6.2.docx')
+    doc.save('测试报告_Word新汇点_v1.6.2.docx')
+    print('测试报告已生成：测试报告_Word新汇点_v1.6.2.docx')
 
 
 def generate_user_manual():
@@ -209,7 +209,7 @@ def generate_user_manual():
     
     # 标题页
     title = doc.add_heading('', level=0)
-    run = title.add_run('Word星辉点用户手册')
+    run = title.add_run('Word新汇点用户手册')
     set_font(run, '宋体', 22, RGBColor(0, 0, 0))
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
@@ -229,14 +229,15 @@ def generate_user_manual():
     # 1. 产品简介
     add_heading(doc, '一、产品简介', 1)
     add_heading(doc, '1.1 产品概述', 2)
-    add_paragraph(doc, 'Word星辉点是一款智能化的Word文档编辑系统，集成了人工智能内容生成、模板管理、协同编辑等功能，旨在提高文档创作效率和质量。')
+    add_paragraph(doc, 'Word新汇点是一款智能化的Word文档编辑系统，集成了人工智能内容生成、模板管理、协同编辑等功能，旨在提高文档创作效率和质量。')
     
     add_heading(doc, '1.2 主要特性', 2)
-    add_paragraph(doc, '• 智能内容生成：基于千问大模型的AI写作助手')
-    add_paragraph(doc, '• 丰富的模板库：提供多种专业文档模板')
-    add_paragraph(doc, '• 无缝导入导出：完美兼容Word文档格式')
-    add_paragraph(doc, '• 实时协同编辑：支持多人同时编辑')
-    add_paragraph(doc, '• 钉钉集成：支持钉钉免登和消息通知')
+    add_paragraph(doc, '• 内容块编辑：采用模块化的内容块组织文档')
+    add_paragraph(doc, '• AI智能生成：支持多种AI模型的内容生成')
+    add_paragraph(doc, '• 模板管理：创建和使用可复用的文档模板')
+    add_paragraph(doc, '• Word导入导出：支持标准Word文档格式')
+    add_paragraph(doc, '• 模型配置：灵活配置和管理AI模型')
+    add_paragraph(doc, '• 钉钉集成：可选的钉钉认证功能')
     
     add_heading(doc, '1.3 系统要求', 2)
     add_paragraph(doc, '• 操作系统：Windows 10/11, macOS 12+, Linux')
@@ -251,31 +252,32 @@ def generate_user_manual():
     add_paragraph(doc, '2. 如果启用了钉钉认证，会自动跳转到钉钉登录')
     add_paragraph(doc, '3. 登录成功后进入主界面')
     
-    add_heading(doc, '2.2 创建第一篇文档', 2)
-    add_paragraph(doc, '1. 点击"新建文档"按钮')
-    add_paragraph(doc, '2. 选择空白文档或从模板创建')
-    add_paragraph(doc, '3. 输入文档标题')
-    add_paragraph(doc, '4. 开始编辑内容')
-    add_paragraph(doc, '5. 系统会自动保存您的修改')
+    add_heading(doc, '2.2 系统主要页面', 2)
+    add_paragraph(doc, '• 首页：快速访问最近文档和模板')
+    add_paragraph(doc, '• 编辑器：创建和编辑文档的主要工作区')
+    add_paragraph(doc, '• 模板管理：查看、创建和管理文档模板')
+    add_paragraph(doc, '• Word导入：导入现有Word文档进行编辑')
+    add_paragraph(doc, '• 模型管理：配置AI模型参数和密钥')
     
     # 3. 功能介绍
     add_heading(doc, '三、功能介绍', 1)
-    add_heading(doc, '3.1 文档编辑', 2)
-    add_paragraph(doc, '富文本编辑器提供以下功能：')
-    add_paragraph(doc, '• 文字格式：加粗、斜体、下划线、删除线')
-    add_paragraph(doc, '• 段落格式：标题级别、对齐方式、缩进')
-    add_paragraph(doc, '• 列表：有序列表、无序列表')
-    add_paragraph(doc, '• 插入：图片、表格、链接、分页符')
-    add_paragraph(doc, '• 样式：字体、字号、颜色、背景色')
+    add_heading(doc, '3.1 内容块编辑', 2)
+    add_paragraph(doc, '系统采用内容块的方式组织文档，支持以下类型：')
+    add_paragraph(doc, '• 固定内容块：富文本编辑器，支持格式化文字')
+    add_paragraph(doc, '• AI生成块：设置提示词和参数，AI自动生成内容')
+    add_paragraph(doc, '• 双栏文本：支持左右两栏独立编辑')
+    add_paragraph(doc, '• 图片块：插入和编辑图片，支持对齐和大小调整')
+    add_paragraph(doc, '• 表格块：创建和编辑表格数据')
+    add_paragraph(doc, '• 分页符：控制文档分页位置')
     
-    add_heading(doc, '3.2 AI写作助手', 2)
-    add_paragraph(doc, 'AI助手可以帮助您：')
-    add_paragraph(doc, '• 续写：根据上下文自动续写内容')
-    add_paragraph(doc, '• 改写：优化文字表达')
-    add_paragraph(doc, '• 扩写：丰富内容细节')
-    add_paragraph(doc, '• 缩写：精简冗余内容')
-    add_paragraph(doc, '• 翻译：中英文互译')
-    add_paragraph(doc, '• 生成摘要：自动提取要点')
+    add_heading(doc, '3.2 AI内容生成', 2)
+    add_paragraph(doc, 'AI内容生成功能：')
+    add_paragraph(doc, '• 智能生成：根据提示词生成完整内容')
+    add_paragraph(doc, '• 引用上下文：可以引用其他内容块作为参考')
+    add_paragraph(doc, '• 多模型支持：支持千问、GPT等多种AI模型')
+    add_paragraph(doc, '• 自定义参数：可调整温度、最大长度等生成参数')
+    add_paragraph(doc, '• 批量生成：支持多个AI块同时生成')
+    add_paragraph(doc, '• 执行顺序：可设置AI块的生成顺序')
     
     add_heading(doc, '3.3 模板系统', 2)
     add_paragraph(doc, '系统提供多种模板类型：')
@@ -308,16 +310,19 @@ def generate_user_manual():
     add_paragraph(doc, '4. 点击"确认导出"')
     
     add_heading(doc, '4.3 使用AI助手', 2)
-    add_paragraph(doc, '方法一：快捷键')
-    add_paragraph(doc, '• 选中文本后按 Ctrl+G：AI改写')
-    add_paragraph(doc, '• 光标定位后按 Ctrl+空格：AI续写')
+    add_paragraph(doc, '在编辑器中添加AI生成内容块：')
+    add_paragraph(doc, '1. 点击"添加AI生成内容"按钮创建AI内容块')
+    add_paragraph(doc, '2. 在AI内容块中设置生成参数：')
+    add_paragraph(doc, '   • 提示词：输入AI生成的指令')
+    add_paragraph(doc, '   • 参考内容：选择引用其他内容块作为上下文')
+    add_paragraph(doc, '   • 生成模式：选择生成、续写、改写等模式')
+    add_paragraph(doc, '3. 点击"生成内容"按钮，AI会根据设置生成内容')
+    add_paragraph(doc, '4. 生成后可以手动编辑调整内容')
     add_paragraph(doc, '')
-    add_paragraph(doc, '方法二：右键菜单')
-    add_paragraph(doc, '• 选中文本右键，选择AI功能')
-    add_paragraph(doc, '')
-    add_paragraph(doc, '方法三：侧边栏')
-    add_paragraph(doc, '• 点击右侧AI助手图标')
-    add_paragraph(doc, '• 输入指令或选择预设功能')
+    add_paragraph(doc, 'AI模型配置：')
+    add_paragraph(doc, '• 在"模型管理"页面添加和配置AI模型')
+    add_paragraph(doc, '• 支持千问、OpenAI、自定义GPT等多种模型')
+    add_paragraph(doc, '• 每个AI内容块可以独立选择使用的模型')
     
     add_heading(doc, '4.4 应用模板', 2)
     add_paragraph(doc, '1. 新建文档时选择"从模板创建"')
@@ -364,8 +369,8 @@ def generate_user_manual():
     add_paragraph(doc, '周六周日 10:00-17:00')
     
     # 保存文档
-    doc.save('用户手册_Word星辉点_v1.6.2.docx')
-    print('用户手册已生成：用户手册_Word星辉点_v1.6.2.docx')
+    doc.save('用户手册_Word新汇点_v1.6.2.docx')
+    print('用户手册已生成：用户手册_Word新汇点_v1.6.2.docx')
 
 
 def generate_deployment_guide():
@@ -374,7 +379,7 @@ def generate_deployment_guide():
     
     # 标题页
     title = doc.add_heading('', level=0)
-    run = title.add_run('Word星辉点部署指南')
+    run = title.add_run('Word新汇点部署指南')
     set_font(run, '宋体', 22, RGBColor(0, 0, 0))
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
@@ -382,7 +387,7 @@ def generate_deployment_guide():
     
     # 1. 部署概述
     add_heading(doc, '一、部署概述', 1)
-    add_paragraph(doc, 'Word星辉点支持多种部署方式，包括Docker容器部署、源码部署和云平台部署。本文档详细说明各种部署方式的步骤和注意事项。')
+    add_paragraph(doc, 'Word新汇点支持多种部署方式，包括Docker容器部署、源码部署和云平台部署。本文档详细说明各种部署方式的步骤和注意事项。')
     
     add_heading(doc, '1.1 系统架构', 2)
     add_paragraph(doc, '• 前端：React应用，运行在Nginx')
@@ -622,14 +627,327 @@ def generate_deployment_guide():
     add_paragraph(doc, '6. 备份恢复：定期测试备份恢复流程')
     
     # 保存文档
-    doc.save('部署文档_Word星辉点_v1.6.2.docx')
-    print('部署文档已生成：部署文档_Word星辉点_v1.6.2.docx')
+    doc.save('部署文档_Word新汇点_v1.6.2.docx')
+    print('部署文档已生成：部署文档_Word新汇点_v1.6.2.docx')
+
+
+def generate_api_documentation():
+    """生成API接口文档"""
+    doc = Document()
+    
+    # 标题页
+    title = doc.add_heading('', level=0)
+    run = title.add_run('Word新汇点API接口文档')
+    set_font(run, '宋体', 22, RGBColor(0, 0, 0))
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    doc.add_page_break()
+    
+    # 1. 概述
+    add_heading(doc, '一、概述', 1)
+    add_paragraph(doc, 'Word新汇点提供RESTful API接口，支持文档管理、AI内容生成、模板管理等功能。')
+    
+    add_heading(doc, '1.1 基础信息', 2)
+    add_paragraph(doc, '• 开发环境URL：http://localhost:3003/api')
+    add_paragraph(doc, '• 生产环境URL：http://221.229.216.122:3003/api')
+    add_paragraph(doc, '• 请求格式：JSON')
+    add_paragraph(doc, '• 响应格式：JSON')
+    add_paragraph(doc, '• 字符编码：UTF-8')
+    
+    add_heading(doc, '1.2 通用响应格式', 2)
+    add_paragraph(doc, '成功响应示例：')
+    add_paragraph(doc, '{')
+    add_paragraph(doc, '  "success": true,')
+    add_paragraph(doc, '  "data": {...},')
+    add_paragraph(doc, '  "message": "操作成功"')
+    add_paragraph(doc, '}')
+    add_paragraph(doc, '')
+    add_paragraph(doc, '错误响应示例：')
+    add_paragraph(doc, '{')
+    add_paragraph(doc, '  "error": "错误信息",')
+    add_paragraph(doc, '  "code": "ERROR_CODE"')
+    add_paragraph(doc, '}')
+    
+    # 2. AI生成接口
+    add_heading(doc, '二、AI内容生成接口', 1)
+    add_heading(doc, '2.1 生成内容', 2)
+    add_paragraph(doc, '接口地址：POST /api/ai-gpt/generate')
+    add_paragraph(doc, '')
+    add_paragraph(doc, '请求参数：')
+    
+    ai_params = [
+        ['参数名', '类型', '必需', '说明'],
+        ['prompt', 'string', '是', 'AI生成的提示词'],
+        ['modelId', 'string', '是', '使用的模型ID'],
+        ['temperature', 'number', '否', '生成温度，0-1之间，默认0.7'],
+        ['maxTokens', 'number', '否', '最大生成长度，默认1000'],
+        ['context', 'string', '否', '上下文信息']
+    ]
+    add_table(doc, ai_params[0], ai_params[1:])
+    
+    add_heading(doc, '2.2 批量生成', 2)
+    add_paragraph(doc, '接口地址：POST /api/ai-gpt/batch-generate')
+    add_paragraph(doc, '用于批量生成多个AI内容块')
+    
+    # 3. 模板管理接口
+    add_heading(doc, '三、模板管理接口', 1)
+    add_heading(doc, '3.1 获取模板列表', 2)
+    add_paragraph(doc, '接口地址：GET /api/templates/list')
+    add_paragraph(doc, '')
+    add_paragraph(doc, '查询参数：')
+    
+    template_params = [
+        ['参数名', '类型', '说明'],
+        ['page', 'number', '页码，默认1'],
+        ['pageSize', 'number', '每页数量，默认20'],
+        ['search', 'string', '搜索关键词']
+    ]
+    add_table(doc, template_params[0], template_params[1:])
+    
+    add_heading(doc, '3.2 获取模板详情', 2)
+    add_paragraph(doc, '接口地址：GET /api/templates/:id')
+    add_paragraph(doc, '返回指定ID的模板完整信息')
+    
+    add_heading(doc, '3.3 创建模板', 2)
+    add_paragraph(doc, '接口地址：POST /api/templates')
+    add_paragraph(doc, '创建新的文档模板')
+    
+    add_heading(doc, '3.4 更新模板', 2)
+    add_paragraph(doc, '接口地址：PUT /api/templates/:id')
+    add_paragraph(doc, '更新指定ID的模板')
+    
+    add_heading(doc, '3.5 删除模板', 2)
+    add_paragraph(doc, '接口地址：DELETE /api/templates/:id')
+    add_paragraph(doc, '删除指定ID的模板')
+    
+    add_heading(doc, '3.6 复制模板', 2)
+    add_paragraph(doc, '接口地址：POST /api/templates/:id/duplicate')
+    add_paragraph(doc, '复制现有模板创建新模板')
+    
+    add_heading(doc, '3.7 导入导出模板', 2)
+    add_paragraph(doc, '• 导出单个：GET /api/templates/:id/export')
+    add_paragraph(doc, '• 导出全部：GET /api/templates/export/all')
+    add_paragraph(doc, '• 导入模板：POST /api/templates/import')
+    
+    # 4. 文档处理接口
+    add_heading(doc, '四、文档处理接口', 1)
+    add_heading(doc, '4.1 导入Word文档', 2)
+    add_paragraph(doc, '接口地址：POST /api/documents/import')
+    add_paragraph(doc, '请求格式：multipart/form-data')
+    add_paragraph(doc, '参数：file - Word文档文件（.docx格式）')
+    
+    add_heading(doc, '4.2 导出Word文档', 2)
+    add_paragraph(doc, '接口地址：POST /api/documents/export')
+    add_paragraph(doc, '将编辑器内容导出为Word文档')
+    
+    add_heading(doc, '4.3 Word解析', 2)
+    add_paragraph(doc, '接口地址：POST /api/word-import/parse-word')
+    add_paragraph(doc, '解析Word文档结构，识别内容块')
+    
+    add_heading(doc, '4.4 文本提取', 2)
+    add_paragraph(doc, '• 单个文档：POST /api/documents/extract-text')
+    add_paragraph(doc, '• 多个文档：POST /api/documents/extract-texts')
+    
+    # 5. 模型管理接口
+    add_heading(doc, '五、模型管理接口', 1)
+    add_heading(doc, '5.1 获取模型列表', 2)
+    add_paragraph(doc, '接口地址：GET /api/models')
+    add_paragraph(doc, '返回所有配置的AI模型列表')
+    
+    add_heading(doc, '5.2 添加模型', 2)
+    add_paragraph(doc, '接口地址：POST /api/models')
+    add_paragraph(doc, '')
+    add_paragraph(doc, '请求参数：')
+    
+    model_params = [
+        ['参数名', '类型', '说明'],
+        ['name', 'string', '模型名称'],
+        ['type', 'string', '模型类型：qianwen/openai/custom'],
+        ['apiKey', 'string', 'API密钥'],
+        ['baseUrl', 'string', 'API基础URL'],
+        ['model', 'string', '模型标识符']
+    ]
+    add_table(doc, model_params[0], model_params[1:])
+    
+    add_heading(doc, '5.3 更新模型', 2)
+    add_paragraph(doc, '接口地址：PUT /api/models/:id')
+    
+    add_heading(doc, '5.4 删除模型', 2)
+    add_paragraph(doc, '接口地址：DELETE /api/models/:id')
+    
+    add_heading(doc, '5.5 测试模型连接', 2)
+    add_paragraph(doc, '接口地址：POST /api/models/:id/test')
+    add_paragraph(doc, '测试模型配置是否正确')
+    
+    # 6. 钉钉认证接口
+    add_heading(doc, '六、钉钉认证接口', 1)
+    add_heading(doc, '6.1 获取钉钉配置', 2)
+    add_paragraph(doc, '接口地址：GET /api/dingtalk/config')
+    add_paragraph(doc, '获取钉钉JSAPI配置信息')
+    
+    add_heading(doc, '6.2 获取用户信息', 2)
+    add_paragraph(doc, '接口地址：POST /api/dingtalk/userinfo')
+    add_paragraph(doc, '通过免登授权码获取用户信息')
+    
+    add_heading(doc, '6.3 验证用户', 2)
+    add_paragraph(doc, '接口地址：POST /api/dingtalk/verify')
+    add_paragraph(doc, '验证用户是否有权访问系统')
+    
+    # 7. 其他接口
+    add_heading(doc, '七、其他接口', 1)
+    add_heading(doc, '7.1 健康检查', 2)
+    add_paragraph(doc, '接口地址：GET /api/health')
+    add_paragraph(doc, '检查服务运行状态和数据完整性')
+    
+    add_heading(doc, '7.2 图片处理', 2)
+    add_paragraph(doc, '• 上传分析：POST /api/images/upload-analyze')
+    add_paragraph(doc, '• 保存图片：POST /api/images/save')
+    add_paragraph(doc, '• 获取图片：GET /api/images/:filename')
+    
+    # 8. 错误码说明
+    add_heading(doc, '八、错误码说明', 1)
+    
+    error_codes = [
+        ['错误码', 'HTTP状态码', '说明'],
+        ['INVALID_REQUEST', '400', '请求参数无效'],
+        ['UNAUTHORIZED', '401', '未授权访问'],
+        ['NOT_FOUND', '404', '资源不存在'],
+        ['RATE_LIMIT', '429', '请求频率过高'],
+        ['INTERNAL_ERROR', '500', '服务器内部错误'],
+        ['AI_SERVICE_ERROR', '503', 'AI服务不可用']
+    ]
+    add_table(doc, error_codes[0], error_codes[1:])
+    
+    # 9. 速率限制
+    add_heading(doc, '九、速率限制', 1)
+    add_paragraph(doc, '• 通用API：每IP每15分钟最多100个请求')
+    add_paragraph(doc, '• AI生成API：每IP每分钟最多10个请求')
+    add_paragraph(doc, '')
+    add_paragraph(doc, '响应头中包含速率限制信息：')
+    add_paragraph(doc, '• X-RateLimit-Limit：限制数量')
+    add_paragraph(doc, '• X-RateLimit-Remaining：剩余请求数')
+    add_paragraph(doc, '• X-RateLimit-Reset：重置时间')
+    
+    # 保存文档
+    doc.save('API接口文档_Word新汇点_v1.6.2.docx')
+    print('API接口文档已生成：API接口文档_Word新汇点_v1.6.2.docx')
+
+
+def test_api_endpoints():
+    """测试API接口的可用性"""
+    import requests
+    import json
+    
+    base_url = 'http://localhost:3003/api'
+    test_results = []
+    
+    print('\n开始测试API接口...')
+    print('-' * 50)
+    
+    # 测试健康检查
+    try:
+        resp = requests.get(f'{base_url}/health')
+        test_results.append({
+            'endpoint': 'GET /api/health',
+            'status': resp.status_code,
+            'result': '✓ 通过' if resp.status_code == 200 else '✗ 失败'
+        })
+        print(f'✓ 健康检查接口正常 (状态码: {resp.status_code})')
+    except Exception as e:
+        test_results.append({
+            'endpoint': 'GET /api/health',
+            'status': 'Error',
+            'result': '✗ 连接失败'
+        })
+        print(f'✗ 健康检查接口失败: {e}')
+    
+    # 测试模板列表
+    try:
+        resp = requests.get(f'{base_url}/templates/list?page=1&pageSize=10')
+        test_results.append({
+            'endpoint': 'GET /api/templates/list',
+            'status': resp.status_code,
+            'result': '✓ 通过' if resp.status_code == 200 else '✗ 失败'
+        })
+        print(f'✓ 模板列表接口正常 (状态码: {resp.status_code})')
+    except Exception as e:
+        test_results.append({
+            'endpoint': 'GET /api/templates/list',
+            'status': 'Error',
+            'result': '✗ 连接失败'
+        })
+        print(f'✗ 模板列表接口失败: {e}')
+    
+    # 测试模型列表
+    try:
+        resp = requests.get(f'{base_url}/models')
+        test_results.append({
+            'endpoint': 'GET /api/models',
+            'status': resp.status_code,
+            'result': '✓ 通过' if resp.status_code == 200 else '✗ 失败'
+        })
+        print(f'✓ 模型列表接口正常 (状态码: {resp.status_code})')
+    except Exception as e:
+        test_results.append({
+            'endpoint': 'GET /api/models',
+            'status': 'Error',
+            'result': '✗ 连接失败'
+        })
+        print(f'✗ 模型列表接口失败: {e}')
+    
+    # 测试文档格式支持
+    try:
+        resp = requests.get(f'{base_url}/documents/formats')
+        test_results.append({
+            'endpoint': 'GET /api/documents/formats',
+            'status': resp.status_code,
+            'result': '✓ 通过' if resp.status_code == 200 else '✗ 失败'
+        })
+        print(f'✓ 文档格式接口正常 (状态码: {resp.status_code})')
+    except Exception as e:
+        test_results.append({
+            'endpoint': 'GET /api/documents/formats',
+            'status': 'Error',
+            'result': '✗ 连接失败'
+        })
+        print(f'✗ 文档格式接口失败: {e}')
+    
+    # 测试AI提供商列表
+    try:
+        resp = requests.get(f'{base_url}/ai-gpt/providers')
+        test_results.append({
+            'endpoint': 'GET /api/ai-gpt/providers',
+            'status': resp.status_code,
+            'result': '✓ 通过' if resp.status_code == 200 else '✗ 失败'
+        })
+        print(f'✓ AI提供商接口正常 (状态码: {resp.status_code})')
+    except Exception as e:
+        test_results.append({
+            'endpoint': 'GET /api/ai-gpt/providers',
+            'status': 'Error',
+            'result': '✗ 连接失败'
+        })
+        print(f'✗ AI提供商接口失败: {e}')
+    
+    print('-' * 50)
+    print('API接口测试完成！')
+    
+    # 生成测试报告
+    print('\n测试结果汇总：')
+    for result in test_results:
+        print(f"{result['endpoint']}: {result['result']} (状态: {result['status']})")
+    
+    return test_results
 
 
 def main():
     """主函数"""
-    print('开始生成Word星辉点项目文档...')
+    print('开始生成Word新汇点项目文档...')
     print('-' * 50)
+    
+    # 生成API接口文档
+    print('正在生成API接口文档...')
+    generate_api_documentation()
     
     # 生成测试报告
     print('正在生成测试报告...')
@@ -646,9 +964,16 @@ def main():
     print('-' * 50)
     print('所有文档已生成完成！')
     print('\n生成的文档列表：')
-    print('1. 测试报告_Word星辉点_v1.6.2.docx')
-    print('2. 用户手册_Word星辉点_v1.6.2.docx')
-    print('3. 部署文档_Word星辉点_v1.6.2.docx')
+    print('1. API接口文档_Word新汇点_v1.6.2.docx')
+    print('2. 测试报告_Word新汇点_v1.6.2.docx')
+    print('3. 用户手册_Word新汇点_v1.6.2.docx')
+    print('4. 部署文档_Word新汇点_v1.6.2.docx')
+    
+    # 询问是否进行API测试
+    print('\n是否进行API接口测试？(y/n): ', end='')
+    choice = input().strip().lower()
+    if choice == 'y':
+        test_api_endpoints()
 
 
 if __name__ == '__main__':
