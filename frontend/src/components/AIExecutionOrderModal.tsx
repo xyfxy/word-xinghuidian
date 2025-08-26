@@ -275,9 +275,18 @@ export default function AIExecutionOrderModal({
                 className={`border rounded-lg p-4 transition-colors ${
                   dragOverGroup === group.id ? 'border-purple-400 bg-purple-50' : 'border-gray-200'
                 }`}
-                onDragOver={(e) => handleDragOver(e, group.id)}
+                onDragOver={(e) => {
+                  if (group.type === 'parallel' || group.blockIds.length === 0) {
+                    handleDragOver(e, group.id)
+                  }
+                }}
                 onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, group.id)}
+                onDrop={(e) => {
+                  // 只处理并行模式或空组的拖放
+                  if (group.type === 'parallel' || group.blockIds.length === 0) {
+                    handleDrop(e, group.id)
+                  }
+                }}
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
@@ -347,22 +356,14 @@ export default function AIExecutionOrderModal({
                 <div 
                   className="min-h-[60px] bg-gray-50 rounded-md p-3"
                   onDragOver={(e) => {
-                    e.preventDefault()
-                    if (group.type === 'serial' && group.blockIds.length > 0) {
-                      // 如果拖拽到空白区域，设置为末尾位置
-                      const rect = e.currentTarget.getBoundingClientRect()
-                      const y = e.clientY - rect.top
-                      const itemHeight = 50 // 估计每个item的高度
-                      const lastItemBottom = group.blockIds.length * itemHeight
-                      if (y > lastItemBottom - 20) {
-                        setDragOverIndex(group.blockIds.length)
-                        setDragOverGroup(group.id)
-                      }
+                    if (group.type === 'parallel' || group.blockIds.length === 0) {
+                      e.preventDefault()
                     }
                   }}
                   onDrop={(e) => {
-                    if (group.type === 'serial' && dragOverIndex === group.blockIds.length) {
-                      handleDrop(e, group.id, group.blockIds.length)
+                    // 空组的情况
+                    if (group.blockIds.length === 0) {
+                      handleDrop(e, group.id)
                     }
                   }}
                 >
@@ -385,14 +386,24 @@ export default function AIExecutionOrderModal({
                               e.preventDefault()
                               e.stopPropagation()
                               if (group.type === 'serial') {
-                                setDragOverIndex(blockIndex)
+                                // 计算应该插入的位置（当前块的前面还是后面）
+                                const rect = e.currentTarget.getBoundingClientRect()
+                                const y = e.clientY - rect.top
+                                const height = rect.height
+                                const insertBefore = y < height / 2
+                                setDragOverIndex(insertBefore ? blockIndex : blockIndex + 1)
                                 setDragOverGroup(group.id)
                               }
                             }}
                             onDrop={(e) => {
+                              e.preventDefault()
                               e.stopPropagation()
                               if (group.type === 'serial') {
-                                handleDrop(e, group.id, blockIndex)
+                                // 使用dragOverIndex作为插入位置
+                                handleDrop(e, group.id, dragOverIndex !== null ? dragOverIndex : blockIndex)
+                              } else if (group.type === 'parallel') {
+                                // 并行模式直接添加到组
+                                handleDrop(e, group.id)
                               }
                             }}
                             className={`px-3 py-2 bg-white border border-gray-300 rounded-md cursor-move hover:shadow-md transition-shadow flex items-center gap-2 ${
@@ -455,15 +466,43 @@ export default function AIExecutionOrderModal({
                               </div>
                             )}
                           </div>
-                          {/* 串行模式下最后一个元素的拖拽占位符 */}
+                          {/* 串行模式下最后一个元素后的拖拽占位符 */}
                           {group.type === 'serial' && 
                            blockIndex === group.blockIds.length - 1 && 
-                           dragOverIndex === group.blockIds.length && 
+                           dragOverIndex === blockIndex + 1 && 
                            dragOverGroup === group.id && (
                             <div className="h-10 border-2 border-dashed border-purple-400 rounded-md mt-2 bg-purple-50" />
                           )}
                         </div>
                       ))}
+                      {/* 串行模式下的末尾拖放区域 */}
+                      {group.type === 'serial' && group.blockIds.length > 0 && (
+                        <div
+                          className={`mt-2 h-10 border-2 border-dashed rounded-md flex items-center justify-center text-sm transition-all ${
+                            dragOverIndex === group.blockIds.length && dragOverGroup === group.id
+                              ? 'border-purple-400 bg-purple-50 text-purple-600'
+                              : 'border-gray-200 text-gray-400 opacity-50'
+                          }`}
+                          onDragOver={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setDragOverIndex(group.blockIds.length)
+                            setDragOverGroup(group.id)
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleDrop(e, group.id, group.blockIds.length)
+                          }}
+                          onDragLeave={() => {
+                            if (dragOverIndex === group.blockIds.length) {
+                              setDragOverIndex(null)
+                            }
+                          }}
+                        >
+                          + 拖到这里添加到末尾
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
