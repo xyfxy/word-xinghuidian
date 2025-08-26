@@ -380,9 +380,47 @@ export default function AIExecutionOrderModal({
                     </p>
                   ) : (
                     <div className={`flex ${group.type === 'serial' ? 'flex-col' : 'flex-wrap'} gap-2`}>
+                      {/* 串行模式下第一个位置的拖放区域 */}
+                      {group.type === 'serial' && group.blockIds.length > 0 && (
+                        <div
+                          className={`h-8 border-2 border-dashed rounded-md flex items-center justify-center text-xs transition-all ${
+                            dragOverIndex === 0 && dragOverGroup === group.id
+                              ? 'border-purple-400 bg-purple-50 text-purple-600'
+                              : 'border-gray-200 text-gray-400 opacity-50'
+                          }`}
+                          onDragOver={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            const newIndex = 0
+                            if (newIndex !== lastDragOverIndex) {
+                              setDragOverIndex(newIndex)
+                              setLastDragOverIndex(newIndex)
+                              setDragOverGroup(group.id)
+                            }
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleDrop(e, group.id, 0)
+                          }}
+                          onDragLeave={(e) => {
+                            // 只有当离开整个容器时才重置
+                            const rect = e.currentTarget.getBoundingClientRect()
+                            const x = e.clientX
+                            const y = e.clientY
+                            if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                              setDragOverIndex(null)
+                              setLastDragOverIndex(null)
+                            }
+                          }}
+                        >
+                          + 拖到这里添加到最前
+                        </div>
+                      )}
+                      
                       {group.blockIds.map((blockId, blockIndex) => (
                         <div key={blockId} className="relative">
-                          {/* 串行模式下的拖拽占位符 */}
+                          {/* 串行模式下的拖拽占位符（在当前块之前） */}
                           {group.type === 'serial' && dragOverIndex === blockIndex && dragOverGroup === group.id && (
                             <div className="h-10 border-2 border-dashed border-purple-400 rounded-md mb-2 bg-purple-50" />
                           )}
@@ -398,6 +436,7 @@ export default function AIExecutionOrderModal({
                                 const y = e.clientY - rect.top
                                 const height = rect.height
                                 const insertBefore = y < height / 2
+                                // 插入位置：如果是在上半部分，插入到该块前面；下半部分插入到该块后面
                                 const newIndex = insertBefore ? blockIndex : blockIndex + 1
                                 
                                 // 只有当位置真正改变时才更新，避免闪烁
@@ -482,7 +521,7 @@ export default function AIExecutionOrderModal({
                           {/* 串行模式下最后一个元素后的拖拽占位符 */}
                           {group.type === 'serial' && 
                            blockIndex === group.blockIds.length - 1 && 
-                           dragOverIndex === blockIndex + 1 && 
+                           dragOverIndex === group.blockIds.length && 
                            dragOverGroup === group.id && (
                             <div className="h-10 border-2 border-dashed border-purple-400 rounded-md mt-2 bg-purple-50" />
                           )}
