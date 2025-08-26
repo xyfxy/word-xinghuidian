@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { X, Sparkles, Play, Layers, Zap, Clock, Info, Ban } from 'lucide-react'
+import { X, Sparkles, Play, Layers, Zap, Clock, Info } from 'lucide-react'
 import { ContentBlock } from '../types'
 
 interface ExecutionGroup {
@@ -36,16 +36,17 @@ export default function AIExecutionOrderModal({
   // 初始化执行组
   useEffect(() => {
     if (isOpen && aiBlocks.length > 0) {
-      // 默认创建一个并行组，包含所有AI块
+      // 默认创建一个空的并行组，让用户自己添加内容块
       setExecutionGroups([
         {
           id: 'group-1',
           name: '组 1',
           type: 'parallel',
-          blockIds: aiBlocks.map(b => b.id)
+          blockIds: []
         }
       ])
-      setExcludedBlocks([]) // 重置排除列表
+      // 默认所有AI块都在排除区域，用户可以拖入执行组
+      setExcludedBlocks(aiBlocks.map(b => b.id))
     }
   }, [isOpen])
 
@@ -189,10 +190,7 @@ export default function AIExecutionOrderModal({
     return block?.title || '未知内容块'
   }
 
-  const getUnassignedBlocks = () => {
-    const assignedIds = executionGroups.flatMap(g => g.blockIds)
-    return aiBlocks.filter(b => !assignedIds.includes(b.id) && !excludedBlocks.includes(b.id))
-  }
+  // 移除未分配内容块的概念，所有未在执行组的都在排除区域
 
   if (!isOpen) return null
 
@@ -218,8 +216,7 @@ export default function AIExecutionOrderModal({
           <div className="flex items-start gap-2">
             <Info className="w-5 h-5 text-blue-600 mt-0.5" />
             <div className="text-sm text-blue-800">
-              <p>拖拽调整执行顺序，串行组内顺序会影响执行先后。</p>
-              <p className="text-red-700 font-medium">拖到排除区域可跳过生成。</p>
+              <p>将待分配的内容块拖入执行组，串行组内顺序决定执行先后。</p>
             </div>
           </div>
         </div>
@@ -227,30 +224,10 @@ export default function AIExecutionOrderModal({
         {/* 主内容区 */}
         <div className="flex-1 overflow-y-auto p-6">
           <div className="space-y-4">
-            {/* 未分配的内容块 */}
-            {getUnassignedBlocks().length > 0 && (
-              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">未分配的内容块</h3>
-                <div className="flex flex-wrap gap-2">
-                  {getUnassignedBlocks().map(block => (
-                    <div
-                      key={block.id}
-                      draggable
-                      onDragStart={() => handleDragStart(block.id, 'unassigned')}
-                      className="px-3 py-2 bg-white border border-gray-300 rounded-md cursor-move hover:shadow-md transition-shadow flex items-center gap-2"
-                    >
-                      <Sparkles className="w-4 h-4 text-purple-500" />
-                      <span className="text-sm">{block.title}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 排除的内容块 */}
+            {/* 待执行/排除的内容块 */}
             <div 
               className={`border rounded-lg p-4 transition-colors ${
-                dragOverExcluded ? 'border-red-400 bg-red-50' : 'border-red-200 bg-red-50/50'
+                dragOverExcluded ? 'border-gray-400 bg-gray-100' : 'border-gray-300 bg-gray-50'
               }`}
               onDragOver={(e) => {
                 e.preventDefault()
@@ -260,18 +237,18 @@ export default function AIExecutionOrderModal({
               onDrop={handleDropToExcluded}
             >
               <div className="flex items-center gap-3 mb-3">
-                <Ban className="w-5 h-5 text-red-600" />
-                <h3 className="font-medium text-red-900">排除的内容块（不会生成）</h3>
+                <Layers className="w-5 h-5 text-gray-600" />
+                <h3 className="font-medium text-gray-900">待分配的AI内容块</h3>
                 {excludedBlocks.length > 0 && (
-                  <span className="text-sm text-red-600 ml-auto">
-                    {excludedBlocks.length} 个内容块已排除
+                  <span className="text-sm text-gray-600 ml-auto">
+                    {excludedBlocks.length} 个内容块待分配（拖入执行组来生成）
                   </span>
                 )}
               </div>
-              <div className="min-h-[60px] bg-red-50 rounded-md p-3 border border-red-100">
+              <div className="min-h-[60px] bg-white rounded-md p-3 border border-gray-200">
                 {excludedBlocks.length === 0 ? (
-                  <p className="text-red-400 text-sm text-center py-3">
-                    拖拽内容块到这里以排除生成
+                  <p className="text-gray-400 text-sm text-center py-3">
+                    所有内容块都已分配到执行组
                   </p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
@@ -280,10 +257,10 @@ export default function AIExecutionOrderModal({
                         key={blockId}
                         draggable
                         onDragStart={() => handleDragStart(blockId, 'excluded')}
-                        className="px-3 py-2 bg-white border border-red-300 rounded-md cursor-move hover:shadow-md transition-shadow flex items-center gap-2"
+                        className="px-3 py-2 bg-white border border-gray-300 rounded-md cursor-move hover:shadow-md transition-shadow flex items-center gap-2"
                       >
-                        <Ban className="w-4 h-4 text-red-500" />
-                        <span className="text-sm line-through text-gray-600">{getBlockTitle(blockId)}</span>
+                        <Sparkles className="w-4 h-4 text-purple-500" />
+                        <span className="text-sm">{getBlockTitle(blockId)}</span>
                       </div>
                     ))}
                   </div>
