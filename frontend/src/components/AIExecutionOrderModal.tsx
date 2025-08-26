@@ -28,6 +28,7 @@ export default function AIExecutionOrderModal({
   const [draggedFromGroup, setDraggedFromGroup] = useState<string | null>(null)
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null)
   const [dragOverExcluded, setDragOverExcluded] = useState(false)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null) // 拖拽到的位置索引
 
   // 获取AI内容块
   const aiBlocks = contentBlocks.filter(b => b.type === 'ai-generated' && b.aiPrompt)
@@ -62,23 +63,21 @@ export default function AIExecutionOrderModal({
     setDragOverGroup(null)
   }
 
-  const handleDrop = (e: React.DragEvent, targetGroupId: string) => {
+  const handleDrop = (e: React.DragEvent, targetGroupId: string, dropIndex?: number) => {
     e.preventDefault()
     if (!draggedBlockId || !draggedFromGroup) return
 
     // 如果从排除区域拖出
     if (draggedFromGroup === 'excluded') {
       setExcludedBlocks(prev => prev.filter(id => id !== draggedBlockId))
-    } else {
+    } else if (draggedFromGroup !== 'unassigned') {
+      // 从源组移除（如果不是从未分配区域拖出）
       setExecutionGroups(prev => {
         const newGroups = [...prev]
-        
-        // 从源组移除
         const sourceGroup = newGroups.find(g => g.id === draggedFromGroup)
         if (sourceGroup) {
           sourceGroup.blockIds = sourceGroup.blockIds.filter(id => id !== draggedBlockId)
         }
-        
         return newGroups
       })
     }
@@ -87,8 +86,15 @@ export default function AIExecutionOrderModal({
     setExecutionGroups(prev => {
       const newGroups = [...prev]
       const targetGroup = newGroups.find(g => g.id === targetGroupId)
-      if (targetGroup && !targetGroup.blockIds.includes(draggedBlockId)) {
-        targetGroup.blockIds.push(draggedBlockId)
+      if (targetGroup) {
+        // 先移除（如果已存在）
+        targetGroup.blockIds = targetGroup.blockIds.filter(id => id !== draggedBlockId)
+        // 然后在指定位置插入
+        if (dropIndex !== undefined) {
+          targetGroup.blockIds.splice(dropIndex, 0, draggedBlockId)
+        } else {
+          targetGroup.blockIds.push(draggedBlockId)
+        }
       }
       return newGroups
     })
@@ -96,6 +102,7 @@ export default function AIExecutionOrderModal({
     setDraggedBlockId(null)
     setDraggedFromGroup(null)
     setDragOverGroup(null)
+    setDragOverIndex(null)
   }
 
   const handleDropToExcluded = (e: React.DragEvent) => {
@@ -211,9 +218,8 @@ export default function AIExecutionOrderModal({
           <div className="flex items-start gap-2">
             <Info className="w-5 h-5 text-blue-600 mt-0.5" />
             <div className="text-sm text-blue-800">
-              <p>将内容块拖拽到不同的执行组中，每个组可以选择串行或并行执行。</p>
-              <p>执行时会按组的顺序依次执行，组内按照配置的方式执行。</p>
-              <p className="text-red-700 font-medium mt-1">拖拽内容块到"排除区域"可以跳过该块的生成。</p>
+              <p>拖拽调整执行顺序，串行组内顺序会影响执行先后。</p>
+              <p className="text-red-700 font-medium">拖到排除区域可跳过生成。</p>
             </div>
           </div>
         </div>
@@ -361,22 +367,124 @@ export default function AIExecutionOrderModal({
                 </div>
 
                 {/* 组内的内容块 */}
-                <div className="min-h-[60px] bg-gray-50 rounded-md p-3">
+                <div 
+                  className="min-h-[60px] bg-gray-50 rounded-md p-3"
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    if (group.type === 'serial' && group.blockIds.length > 0) {
+                      // 如果拖拽到空白区域，设置为末尾位置
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      const y = e.clientY - rect.top
+                      const itemHeight = 50 // 估计每个item的高度
+                      const lastItemBottom = group.blockIds.length * itemHeight
+                      if (y > lastItemBottom - 20) {
+                        setDragOverIndex(group.blockIds.length)
+                        setDragOverGroup(group.id)
+                      }
+                    }
+                  }}
+                  onDrop={(e) => {
+                    if (group.type === 'serial' && dragOverIndex === group.blockIds.length) {
+                      handleDrop(e, group.id, group.blockIds.length)
+                    }
+                  }}
+                >
                   {group.blockIds.length === 0 ? (
                     <p className="text-gray-400 text-sm text-center py-3">
                       拖拽内容块到这里
                     </p>
                   ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {group.blockIds.map(blockId => (
-                        <div
-                          key={blockId}
-                          draggable
-                          onDragStart={() => handleDragStart(blockId, group.id)}
-                          className="px-3 py-2 bg-white border border-gray-300 rounded-md cursor-move hover:shadow-md transition-shadow flex items-center gap-2"
-                        >
-                          <Sparkles className="w-4 h-4 text-purple-500" />
-                          <span className="text-sm">{getBlockTitle(blockId)}</span>
+                    <div className={`flex ${group.type === 'serial' ? 'flex-col' : 'flex-wrap'} gap-2`}>
+                      {group.blockIds.map((blockId, blockIndex) => (
+                        <div key={blockId} className="relative">
+                          {/* 串行模式下的拖拽占位符 */}
+                          {group.type === 'serial' && dragOverIndex === blockIndex && dragOverGroup === group.id && (
+                            <div className="h-10 border-2 border-dashed border-purple-400 rounded-md mb-2 bg-purple-50" />
+                          )}
+                          <div
+                            draggable
+                            onDragStart={() => handleDragStart(blockId, group.id)}
+                            onDragOver={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              if (group.type === 'serial') {
+                                setDragOverIndex(blockIndex)
+                                setDragOverGroup(group.id)
+                              }
+                            }}
+                            onDrop={(e) => {
+                              e.stopPropagation()
+                              if (group.type === 'serial') {
+                                handleDrop(e, group.id, blockIndex)
+                              }
+                            }}
+                            className={`px-3 py-2 bg-white border border-gray-300 rounded-md cursor-move hover:shadow-md transition-shadow flex items-center gap-2 ${
+                              group.type === 'serial' ? 'w-full justify-between' : ''
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              {group.type === 'serial' && (
+                                <span className="text-xs text-gray-500 font-medium">{blockIndex + 1}.</span>
+                              )}
+                              <Sparkles className="w-4 h-4 text-purple-500" />
+                              <span className="text-sm">{getBlockTitle(blockId)}</span>
+                            </div>
+                            {group.type === 'serial' && (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    if (blockIndex > 0) {
+                                      setExecutionGroups(prev => {
+                                        const newGroups = [...prev]
+                                        const currentGroup = newGroups.find(g => g.id === group.id)
+                                        if (currentGroup) {
+                                          const temp = currentGroup.blockIds[blockIndex]
+                                          currentGroup.blockIds[blockIndex] = currentGroup.blockIds[blockIndex - 1]
+                                          currentGroup.blockIds[blockIndex - 1] = temp
+                                        }
+                                        return newGroups
+                                      })
+                                    }
+                                  }}
+                                  disabled={blockIndex === 0}
+                                  className="p-0.5 hover:bg-gray-100 rounded disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                                  title="上移"
+                                >
+                                  ↑
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    if (blockIndex < group.blockIds.length - 1) {
+                                      setExecutionGroups(prev => {
+                                        const newGroups = [...prev]
+                                        const currentGroup = newGroups.find(g => g.id === group.id)
+                                        if (currentGroup) {
+                                          const temp = currentGroup.blockIds[blockIndex]
+                                          currentGroup.blockIds[blockIndex] = currentGroup.blockIds[blockIndex + 1]
+                                          currentGroup.blockIds[blockIndex + 1] = temp
+                                        }
+                                        return newGroups
+                                      })
+                                    }
+                                  }}
+                                  disabled={blockIndex === group.blockIds.length - 1}
+                                  className="p-0.5 hover:bg-gray-100 rounded disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                                  title="下移"
+                                >
+                                  ↓
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          {/* 串行模式下最后一个元素的拖拽占位符 */}
+                          {group.type === 'serial' && 
+                           blockIndex === group.blockIds.length - 1 && 
+                           dragOverIndex === group.blockIds.length && 
+                           dragOverGroup === group.id && (
+                            <div className="h-10 border-2 border-dashed border-purple-400 rounded-md mt-2 bg-purple-50" />
+                          )}
                         </div>
                       ))}
                     </div>
