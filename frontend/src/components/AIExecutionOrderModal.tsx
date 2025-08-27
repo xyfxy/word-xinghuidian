@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { X, Sparkles, Play, Layers, Zap, Clock, Info } from 'lucide-react'
 import { ContentBlock } from '../types'
 
@@ -29,10 +29,10 @@ export default function AIExecutionOrderModal({
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null)
   const [dragOverExcluded, setDragOverExcluded] = useState(false)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null) // 拖拽到的位置索引
-  const [lastDragOverIndex, setLastDragOverIndex] = useState<number | null>(null) // 上次的拖拽位置，避免重复更新
 
   // 获取AI内容块
   const aiBlocks = contentBlocks.filter(b => b.type === 'ai-generated' && b.aiPrompt)
+
 
   // 初始化执行组
   useEffect(() => {
@@ -51,13 +51,12 @@ export default function AIExecutionOrderModal({
     }
   }, [isOpen])
 
-  const handleDragStart = (blockId: string, fromGroupId: string) => {
+  const handleDragStart = useCallback((blockId: string, fromGroupId: string) => {
     setDraggedBlockId(blockId)
     setDraggedFromGroup(fromGroupId)
     // 重置拖拽位置状态
     setDragOverIndex(null)
-    setLastDragOverIndex(null)
-  }
+  }, [])
 
   const handleDragOver = (e: React.DragEvent, groupId: string) => {
     e.preventDefault()
@@ -108,7 +107,6 @@ export default function AIExecutionOrderModal({
     setDraggedFromGroup(null)
     setDragOverGroup(null)
     setDragOverIndex(null)
-    setLastDragOverIndex(null)
   }
 
   const handleDropToExcluded = (e: React.DragEvent) => {
@@ -136,7 +134,6 @@ export default function AIExecutionOrderModal({
     setDraggedFromGroup(null)
     setDragOverExcluded(false)
     setDragOverIndex(null)
-    setLastDragOverIndex(null)
   }
 
   const addNewGroup = () => {
@@ -285,6 +282,9 @@ export default function AIExecutionOrderModal({
                 onDragOver={(e) => {
                   if (group.type === 'parallel' || group.blockIds.length === 0) {
                     handleDragOver(e, group.id)
+                  } else {
+                    // 串行模式下也要阻止默认行为，避免显示禁止图标
+                    e.preventDefault()
                   }
                 }}
                 onDragLeave={handleDragLeave}
@@ -363,9 +363,8 @@ export default function AIExecutionOrderModal({
                 <div 
                   className="min-h-[60px] bg-gray-50 rounded-md p-3"
                   onDragOver={(e) => {
-                    if (group.type === 'parallel' || group.blockIds.length === 0) {
-                      e.preventDefault()
-                    }
+                    // 始终阻止默认行为，避免显示禁止图标
+                    e.preventDefault()
                   }}
                   onDrop={(e) => {
                     // 空组的情况
@@ -380,86 +379,76 @@ export default function AIExecutionOrderModal({
                     </p>
                   ) : (
                     <div className={`flex ${group.type === 'serial' ? 'flex-col' : 'flex-wrap'} gap-2`}>
-                      {/* 串行模式下第一个位置的拖放区域 */}
-                      {group.type === 'serial' && group.blockIds.length > 0 && (
-                        <div
-                          className={`h-8 border-2 border-dashed rounded-md flex items-center justify-center text-xs transition-all ${
-                            dragOverIndex === 0 && dragOverGroup === group.id
-                              ? 'border-purple-400 bg-purple-50 text-purple-600'
-                              : 'border-gray-200 text-gray-400 opacity-50'
-                          }`}
-                          onDragOver={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            const newIndex = 0
-                            if (newIndex !== lastDragOverIndex) {
-                              setDragOverIndex(newIndex)
-                              setLastDragOverIndex(newIndex)
-                              setDragOverGroup(group.id)
-                            }
-                          }}
-                          onDrop={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            handleDrop(e, group.id, 0)
-                          }}
-                          onDragLeave={(e) => {
-                            // 只有当离开整个容器时才重置
-                            const rect = e.currentTarget.getBoundingClientRect()
-                            const x = e.clientX
-                            const y = e.clientY
-                            if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-                              setDragOverIndex(null)
-                              setLastDragOverIndex(null)
-                            }
-                          }}
-                        >
-                          + 拖到这里添加到最前
-                        </div>
-                      )}
                       
                       {group.blockIds.map((blockId, blockIndex) => (
-                        <div key={blockId} className="relative">
-                          {/* 串行模式下的拖拽占位符（在当前块之前） */}
-                          {group.type === 'serial' && dragOverIndex === blockIndex && dragOverGroup === group.id && (
-                            <div className="h-10 border-2 border-dashed border-purple-400 rounded-md mb-2 bg-purple-50" />
-                          )}
                           <div
+                            key={blockId}
                             draggable
                             onDragStart={() => handleDragStart(blockId, group.id)}
                             onDragOver={(e) => {
                               e.preventDefault()
                               e.stopPropagation()
-                              if (group.type === 'serial' && draggedBlockId !== blockId) {
-                                // 计算应该插入的位置（当前块的前面还是后面）
-                                const rect = e.currentTarget.getBoundingClientRect()
-                                const y = e.clientY - rect.top
-                                const height = rect.height
-                                const insertBefore = y < height / 2
-                                // 插入位置：如果是在上半部分，插入到该块前面；下半部分插入到该块后面
-                                const newIndex = insertBefore ? blockIndex : blockIndex + 1
-                                
-                                // 只有当位置真正改变时才更新，避免闪烁
-                                if (newIndex !== lastDragOverIndex) {
-                                  setDragOverIndex(newIndex)
-                                  setLastDragOverIndex(newIndex)
-                                  setDragOverGroup(group.id)
-                                }
+                              if (group.type === 'serial') {
+                                // 记录当前悬停的位置
+                                setDragOverIndex(blockIndex)
+                                setDragOverGroup(group.id)
                               }
+                            }}
+                            onDragLeave={() => {
+                              // 清除悬停状态
+                              setDragOverIndex(null)
                             }}
                             onDrop={(e) => {
                               e.preventDefault()
                               e.stopPropagation()
-                              if (group.type === 'serial') {
-                                // 使用dragOverIndex作为插入位置
-                                handleDrop(e, group.id, dragOverIndex !== null ? dragOverIndex : blockIndex)
+                              if (group.type === 'serial' && draggedBlockId) {
+                                // 找到拖拽块的原始索引
+                                const draggedIndex = group.blockIds.indexOf(draggedBlockId)
+                                
+                                // 如果是同一个位置，不做任何操作
+                                if (draggedIndex === blockIndex) {
+                                  setDragOverIndex(null)
+                                  return
+                                }
+                                
+                                // 创建新的数组
+                                const newBlockIds = [...group.blockIds]
+                                
+                                // 如果拖拽的块在这个组中
+                                if (draggedIndex !== -1) {
+                                  // 移除原位置的块
+                                  const [removed] = newBlockIds.splice(draggedIndex, 1)
+                                  // 在目标位置插入
+                                  const targetIndex = draggedIndex < blockIndex ? blockIndex - 1 : blockIndex
+                                  newBlockIds.splice(targetIndex, 0, removed)
+                                } else {
+                                  // 从其他地方拖来的，直接插入到目标位置
+                                  handleDrop(e, group.id, blockIndex)
+                                  setDragOverIndex(null)
+                                  return
+                                }
+                                
+                                // 更新组的内容块顺序
+                                setExecutionGroups(prev => 
+                                  prev.map(g => 
+                                    g.id === group.id 
+                                      ? { ...g, blockIds: newBlockIds }
+                                      : g
+                                  )
+                                )
+                                
+                                setDragOverIndex(null)
                               } else if (group.type === 'parallel') {
                                 // 并行模式直接添加到组
                                 handleDrop(e, group.id)
                               }
                             }}
-                            className={`px-3 py-2 bg-white border border-gray-300 rounded-md cursor-move hover:shadow-md transition-shadow flex items-center gap-2 ${
+                            className={`px-3 py-2 bg-white border rounded-md cursor-move hover:shadow-sm transition-all duration-200 flex items-center gap-2 ${
                               group.type === 'serial' ? 'w-full justify-between' : ''
+                            } ${
+                              group.type === 'serial' && dragOverIndex === blockIndex && dragOverGroup === group.id
+                                ? 'ring-2 ring-purple-400 border-purple-400 bg-purple-50'
+                                : 'border-gray-300'
                             }`}
                           >
                             <div className="flex items-center gap-2">
@@ -518,52 +507,7 @@ export default function AIExecutionOrderModal({
                               </div>
                             )}
                           </div>
-                          {/* 串行模式下最后一个元素后的拖拽占位符 */}
-                          {group.type === 'serial' && 
-                           blockIndex === group.blockIds.length - 1 && 
-                           dragOverIndex === group.blockIds.length && 
-                           dragOverGroup === group.id && (
-                            <div className="h-10 border-2 border-dashed border-purple-400 rounded-md mt-2 bg-purple-50" />
-                          )}
-                        </div>
                       ))}
-                      {/* 串行模式下的末尾拖放区域 */}
-                      {group.type === 'serial' && group.blockIds.length > 0 && (
-                        <div
-                          className={`mt-2 h-10 border-2 border-dashed rounded-md flex items-center justify-center text-sm transition-all ${
-                            dragOverIndex === group.blockIds.length && dragOverGroup === group.id
-                              ? 'border-purple-400 bg-purple-50 text-purple-600'
-                              : 'border-gray-200 text-gray-400 opacity-50'
-                          }`}
-                          onDragOver={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            const newIndex = group.blockIds.length
-                            if (newIndex !== lastDragOverIndex) {
-                              setDragOverIndex(newIndex)
-                              setLastDragOverIndex(newIndex)
-                              setDragOverGroup(group.id)
-                            }
-                          }}
-                          onDrop={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            handleDrop(e, group.id, group.blockIds.length)
-                          }}
-                          onDragLeave={(e) => {
-                            // 只有当离开整个容器时才重置
-                            const rect = e.currentTarget.getBoundingClientRect()
-                            const x = e.clientX
-                            const y = e.clientY
-                            if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-                              setDragOverIndex(null)
-                              setLastDragOverIndex(null)
-                            }
-                          }}
-                        >
-                          + 拖到这里添加到末尾
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>

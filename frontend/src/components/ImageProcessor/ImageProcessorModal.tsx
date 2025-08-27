@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Upload, Sparkles, ArrowDown, Image as ImageIcon, Copy, CopyCheck, Trash2, Edit3, Save, XCircle, ChevronDown } from 'lucide-react';
+import { X, Upload, Sparkles, ArrowDown, Image as ImageIcon, Copy, CopyCheck, Trash2, Edit3, Save, XCircle, ChevronDown, RefreshCw } from 'lucide-react';
 import { imageService } from '../../services/imageService';
 import { modelService } from '../../services/modelService';
 import { AIModelListItem, ImageAnalysisResult } from '../../types/model';
@@ -475,7 +475,216 @@ export default function ImageProcessorModal({
       toast.success(`成功插入 ${freshCount} 张图片`);
     }
     
-    handleClose();
+    // 不再关闭弹窗
+    // handleClose();
+  };
+
+  // 重新解析单个图片
+  const reanalyzeImage = async (imageId: string) => {
+    if (!selectedModel) {
+      toast.error('请选择多模态模型');
+      return;
+    }
+
+    const imageToAnalyze = images.find(img => img.id === imageId);
+    if (!imageToAnalyze) {
+      toast.error('图片不存在');
+      return;
+    }
+
+    // 设置该图片为正在分析状态
+    setImages(prev =>
+      prev.map(img =>
+        img.id === imageId
+          ? { ...img, isAnalyzing: true }
+          : img
+      )
+    );
+
+    try {
+      const response = await imageService.uploadAndAnalyze({
+        modelId: selectedModel,
+        images: [imageToAnalyze.base64],
+        prompt: analysisPrompt,
+        analysisType: 'custom'
+      });
+
+      if (response.success && response.results[0]) {
+        const analysis = response.results[0];
+        let formattedAnalysis = '';
+        
+        if (analysis?.description) {
+          formattedAnalysis = await formatMaxKbContent(analysis.description);
+        }
+
+        // 更新该图片的分析结果
+        setImages(prev =>
+          prev.map(img =>
+            img.id === imageId
+              ? {
+                  ...img,
+                  analysis,
+                  formattedAnalysis,
+                  isAnalyzing: false,
+                  isCachedResult: false
+                }
+              : img
+          )
+        );
+
+        // 更新缓存
+        const cache = getCache();
+        if (cache) {
+          const updatedCache = {
+            ...cache,
+            images: cache.images.map(img =>
+              img.id === imageId
+                ? {
+                    ...img,
+                    analysis,
+                    formattedAnalysis,
+                    processedAt: Date.now()
+                  }
+                : img
+            ),
+            lastUsedAt: Date.now()
+          };
+          setCache(updatedCache);
+        }
+
+        toast.success(`图片"${getFileNameWithoutExtension(imageToAnalyze.file.name)}"重新解析成功`);
+      } else {
+        toast.error('重新解析失败');
+        setImages(prev =>
+          prev.map(img =>
+            img.id === imageId
+              ? { ...img, isAnalyzing: false }
+              : img
+          )
+        );
+      }
+    } catch (error) {
+      console.error('重新解析图片失败:', error);
+      toast.error('重新解析失败');
+      setImages(prev =>
+        prev.map(img =>
+          img.id === imageId
+            ? { ...img, isAnalyzing: false }
+            : img
+        )
+      );
+    }
+  };
+
+  // 解析并插入图片
+  const handleAnalyzeAndInsert = async () => {
+    if (images.length === 0) {
+      toast.error('请先上传图片');
+      return;
+    }
+
+    if (!selectedModel) {
+      toast.error('请选择多模态模型');
+      return;
+    }
+
+    setIsAnalyzing(true);
+    
+    try {
+      // 准备分析请求
+      const base64Images = images.map(img => img.base64);
+      
+      const response = await imageService.uploadAndAnalyze({
+        modelId: selectedModel,
+        images: base64Images,
+        prompt: analysisPrompt,
+        analysisType: 'custom'
+      });
+
+      if (response.success) {
+        // 更新图片分析结果并格式化
+        const updatedImages = await Promise.all(images.map(async (img, index) => {
+          const analysis = response.results[index];
+          let formattedAnalysis = '';
+          
+          if (analysis?.description) {
+            // 格式化分析结果，支持Markdown
+            formattedAnalysis = await formatMaxKbContent(analysis.description);
+          }
+          
+          return {
+            ...img,
+            analysis,
+            formattedAnalysis
+          };
+        }));
+        
+        setImages(updatedImages);
+        
+        // 保存到缓存（可选）
+        try {
+          const compressedImages = await Promise.all(
+            updatedImages.map(async (img) => {
+              let compressedBase64 = img.base64;
+              
+              try {
+                const originalSizeKB = getBase64Size(img.base64);
+                if (originalSizeKB > 100) {
+                  compressedBase64 = await compressBase64Image(img.base64, {
+                    maxWidth: 300,
+                    maxHeight: 300,
+                    quality: 0.7,
+                    maxSizeKB: 150
+                  });
+                }
+              } catch (compressError) {
+                console.warn(`图片 ${img.file.name} 压缩失败:`, compressError);
+              }
+              
+              return {
+                id: img.id,
+                filename: img.file.name,
+                compressedBase64,
+                analysis: img.analysis,
+                formattedAnalysis: img.formattedAnalysis,
+                processedAt: Date.now()
+              };
+            })
+          );
+
+          const cacheData = {
+            modelId: selectedModel,
+            prompt: analysisPrompt,
+            images: compressedImages,
+            createdAt: Date.now(),
+            lastUsedAt: Date.now()
+          };
+
+          setCache(cacheData);
+        } catch (error) {
+          console.warn('缓存保存失败:', error);
+        }
+        
+        // 分析成功后立即插入图片
+        const validImages = updatedImages.filter(img => img.base64);
+        if (validImages.length > 0) {
+          const imageData = validImages.map(img => ({
+            base64: img.base64,
+            filename: img.file.name
+          }));
+          
+          onInsertImages(imageData);
+          toast.success(`成功解析并插入 ${validImages.length} 张图片`);
+        }
+      } else {
+        toast.error(response.error || '图片分析失败');
+      }
+    } catch (error) {
+      console.error('图片分析失败:', error);
+      toast.error('图片分析失败');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   // 复制单个分析结果
@@ -681,7 +890,7 @@ export default function ImageProcessorModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[95vh] overflow-hidden flex flex-col">
         {/* 头部 */}
         <div className="p-6 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center justify-between">
@@ -930,9 +1139,16 @@ export default function ImageProcessorModal({
                                     return nameWithoutExt.length > 20 ? nameWithoutExt.substring(0, 20) + '...' : nameWithoutExt;
                                   })()}
                                 </span>
-                                <span className="text-xs px-2 py-1 bg-green-100 text-green-600 rounded">
-                                  已分析
-                                </span>
+                                {image.isAnalyzing ? (
+                                  <span className="text-xs px-2 py-1 bg-purple-100 text-purple-600 rounded flex items-center gap-1">
+                                    <RefreshCw className="w-3 h-3 animate-spin" />
+                                    解析中
+                                  </span>
+                                ) : (
+                                  <span className="text-xs px-2 py-1 bg-green-100 text-green-600 rounded">
+                                    已分析
+                                  </span>
+                                )}
                                 {image.isEditing && (
                                   <span className="text-xs px-2 py-1 bg-blue-100 text-blue-600 rounded">
                                     编辑中
@@ -959,6 +1175,18 @@ export default function ImageProcessorModal({
                                   </>
                                 ) : (
                                   <>
+                                    <button
+                                      onClick={() => reanalyzeImage(image.id)}
+                                      className="p-1 text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded transition-colors"
+                                      title="重新解析"
+                                      disabled={image.isAnalyzing || isAnalyzing || !selectedModel}
+                                    >
+                                      {image.isAnalyzing ? (
+                                        <RefreshCw className="w-4 h-4 animate-spin" />
+                                      ) : (
+                                        <RefreshCw className="w-4 h-4" />
+                                      )}
+                                    </button>
                                     <button
                                       onClick={() => startEditing(image.id, image.analysis!.description || '')}
                                       className="p-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
@@ -1048,14 +1276,23 @@ export default function ImageProcessorModal({
                     className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
                   >
                     <Sparkles className="w-4 h-4" />
-                    {isAnalyzing ? '分析中...' : '开始分析'}
+                    {isAnalyzing ? '分析中...' : '解析'}
                   </button>
                   <button
                     onClick={handleInsertImages}
                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2 transition-colors"
                   >
                     <ArrowDown className="w-4 h-4" />
-                    按顺序插入到模板
+                    插入图片
+                  </button>
+                  <button
+                    onClick={handleAnalyzeAndInsert}
+                    disabled={isAnalyzing || !selectedModel || multimodalModels.length === 0}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <ArrowDown className="w-4 h-4" />
+                    解析并插入图片
                   </button>
                   {/* 插入到AI提示词按钮 */}
                   {onInsertToPrompt && availableAIBlocks.length > 0 && images.some(img => img.analysis) && (

@@ -37,6 +37,12 @@ export default function UseTemplatePage() {
   const [showGenerateOptions, setShowGenerateOptions] = useState(false)
   const [showExecutionOrderModal, setShowExecutionOrderModal] = useState(false)
   const generateOptionsRef = useRef<HTMLDivElement>(null)
+  const contentBlocksRef = useRef<ContentBlock[]>([])
+  
+  // 同步 contentBlocks 到 ref
+  useEffect(() => {
+    contentBlocksRef.current = contentBlocks
+  }, [contentBlocks])
   
   // 复制粘贴功能
   const [copiedBlock, setCopiedBlock] = useState<ContentBlock | null>(null)
@@ -150,6 +156,146 @@ export default function UseTemplatePage() {
         block.id === blockId ? { ...block, aiPrompt } : block
       )
     )
+  }
+
+  // 使用最新contentBlocks的AI生成函数（用于智能执行）
+  const handleAIGenerateWithLatest = async (blockId: string) => {
+    const latestBlocks = contentBlocksRef.current
+    const block = latestBlocks.find(b => b.id === blockId)
+    if (!block || block.type !== 'ai-generated' || !block.aiPrompt) return
+    
+    console.log(`开始执行块 ${blockId}，可用的内容块数量:`, latestBlocks.length)
+
+    setIsGenerating(true)
+    setGeneratingBlockId(blockId)
+    setGenerationStartTime(Date.now())
+    // 重置计时器
+    try {
+      // 处理提示词中的内容块引用 - 使用最新的内容块
+      let processedPrompt = block.aiPrompt
+      
+      // 查找并替换 {{blockId}} 格式的引用
+      const blockRefs = processedPrompt.match(/\{\{([^}]+)\}\}/g)
+      if (blockRefs) {
+        console.log(`块 ${blockId} 找到引用:`, blockRefs)
+        blockRefs.forEach(ref => {
+          const refBlockId = ref.replace(/\{\{|\}\}/g, '')
+          const refBlock = latestBlocks.find(b => b.id === refBlockId) // 使用最新状态
+          console.log(`查找引用块 ${refBlockId}:`, refBlock ? '找到' : '未找到')
+          if (refBlock) {
+            let refContent = ''
+            if (typeof refBlock.content === 'string') {
+              refContent = refBlock.content
+              console.log(`引用块 ${refBlockId} 内容:`, refContent.substring(0, 100) + '...')
+            } else if (refBlock.type === 'two-column') {
+              // 处理双栏文本块
+              const twoColumnContent = refBlock.content as { left?: string; right?: string }
+              const leftContent = twoColumnContent.left || ''
+              const rightContent = twoColumnContent.right || ''
+              refContent = `${leftContent}\t${rightContent}` // 用制表符分隔左右内容
+              console.log(`引用双栏块 ${refBlockId} 内容:`, refContent)
+            }
+            processedPrompt = processedPrompt.replace(ref, refContent)
+          } else {
+            console.log(`警告：未找到引用的块 ${refBlockId}`)
+          }
+        })
+      }
+      
+      // 获取缓存的图片分析结果并添加到提示词中
+      const cachedImageAnalysis = getCachedAnalysisText()
+      if (cachedImageAnalysis.trim()) {
+        processedPrompt = `${processedPrompt}\n\n【参考的图片分析内容】：\n${cachedImageAnalysis}`
+        updateLastUsedTime() // 更新缓存使用时间
+        console.log('使用缓存的图片分析结果于大纲生成')
+      }
+
+      let response
+      
+      // 检查是否使用新的模型管理方式
+      if (block.modelId) {
+        // 使用新的模型管理API
+        const systemPrompt = block.systemPrompt || '你是一个专业的文档编写助手。'
+        
+        const messages = [
+          { role: 'system' as const, content: systemPrompt },
+          { role: 'system' as const, content: processedPrompt }
+        ]
+        
+        if (block.modelId === 'maxkb') {
+          // 特殊处理MaxKB（保持兼容）
+          const blockSettings = block.aiSettings
+          if (!blockSettings?.maxkbBaseUrl || !blockSettings?.maxkbApiKey) {
+            toast.error('请先在模板编辑器中配置MaxKB的Base URL和API Key')
+            return
+          }
+          response = await aiService.generateMaxKbContent({
+            baseUrl: blockSettings.maxkbBaseUrl,
+            apiKey: blockSettings.maxkbApiKey,
+            messages: messages,
+            maxTokens: block.maxTokens || 3000,
+          })
+        } else {
+          // 使用模型管理中的模型
+          response = await aiService.generateWithModel({
+            modelId: block.modelId,
+            messages: messages,
+            temperature: block.temperature || 0.7,
+            maxTokens: block.maxTokens || 3000,
+          })
+        }
+      } else {
+        // 向后兼容：使用旧的AI设置方式
+        const blockSettings = block.aiSettings
+        
+        if (blockSettings?.provider === 'maxkb') {
+          // 使用MaxKB
+          if (!blockSettings.maxkbBaseUrl || !blockSettings.maxkbApiKey) {
+            toast.error('请先在模板编辑器中配置MaxKB的Base URL和API Key')
+            return
+          }
+          response = await aiService.generateMaxKbContent({
+            baseUrl: blockSettings.maxkbBaseUrl,
+            apiKey: blockSettings.maxkbApiKey,
+            messages: [
+              { role: 'system' as const, content: blockSettings.systemPrompt || '你是一个专业的文档编写助手。' },
+              { role: 'system' as const, content: processedPrompt },
+            ],
+            maxTokens: block.maxTokens || 3000,
+          })
+        } else {
+          // 没有配置，提示用户
+          toast.error('请在模板编辑器中为此AI块选择一个模型或配置MaxKB')
+          return
+        }
+      }
+
+      if (response.success) {
+        // 对AI返回的内容进行Markdown解析，转换为HTML
+        // 即使内容为空，也认为是成功的（AI可能故意返回空内容）
+        const formattedContent = await formatMaxKbContent(response.content || '')
+        
+        updateBlockContent(blockId, formattedContent)
+        if (response.content) {
+          toast.success('AI内容生成成功')
+        } else {
+          toast.success('AI内容生成完成（返回空内容）')
+        }
+      } else {
+        toast.error(response.error || 'AI内容生成失败')
+      }
+    } catch (error) {
+      console.error('AI生成失败:', error)
+      toast.error('AI内容生成失败')
+    } finally {
+      setIsGenerating(false)
+      setGeneratingBlockId(null)
+      if (generationStartTime) {
+        const totalTime = Math.round((Date.now() - generationStartTime) / 1000)
+        toast.success(`生成完成，耗时 ${totalTime} 秒`)
+      }
+      setGenerationStartTime(null)
+    }
   }
 
   const handleAIGenerate = async (blockId: string) => {
@@ -435,18 +581,31 @@ export default function UseTemplatePage() {
               toast.info(`正在生成第 1/${totalBlocks} 个AI内容块（优先执行）`)
               await handleAIGenerate(aiBlocks[0].id)
               successCount++
+              
+              // 关键：等待多个事件循环，确保React状态完全更新
+              await new Promise(resolve => {
+                // 等待状态更新传播
+                setTimeout(() => {
+                  // 再等待一次确保ref也更新了
+                  setTimeout(resolve, 50)
+                }, 50)
+              })
+              
+              console.log('第一个块执行完成，当前状态块数量:', contentBlocksRef.current.length)
+              console.log('第一个块内容:', contentBlocksRef.current.find(b => b.id === aiBlocks[0].id)?.content)
+              
             } catch (error) {
               failCount++
               console.error(`生成第一个块 ${aiBlocks[0].id} 失败:`, error)
             }
             
             // 其余块并行执行
-            if (aiBlocks.length > 1) {
+            if (aiBlocks.length > 1 && successCount > 0) {
               const remainingBlocks = aiBlocks.slice(1)
-              toast.info(`正在并行生成剩余 ${remainingBlocks.length} 个AI内容块...`)
+              toast.info(`第一个块已完成，正在并行生成剩余 ${remainingBlocks.length} 个AI内容块...`)
               
               const promises = remainingBlocks.map((block, index) => 
-                handleAIGenerate(block.id)
+                handleAIGenerateWithLatest(block.id)
                   .then(() => {
                     toast.success(`第 ${index + 2}/${totalBlocks} 个AI内容块生成完成`)
                     return true
