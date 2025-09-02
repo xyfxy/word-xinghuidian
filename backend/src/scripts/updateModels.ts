@@ -10,7 +10,7 @@ function detectModelCapabilities(modelName: string): ModelCapabilities {
     imageAnalysis: false,
     visionUnderstanding: false,
     documentAnalysis: false,
-    maxImageSize: 5 * 1024 * 1024,
+    maxImageSize: 20 * 1024 * 1024,
     supportedImageFormats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
     maxImagesPerRequest: 4
   };

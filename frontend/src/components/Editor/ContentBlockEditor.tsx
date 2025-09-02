@@ -47,9 +47,9 @@ const ImageEditor: React.FC<{
       return;
     }
 
-    // 验证文件大小（5MB限制）
-    if (file.size > 5 * 1024 * 1024) {
-      alert('图片文件大小不能超过5MB');
+    // 验证文件大小（20MB限制）
+    if (file.size > 20 * 1024 * 1024) {
+      alert('图片文件大小不能超过20MB');
       return;
     }
 

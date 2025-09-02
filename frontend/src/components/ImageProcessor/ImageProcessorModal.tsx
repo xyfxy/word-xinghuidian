@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Upload, Sparkles, ArrowDown, Image as ImageIcon, Copy, CopyCheck, Trash2, Edit3, Save, XCircle, ChevronDown, RefreshCw } from 'lucide-react';
+import { X, Upload, Sparkles, ArrowDown, Image as ImageIcon, Copy, CopyCheck, Trash2, ChevronDown, RefreshCw } from 'lucide-react';
 import { imageService } from '../../services/imageService';
 import { modelService } from '../../services/modelService';
 import { AIModelListItem, ImageAnalysisResult } from '../../types/model';
@@ -12,7 +12,7 @@ import { compressBase64Image, getBase64Size } from '../../utils/imageCompress';
 interface ImageProcessorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onInsertImages: (images: { base64: string; filename: string }[]) => void;
+  onInsertImages: (images: { base64: string; filename: string; width?: number; height?: number }[]) => void;
   onInsertToPrompt?: (targetBlockId: string, outlineContent: string) => void;
   availableAIBlocks?: Array<{ id: string; title: string }>;
 }
@@ -22,12 +22,13 @@ interface ProcessedImage {
   file: File;
   base64: string;
   preview: string;
+  width?: number;  // 图片原始宽度
+  height?: number; // 图片原始高度
   analysis?: ImageAnalysisResult;
   formattedAnalysis?: string;
   isAnalyzing?: boolean;
   isCachedResult?: boolean; // 标记是否为缓存恢复的结果
-  isEditing?: boolean; // 是否正在编辑
-  editingContent?: string; // 编辑中的内容
+  editingContent?: string; // 编辑中的内容（现在用于直接编辑）
   order?: number; // 排序顺序
 }
 
@@ -54,7 +55,8 @@ export default function ImageProcessorModal({
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [editingImageId, setEditingImageId] = useState<string | null>(null);
+  // 移除编辑状态相关的state，因为现在是直接编辑
+  // const [editingImageId, setEditingImageId] = useState<string | null>(null);
   const [showPromptInsertMenu, setShowPromptInsertMenu] = useState(false);
   const [selectedAIBlockId, setSelectedAIBlockId] = useState<string>('');
   const [draggedImage, setDraggedImage] = useState<ProcessedImage | null>(null);
@@ -184,8 +186,8 @@ export default function ImageProcessorModal({
         }
 
         // 验证文件大小
-        if (file.size > 5 * 1024 * 1024) {
-          toast.error(`文件 "${file.name}" 过大，最大支持5MB`);
+        if (file.size > 20 * 1024 * 1024) {
+          toast.error(`文件 "${file.name}" 过大，最大支持20MB`);
           continue;
         }
 
@@ -199,12 +201,21 @@ export default function ImageProcessorModal({
           continue;
         }
 
+        // 获取图片原始尺寸
+        const img = new Image();
+        await new Promise((resolve) => {
+          img.onload = resolve;
+          img.src = base64;
+        });
+
         // 使用时间戳+索引确保唯一ID，索引保持选择顺序
         newImages.push({
           id: `img_${Date.now()}_${i}`,
           file,
           base64,
-          preview: base64
+          preview: base64,
+          width: img.naturalWidth,
+          height: img.naturalHeight
         });
       }
 
@@ -371,7 +382,8 @@ export default function ImageProcessorModal({
           return {
             ...img,
             analysis,
-            formattedAnalysis
+            formattedAnalysis,
+            editingContent: analysis?.description || '' // 初始化编辑内容
           };
         }));
         
@@ -460,7 +472,9 @@ export default function ImageProcessorModal({
 
     const imageData = validImages.map(img => ({
       base64: img.base64,
-      filename: img.file.name
+      filename: img.file.name,
+      width: img.width,
+      height: img.height
     }));
     
     onInsertImages(imageData);
@@ -525,6 +539,7 @@ export default function ImageProcessorModal({
                   ...img,
                   analysis,
                   formattedAnalysis,
+                  editingContent: analysis?.description || '', // 初始化编辑内容
                   isAnalyzing: false,
                   isCachedResult: false
                 }
@@ -615,7 +630,8 @@ export default function ImageProcessorModal({
           return {
             ...img,
             analysis,
-            formattedAnalysis
+            formattedAnalysis,
+            editingContent: analysis?.description || '' // 初始化编辑内容
           };
         }));
         
@@ -670,7 +686,9 @@ export default function ImageProcessorModal({
         if (validImages.length > 0) {
           const imageData = validImages.map(img => ({
             base64: img.base64,
-            filename: img.file.name
+            filename: img.file.name,
+            width: img.width,
+            height: img.height
           }));
           
           onInsertImages(imageData);
@@ -723,34 +741,15 @@ export default function ImageProcessorModal({
     }
   };
 
-  // 开始编辑大纲
-  const startEditing = (imageId: string, content: string) => {
-    setImages(prev => 
-      prev.map(img => 
-        img.id === imageId 
-          ? { ...img, isEditing: true, editingContent: content }
-          : img
-      )
-    );
-    setEditingImageId(imageId);
-  };
-
-  // 取消编辑
-  const cancelEditing = (imageId: string) => {
-    setImages(prev => 
-      prev.map(img => 
-        img.id === imageId 
-          ? { ...img, isEditing: false, editingContent: undefined }
-          : img
-      )
-    );
-    setEditingImageId(null);
-  };
-
-  // 保存编辑
-  const saveEditing = async (imageId: string) => {
+  // 处理分析结果失去焦点时的保存
+  const handleAnalysisBlur = async (imageId: string) => {
     const image = images.find(img => img.id === imageId);
-    if (!image || !image.editingContent) return;
+    if (!image || image.editingContent === undefined) return;
+    
+    // 如果内容没有变化，不做处理
+    if (image.editingContent === image.analysis?.description) {
+      return;
+    }
 
     try {
       // 格式化编辑后的内容
@@ -766,9 +765,7 @@ export default function ImageProcessorModal({
                   ...img.analysis!, 
                   description: image.editingContent! 
                 },
-                formattedAnalysis: formattedContent,
-                isEditing: false, 
-                editingContent: undefined 
+                formattedAnalysis: formattedContent
               }
             : img
         )
@@ -796,11 +793,11 @@ export default function ImageProcessorModal({
         setCache(updatedCache);
       }
 
-      setEditingImageId(null);
-      toast.success('大纲已保存');
+      // 不显示成功提示，让用户感觉更流畅
+      // toast.success('分析结果已更新');
     } catch (error) {
-      console.error('保存编辑失败:', error);
-      toast.error('保存失败');
+      console.error('保存分析结果失败:', error);
+      // 静默处理错误，不打断用户操作
     }
   };
 
@@ -848,9 +845,14 @@ export default function ImageProcessorModal({
 
   // 关闭弹窗 - 智能缓存管理
   const handleClose = () => {
-    // 如果有正在编辑的内容，提醒用户
-    if (editingImageId !== null) {
-      const confirmClose = confirm('您有未保存的编辑内容，确定要关闭吗？');
+    // 检查是否有未保存的编辑内容
+    const hasUnsavedChanges = images.some(img => 
+      img.editingContent !== undefined && 
+      img.editingContent !== img.analysis?.description
+    );
+    
+    if (hasUnsavedChanges) {
+      const confirmClose = confirm('您有未保存的修改，确定要关闭吗？');
       if (!confirmClose) {
         return;
       }
@@ -866,7 +868,6 @@ export default function ImageProcessorModal({
     // 清理状态
     setCopiedIndex(null);
     setCopiedAll(false);
-    setEditingImageId(null);
     setShowPromptInsertMenu(false);
     setSelectedAIBlockId('');
     onClose();
@@ -879,7 +880,6 @@ export default function ImageProcessorModal({
     setAnalysisPrompt('多模态提取要点，保持原顺序，禁止扩写，输出讨论大纲。');
     setCopiedIndex(null);
     setCopiedAll(false);
-    setEditingImageId(null);
     setShowPromptInsertMenu(false);
     setSelectedAIBlockId('');
     clearCache();
@@ -946,7 +946,7 @@ export default function ImageProcessorModal({
               />
               <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">上传图片</h3>
-              <p className="text-gray-600 mb-2">支持 JPG、PNG、GIF、WebP 格式，单个文件最大 5MB，最多 10 张</p>
+              <p className="text-gray-600 mb-2">支持 JPG、PNG、GIF、WebP 格式，单个文件最大 20MB，最多 10 张</p>
               <p className="text-sm text-blue-600 mb-4">💡 提示：上传后可通过拖拽或按钮调整图片顺序</p>
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -1149,93 +1149,48 @@ export default function ImageProcessorModal({
                                     已分析
                                   </span>
                                 )}
-                                {image.isEditing && (
-                                  <span className="text-xs px-2 py-1 bg-blue-100 text-blue-600 rounded">
-                                    编辑中
-                                  </span>
-                                )}
                               </div>
                               <div className="flex items-center gap-1">
-                                {image.isEditing ? (
-                                  <>
-                                    <button
-                                      onClick={() => saveEditing(image.id)}
-                                      className="p-1 text-green-600 hover:text-green-700 hover:bg-green-50 rounded transition-colors"
-                                      title="保存编辑"
-                                    >
-                                      <Save className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => cancelEditing(image.id)}
-                                      className="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                      title="取消编辑"
-                                    >
-                                      <XCircle className="w-4 h-4" />
-                                    </button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <button
-                                      onClick={() => reanalyzeImage(image.id)}
-                                      className="p-1 text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded transition-colors"
-                                      title="重新解析"
-                                      disabled={image.isAnalyzing || isAnalyzing || !selectedModel}
-                                    >
-                                      {image.isAnalyzing ? (
-                                        <RefreshCw className="w-4 h-4 animate-spin" />
-                                      ) : (
-                                        <RefreshCw className="w-4 h-4" />
-                                      )}
-                                    </button>
-                                    <button
-                                      onClick={() => startEditing(image.id, image.analysis!.description || '')}
-                                      className="p-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
-                                      title="编辑大纲"
-                                      disabled={editingImageId !== null && editingImageId !== image.id}
-                                    >
-                                      <Edit3 className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => copyAnalysis(image, index, image.analysis!.description || '')}
-                                      className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
-                                      title="复制分析结果"
-                                    >
-                                      {copiedIndex === index ? (
-                                        <CopyCheck className="w-4 h-4 text-green-600" />
-                                      ) : (
-                                        <Copy className="w-4 h-4" />
-                                      )}
-                                    </button>
-                                  </>
-                                )}
+                                <button
+                                  onClick={() => reanalyzeImage(image.id)}
+                                  className="p-1 text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded transition-colors"
+                                  title="重新解析"
+                                  disabled={image.isAnalyzing || isAnalyzing || !selectedModel}
+                                >
+                                  {image.isAnalyzing ? (
+                                    <RefreshCw className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="w-4 h-4" />
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() => copyAnalysis(image, index, image.editingContent || image.analysis?.description || '')}
+                                  className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                                  title="复制分析结果"
+                                >
+                                  {copiedIndex === index ? (
+                                    <CopyCheck className="w-4 h-4 text-green-600" />
+                                  ) : (
+                                    <Copy className="w-4 h-4" />
+                                  )}
+                                </button>
                               </div>
                             </div>
-                            {image.isEditing ? (
-                              <div className="space-y-3">
-                                <textarea
-                                  value={image.editingContent || ''}
-                                  onChange={(e) => updateEditingContent(image.id, e.target.value)}
-                                  rows={8}
-                                  className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-y"
-                                  style={{ minHeight: '120px', maxHeight: '400px' }}
-                                  placeholder="编辑大纲内容..."
-                                />
-                                <div className="text-xs text-gray-500">
-                                  支持 Markdown 格式，使用 # 表示标题，- 表示列表项。拖动右下角可调整输入框大小。
-                                </div>
+                            {/* 图片分析结果 - 直接可编辑 */}
+                            <div className="space-y-2">
+                              <textarea
+                                value={image.editingContent !== undefined ? image.editingContent : (image.analysis?.description || '')}
+                                onChange={(e) => updateEditingContent(image.id, e.target.value)}
+                                onBlur={() => handleAnalysisBlur(image.id)}
+                                rows={6}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-y bg-gray-50 hover:bg-white transition-colors"
+                                style={{ minHeight: '100px', maxHeight: '300px' }}
+                                placeholder="图片分析结果..."
+                              />
+                              <div className="text-xs text-gray-500">
+                                支持 Markdown 格式
                               </div>
-                            ) : (
-                              image.formattedAnalysis ? (
-                                <div 
-                                  className="text-sm text-gray-700 bg-gray-50 p-3 rounded border prose prose-sm max-w-none"
-                                  dangerouslySetInnerHTML={{ __html: image.formattedAnalysis }}
-                                />
-                              ) : (
-                                <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded border">
-                                  {image.analysis?.description || '无分析结果'}
-                                </div>
-                              )
-                            )}
+                            </div>
                           </div>
                         </div>
                       </div>

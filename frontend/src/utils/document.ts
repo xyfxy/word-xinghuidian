@@ -1,4 +1,4 @@
-import { DocumentTemplate, ContentBlock, DocumentFormat, ImageContent, PageBreakContent, TableContent } from '../types';
+import { DocumentTemplate, ContentBlock, DocumentFormat, ImageContent, PageBreakContent, TableContent, TwoColumnContent } from '../types';
 import {
   Document,
   Packer,
@@ -336,8 +336,38 @@ const hasActualContent = (block: ContentBlock): boolean => {
   return false;
 };
 
+// 生成定制化的导出文件名
+const generateCustomFileName = (template: DocumentTemplate): string => {
+  // 查找第一个双栏文本块
+  const firstTwoColumnBlock = template.content.find(block => block.type === 'two-column');
+  
+  if (firstTwoColumnBlock && typeof firstTwoColumnBlock.content === 'object' && 'left' in firstTwoColumnBlock.content) {
+    const twoColumnContent = firstTwoColumnBlock.content as TwoColumnContent;
+    let leftText = twoColumnContent.left;
+    
+    // 移除HTML标签
+    leftText = leftText.replace(/<[^>]*>/g, '');
+    
+    // 清理空白字符
+    leftText = leftText.trim();
+    
+    // 如果文本以"编制"结尾，移除它
+    if (leftText.endsWith('编制')) {
+      leftText = leftText.substring(0, leftText.length - 2).trim();
+    }
+    
+    // 如果有内容，则添加"调研式教学报告"后缀
+    if (leftText) {
+      return `${leftText}调研式教学报告`;
+    }
+  }
+  
+  // 如果没有找到双栏文本或处理失败，使用默认名称
+  return template.name || '导出文档';
+};
+
 // 导出Word文档
-export const exportToWord = async (template: DocumentTemplate): Promise<void> => {
+export const exportToWord = async (template: DocumentTemplate, useCustomName: boolean = false): Promise<void> => {
   try {
     // 按position排序内容块
     const sortedContent = [...template.content].sort((a, b) => a.position - b.position);
@@ -368,22 +398,61 @@ export const exportToWord = async (template: DocumentTemplate): Promise<void> =>
           let exportHeight: number;
 
           if (imageContent.alignment === 'auto') {
-            // 自适应模式：宽度填充文档内容区域
+            // 自适应模式：智能调整图片尺寸以适应页面
             const pageWidthPt = template.format.page.width || 595; // A4宽度595pt
+            const pageHeightPt = template.format.page.height || 842; // A4高度842pt
             const marginLeftPt = template.format.page.margins.left || 72;
             const marginRightPt = template.format.page.margins.right || 72;
+            const marginTopPt = template.format.page.margins.top || 72;
+            const marginBottomPt = template.format.page.margins.bottom || 72;
+            
+            // 计算可用内容区域（点单位）
             const contentWidthPt = pageWidthPt - marginLeftPt - marginRightPt;
+            const contentHeightPt = pageHeightPt - marginTopPt - marginBottomPt;
             
-            // 将点(points)转换为像素 (1pt = 96/72 px = 1.333px)
-            // 为了在Word中显示正确，我们使用像素值
-            exportWidth = Math.round(contentWidthPt * 96 / 72);
+            // 转换为像素 (1pt = 96/72 px = 1.333px)
+            const maxWidthPx = Math.round(contentWidthPt * 96 / 72);
+            const maxHeightPx = Math.round(contentHeightPt * 96 / 72);
             
-            // 高度按比例计算，默认使用16:9比例
-            exportHeight = Math.round(exportWidth * 9 / 16);
-            
-            // 限制最大高度（像素）
-            if (exportHeight > 600) {
-              exportHeight = 600;
+            if (imageContent.width && imageContent.height) {
+              // 有原始尺寸，计算缩放比例
+              const aspectRatio = imageContent.height / imageContent.width;
+              
+              // 方案1：按宽度填满
+              let widthBasedWidth = maxWidthPx;
+              let widthBasedHeight = Math.round(widthBasedWidth * aspectRatio);
+              
+              // 方案2：按高度填满
+              let heightBasedHeight = maxHeightPx;
+              let heightBasedWidth = Math.round(heightBasedHeight / aspectRatio);
+              
+              // 选择不会超出页面的方案
+              if (widthBasedHeight <= maxHeightPx) {
+                // 宽度填满方案不会超出高度限制
+                exportWidth = widthBasedWidth;
+                exportHeight = widthBasedHeight;
+              } else {
+                // 需要按高度限制来缩放
+                exportWidth = heightBasedWidth;
+                exportHeight = heightBasedHeight;
+              }
+              
+              // 额外限制：为了美观，图片高度不超过页面高度的80%
+              const aestheticMaxHeight = Math.round(maxHeightPx * 0.8);
+              if (exportHeight > aestheticMaxHeight) {
+                exportHeight = aestheticMaxHeight;
+                exportWidth = Math.round(exportHeight / aspectRatio);
+              }
+            } else {
+              // 没有原始尺寸，使用默认值（页面宽度的80%，黄金比例）
+              exportWidth = Math.round(maxWidthPx * 0.8);
+              exportHeight = Math.round(exportWidth * 0.618);
+              
+              // 确保不超出页面高度
+              if (exportHeight > maxHeightPx * 0.8) {
+                exportHeight = Math.round(maxHeightPx * 0.8);
+                exportWidth = Math.round(exportHeight / 0.618);
+              }
             }
           } else {
             // 固定尺寸模式（使用像素值）
@@ -738,9 +807,12 @@ export const exportToWord = async (template: DocumentTemplate): Promise<void> =>
       ],
     });
 
+    // 根据参数选择文件名
+    const fileName = useCustomName ? generateCustomFileName(template) : (template.name || '导出文档');
+    
     // 生成并下载文件
     const blob = await Packer.toBlob(doc);
-    saveAs(blob, `${template.name}.docx`);
+    saveAs(blob, `${fileName}.docx`);
   } catch (error) {
     console.error('导出Word文档失败:', error);
     throw new Error('导出文档失败，请检查模板格式');

@@ -36,7 +36,9 @@ export default function UseTemplatePage() {
   const [showImageProcessor, setShowImageProcessor] = useState(false)
   const [showGenerateOptions, setShowGenerateOptions] = useState(false)
   const [showExecutionOrderModal, setShowExecutionOrderModal] = useState(false)
+  const [showExportOptions, setShowExportOptions] = useState(false)
   const generateOptionsRef = useRef<HTMLDivElement>(null)
+  const exportOptionsRef = useRef<HTMLDivElement>(null)
   const contentBlocksRef = useRef<ContentBlock[]>([])
   
   // 同步 contentBlocks 到 ref
@@ -70,22 +72,25 @@ export default function UseTemplatePage() {
     }
   }, [clearCache])
   
-  // 点击外部关闭生成选项菜单
+  // 点击外部关闭菜单
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (generateOptionsRef.current && !generateOptionsRef.current.contains(event.target as Node)) {
         setShowGenerateOptions(false)
       }
+      if (exportOptionsRef.current && !exportOptionsRef.current.contains(event.target as Node)) {
+        setShowExportOptions(false)
+      }
     }
     
-    if (showGenerateOptions) {
+    if (showGenerateOptions || showExportOptions) {
       document.addEventListener('mousedown', handleClickOutside)
     }
     
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [showGenerateOptions])
+  }, [showGenerateOptions, showExportOptions])
 
   useEffect(() => {
     if (templateId && templates.length > 0) {
@@ -666,10 +671,11 @@ export default function UseTemplatePage() {
     }
   }
 
-  const handleExportDocument = async () => {
+  const handleExportDocument = async (useCustomName: boolean = false) => {
     if (!selectedTemplate) return
 
     setIsExporting(true)
+    setShowExportOptions(false)
     try {
       // 将当前内容块更新到模板中
       const documentData = {
@@ -677,7 +683,7 @@ export default function UseTemplatePage() {
         content: contentBlocks
       }
 
-      await exportToWord(documentData)
+      await exportToWord(documentData, useCustomName)
       toast.success('文档导出成功')
     } catch (error) {
       console.error('导出失败:', error)
@@ -816,8 +822,8 @@ export default function UseTemplatePage() {
         return
       }
 
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('图片文件大小不能超过5MB')
+      if (file.size > 20 * 1024 * 1024) {
+        toast.error('图片文件大小不能超过20MB')
         return
       }
 
@@ -825,13 +831,21 @@ export default function UseTemplatePage() {
       reader.onload = (e) => {
         const result = e.target?.result
         if (typeof result === 'string') {
-          updateBlockContent(block.id, {
-            ...imageContent,
-            src: result,
-            alt: file.name,
-            // 默认使用自适应模式
-            alignment: 'auto'
-          })
+          // 创建 Image 对象来获取图片原始尺寸
+          const img = new Image()
+          img.onload = () => {
+            updateBlockContent(block.id, {
+              ...imageContent,
+              src: result,
+              alt: file.name,
+              // 保存原始尺寸
+              width: img.naturalWidth,
+              height: img.naturalHeight,
+              // 默认使用自适应模式
+              alignment: 'auto'
+            })
+          }
+          img.src = result
         }
       }
       reader.readAsDataURL(file)
@@ -840,12 +854,23 @@ export default function UseTemplatePage() {
     const handleImageFromUrl = () => {
       const url = prompt('请输入图片URL:')
       if (url) {
-        updateBlockContent(block.id, {
-          ...imageContent,
-          src: url,
-          // 默认使用自适应模式
-          alignment: 'auto'
-        })
+        // 创建 Image 对象来获取图片原始尺寸
+        const img = new Image()
+        img.onload = () => {
+          updateBlockContent(block.id, {
+            ...imageContent,
+            src: url,
+            // 保存原始尺寸
+            width: img.naturalWidth,
+            height: img.naturalHeight,
+            // 默认使用自适应模式
+            alignment: 'auto'
+          })
+        }
+        img.onerror = () => {
+          toast.error('无法加载图片，请检查URL是否正确')
+        }
+        img.src = url
       }
     }
 
@@ -853,8 +878,7 @@ export default function UseTemplatePage() {
       updateBlockContent(block.id, {
         ...imageContent,
         alignment,
-        // 如果切换到自适应，清除固定宽高
-        ...(alignment === 'auto' ? { width: undefined, height: undefined } : {})
+        // 自适应模式不清除原始尺寸，因为需要用于计算比例
       })
     }
 
@@ -950,7 +974,7 @@ export default function UseTemplatePage() {
                   onChange={(e) => handleSizeChange('width', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                   disabled={imageContent.alignment === 'auto'}
-                  placeholder={imageContent.alignment === 'auto' ? '自动填充' : ''}
+                  placeholder={imageContent.alignment === 'auto' ? (imageContent.width ? `原始: ${imageContent.width}px` : '自动填充') : ''}
                 />
               </div>
               <div>
@@ -963,7 +987,7 @@ export default function UseTemplatePage() {
                   onChange={(e) => handleSizeChange('height', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                   disabled={imageContent.alignment === 'auto'}
-                  placeholder={imageContent.alignment === 'auto' ? '按比例' : ''}
+                  placeholder={imageContent.alignment === 'auto' ? (imageContent.height ? `原始: ${imageContent.height}px` : '按比例') : ''}
                 />
               </div>
             </div>
@@ -1054,7 +1078,7 @@ export default function UseTemplatePage() {
   }
 
   // 处理图片插入
-  const handleInsertImages = (images: { base64: string; filename: string }[]) => {
+  const handleInsertImages = (images: { base64: string; filename: string; width?: number; height?: number }[]) => {
     if (!selectedTemplate) return;
 
     // 查找所有现有的图片内容块，按位置排序
@@ -1079,7 +1103,12 @@ export default function UseTemplatePage() {
               ...(block.content as ImageContent),
               src: imageData.base64,
               alt: imageData.filename,
-              title: imageData.filename
+              title: imageData.filename,
+              // 保存原始尺寸
+              width: imageData.width,
+              height: imageData.height,
+              // 设置为自适应模式
+              alignment: 'auto'
             } as ImageContent
           };
         }
@@ -1282,14 +1311,44 @@ export default function UseTemplatePage() {
                 </div>
               )}
             </div>
-            <button
-              onClick={handleExportDocument}
-              disabled={isExporting}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              导出文档
-            </button>
+            <div className="relative" ref={exportOptionsRef}>
+              <button
+                onClick={() => setShowExportOptions(!showExportOptions)}
+                disabled={isExporting}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                导出文档
+                <ChevronDown className={`w-4 h-4 transition-transform ${showExportOptions ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {showExportOptions && (
+                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                  <div className="p-2">
+                    <button
+                      onClick={() => handleExportDocument(false)}
+                      className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 rounded-md transition-colors flex items-center gap-2"
+                    >
+                      <File className="w-4 h-4 text-gray-500" />
+                      <div>
+                        <div className="font-medium">普通导出</div>
+                        <div className="text-xs text-gray-500">使用模板名称作为文件名</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => handleExportDocument(true)}
+                      className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 rounded-md transition-colors flex items-center gap-2 mt-1"
+                    >
+                      <Settings2 className="w-4 h-4 text-blue-500" />
+                      <div>
+                        <div className="font-medium">定制化导出</div>
+                        <div className="text-xs text-gray-500">根据班级名称生成文件名</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -6,7 +6,7 @@
   "apiKey": "37ddb75d5778ac3cb00d2d62951f3c3022f7ce988940f89cf15436b5211478a228a422c9c2cf472ba5ab7b02024617c666658e7fefdd15ae693e7182f5ac61e1fd5ba71c8773d466e9ad627015360b98",
   "model": "google/gemini-2.5-flash",
   "createdAt": "2025-08-15T02:22:49.003Z",
-  "updatedAt": "2025-08-15T02:22:59.152Z",
+  "updatedAt": "2025-08-28T09:06:36.380Z",
   "isActive": true,
   "multimodalSupport": true,
   "capabilities": {
@@ -14,7 +14,7 @@
     "imageAnalysis": true,
     "visionUnderstanding": true,
     "documentAnalysis": true,
-    "maxImageSize": 5242880,
+    "maxImageSize": 20971520,
     "supportedImageFormats": [
       "jpg",
       "jpeg",
@@ -24,7 +24,7 @@
     ],
     "maxImagesPerRequest": 4
   },
-  "lastTested": "2025-08-15T02:22:59.154Z",
+  "lastTested": "2025-08-28T09:06:36.383Z",
   "testStatus": "success",
-  "responseTime": 1306
+  "responseTime": 1319
 }

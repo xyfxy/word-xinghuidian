@@ -17,7 +17,7 @@
     "imageAnalysis": false,
     "visionUnderstanding": false,
     "documentAnalysis": false,
-    "maxImageSize": 5242880,
+    "maxImageSize": 20971520,
     "supportedImageFormats": [
       "jpg",
       "jpeg",

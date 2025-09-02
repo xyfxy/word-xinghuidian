@@ -107,7 +107,7 @@ export const imageService = {
   },
 
   // 验证图片格式和大小
-  validateImage(base64Data: string, maxSize: number = 5 * 1024 * 1024): { valid: boolean; error?: string } {
+  validateImage(base64Data: string, maxSize: number = 20 * 1024 * 1024): { valid: boolean; error?: string } {
     try {
       // 检查base64格式
       const matches = base64Data.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);

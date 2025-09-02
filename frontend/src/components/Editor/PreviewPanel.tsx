@@ -652,11 +652,13 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({ template }) => {
             let imageStyle: React.CSSProperties = {};
             let containerStyle: React.CSSProperties = { ...blockStyle };
             if (imageContent.alignment === 'auto') {
+                // 自适应模式：保持图片原始比例，宽度填满容器
                 imageStyle = {
                     width: '100%',
-                    height: 'auto',
+                    height: 'auto',  // 自动计算高度以保持原始比例
+                    objectFit: 'contain',  // 保持图片比例
                     maxWidth: imageContent.maxWidth ? `${imageContent.maxWidth}px` : '100%',
-                    maxHeight: imageContent.maxHeight ? `${imageContent.maxHeight}px` : 'auto',
+                    maxHeight: imageContent.maxHeight ? `${imageContent.maxHeight}px` : 'none',
                     display: 'block',
                     margin: '0 auto',
                 };
